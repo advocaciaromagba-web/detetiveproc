@@ -3,7 +3,15 @@
 import pytest
 from sqlalchemy import select
 
-from db.modelos import Alvo, Ocorrencia, Processo, Tribunal
+from db.modelos import (
+    Alarme,
+    Alvo,
+    ExecucaoSentinela,
+    Ocorrencia,
+    Processo,
+    Sentinela,
+    Tribunal,
+)
 from db.sessao import sessao_sistema
 from pipeline.dedup import gravar_processo
 from pipeline.normalizador import normalizar_sigiloso
@@ -324,3 +332,32 @@ async def test_ocorrencia_em_processo_sigiloso(cliente_http, dados, fabrica) -> 
         processo.segredo = True
     r = await cliente_http.get(f"/v1/ocorrencias/{dados.ocorrencia_a}", headers=chave(dados))
     assert r.json()["processo"]["partes"] == []
+
+
+async def test_saude_mostra_sentinela_e_alarmes(cliente_http, dados, relogio, fabrica) -> None:
+    async with sessao_sistema(fabrica) as s:
+        sentinela = Sentinela(
+            tribunal_id=dados.tribunal,
+            numero_cnj="0000001-84.2020.8.26.0001",
+            campos_esperados={"classe": "X"},
+        )
+        s.add(sentinela)
+        await s.flush()
+        s.add(
+            ExecucaoSentinela(
+                sentinela_id=sentinela.id,
+                sucesso=False,
+                executada_em=relogio.agora,
+                divergencias=[{"campo": "classe", "esperado": "X", "obtido": "Y"}],
+            )
+        )
+        s.add(Alarme(tribunal_id=dados.tribunal, tipo="sentinela", detalhes={"falhas_seguidas": 2}))
+    op = await entrar(cliente_http, dados.operador, relogio)
+    (esaj,) = (await cliente_http.get("/v1/saude", headers=op)).json()
+    (sen,) = esaj["sentinelas"]
+    assert (sen["numero_cnj"], sen["sucesso"], sen["campos_divergentes"]) == (
+        "0000001-84.2020.8.26.0001", False, ["classe"],
+    )  # fmt: skip
+    assert [(a["tipo"], a["detalhes"]) for a in esaj["alarmes"]] == [
+        ("sentinela", {"falhas_seguidas": 2})
+    ]

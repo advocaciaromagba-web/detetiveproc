@@ -1,6 +1,7 @@
 """Configuração da aplicação, lida de variáveis de ambiente e do arquivo .env."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -26,6 +27,10 @@ class Settings(BaseSettings):
     smtp_remetente: str = "Monitor Processual <alertas@localhost>"
     # Recebe avisos de bloqueio de tribunal (DesafioHumano, LayoutAlterado).
     email_operacao: str | None = None
+
+    log_formato: Literal["json", "texto"] = "json"
+    log_nivel: str = "INFO"
+    metricas_porta: int = 9100  # servidor Prometheus do agendador (rede interna)
 
 
 @lru_cache

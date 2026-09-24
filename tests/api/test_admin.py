@@ -121,3 +121,23 @@ async def test_usuarios_sao_unicos_por_email(fabrica, monkeypatch) -> None:
     async with sessao_sistema(fabrica) as s:
         total = (await s.scalars(select(Usuario).where(Usuario.email == "dup@x.com"))).all()
     assert len(total) == 1
+
+
+async def test_criar_sentinela(fabrica) -> None:
+    t = await rodar(fabrica, "criar-tribunal", "--sigla", "TJSP", "--sistema", "esaj")
+    r = await rodar(
+        fabrica, "criar-sentinela", "--tribunal-id", str(t["tribunal_id"]),
+        "--numero", "00000018420208260001",
+        "--esperado", "classe=Procedimento Comum Cível", "--esperado", "quantidade_partes=2",
+    )  # fmt: skip
+    assert isinstance(r["sentinela_id"], int)
+    with pytest.raises(SystemExit, match="desconhecidos"):
+        await rodar(
+            fabrica, "criar-sentinela", "--tribunal-id", str(t["tribunal_id"]),
+            "--numero", "00000018420208260001", "--esperado", "partes=x",
+        )  # fmt: skip
+    with pytest.raises(SystemExit, match="CAMPO=VALOR"):
+        await rodar(
+            fabrica, "criar-sentinela", "--tribunal-id", str(t["tribunal_id"]),
+            "--numero", "00000018420208260001", "--esperado", "classe",
+        )  # fmt: skip

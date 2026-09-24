@@ -4,6 +4,7 @@ import asyncio
 import logging
 import signal
 
+from prometheus_client import start_http_server
 from redis.asyncio import Redis
 
 from agendador.orquestrador import Orquestrador
@@ -12,6 +13,8 @@ from agendador.tarefas import Tarefas, montar_agendador, trava_instancia_unica
 from core.config import obter_settings
 from db.sessao import criar_engine, criar_fabrica
 from entrega.email import EnviadorSMTP
+from monitoramento.logs import configurar_logs
+from monitoramento.metricas import REGISTRO
 
 
 async def executar() -> None:
@@ -36,6 +39,8 @@ async def executar() -> None:
 
     try:
         async with trava_instancia_unica(engine):
+            # Métricas só na rede interna (Prometheus do compose); nunca publicar a porta.
+            start_http_server(settings.metricas_porta, registry=REGISTRO)
             agendador = montar_agendador(Tarefas(fabrica, orquestrador, enviador))
             agendador.start()
             logging.getLogger(__name__).info("agendador iniciado")
@@ -47,7 +52,8 @@ async def executar() -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    settings = obter_settings()
+    configurar_logs(settings.log_formato, settings.log_nivel)
     asyncio.run(executar())
 
 

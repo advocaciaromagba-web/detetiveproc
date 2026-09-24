@@ -34,8 +34,20 @@ TABELAS_ESPERADAS = {
     "usuario",
     "sessao_usuario",
     "chave_api",
+    "sentinela",
+    "execucao_sentinela",
+    "alarme",
 }
-POSTERIORES_A_0001 = {"varredura", "varredura_numero", "usuario", "sessao_usuario", "chave_api"}
+POSTERIORES_A_0001 = {
+    "varredura",
+    "varredura_numero",
+    "usuario",
+    "sessao_usuario",
+    "chave_api",
+    "sentinela",
+    "execucao_sentinela",
+    "alarme",
+}
 
 
 def _migracao() -> ModuleType:

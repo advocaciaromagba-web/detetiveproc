@@ -27,3 +27,6 @@
 - Containers: uma imagem de backend (Dockerfile) para api, agendador e migracoes
   (muda só o command); só o painel publica porta. Serviço novo nunca expõe porta sem
   necessidade.
+- Observabilidade: toda chamada ao tribunal já é medida pelo AdaptadorInstrumentado
+  (registro.criar); métrica nova vai em monitoramento/metricas.py (registro próprio) e,
+  se útil, no painel docker/grafana/dashboards (há teste que confere os nomes).

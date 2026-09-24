@@ -21,6 +21,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from agendador.controle import (
+    Operacao,
+    bloquear_tribunal,
+    liberar_tribunal,
+    pausar_tribunal,
+    tribunal_disponivel,
+)
 from agendador.registro import RegistroAdaptadores
 from agendador.varredura import (
     ConfigVarredura,
@@ -43,7 +50,8 @@ from core.excecoes import (
 )
 from db.modelos import ExecucaoRobo, Processo, Tribunal, Varredura, VarreduraNumero
 from db.sessao import sessao_sistema
-from entrega.email import Email, EnviadorEmail
+from entrega.email import EnviadorEmail
+from monitoramento.metricas import PROCESSOS_NOVOS
 from pipeline.dedup import gravar_processo
 from pipeline.normalizador import ProcessoNormalizado, normalizar_processo, normalizar_sigiloso
 from pipeline.tpu import CatalogoTPU
@@ -101,8 +109,7 @@ class Orquestrador:
         self.catalogo = catalogo
         self.chave_hash = chave_hash
         self.relogio = relogio
-        self.enviador_operacao = enviador_operacao
-        self.email_operacao = email_operacao
+        self.operacao = Operacao(enviador_operacao, email_operacao)
 
     # ----------------------------------------------------------------------- ciclo
 
@@ -115,7 +122,7 @@ class Orquestrador:
                 if self._disponivel(t, agora)
             ]
             consultas = await consultas_ativas(s, self.chave_hash)
-            await sincronizar(s, [t.id for t in tribunais], consultas)
+            await sincronizar(s, [t.id for t in tribunais], consultas, agora)
 
         resultados = []
         for tribunal in tribunais:
@@ -123,9 +130,7 @@ class Orquestrador:
         return resultados
 
     def _disponivel(self, tribunal: Tribunal, agora: datetime) -> bool:
-        if not tribunal.ativo or tribunal.bloqueado_motivo is not None:
-            return False
-        if tribunal.pausado_ate is not None and tribunal.pausado_ate > agora:
+        if not tribunal_disponivel(tribunal, agora):
             return False
         if not self.registro.suporta(tribunal):
             logger.warning("tribunal sem adaptador registrado", extra={"tribunal": tribunal.sigla})
@@ -191,13 +196,15 @@ class Orquestrador:
         except LimiteAtingido as erro:
             resultado.erros += 1
             resultado.interrompido = "limite"
-            await self._pausar(tribunal, erro)
+            await pausar_tribunal(
+                self.fabrica, tribunal, erro, self.relogio(), self.config.pausa_minima
+            )
             raise _Parar from erro
         except (DesafioHumano, LayoutAlterado) as erro:
             resultado.erros += 1
-            motivo = "desafio_humano" if isinstance(erro, DesafioHumano) else "layout_alterado"
-            resultado.interrompido = motivo
-            await self._bloquear(tribunal, motivo, erro)
+            resultado.interrompido = await bloquear_tribunal(
+                self.fabrica, tribunal, erro, self.relogio(), self.operacao
+            )
             raise _Parar from erro
         except Exception as erro:
             resultado.erros += 1
@@ -283,6 +290,8 @@ class Orquestrador:
                 processo_id = gravado.processo_id
                 distribuicao = normalizado.data_distribuicao
                 resultado.processos_novos += int(gravado.novo)
+                if gravado.novo:
+                    PROCESSOS_NOVOS.labels(tribunal=tribunal.sigla, sistema=tribunal.sistema).inc()
                 if normalizado.segredo:
                     return  # sigiloso: só o número, nada a casar
             if processo_id is None or (linha_base and not self._recente(distribuicao)):
@@ -344,65 +353,5 @@ class Orquestrador:
             )
             varredura.ultimo_erro = _descrever(erro)
 
-    async def _pausar(self, tribunal: Tribunal, erro: LimiteAtingido) -> None:
-        espera = self.config.pausa_minima
-        if erro.retry_after is not None:
-            espera = max(espera, timedelta(seconds=erro.retry_after))
-        async with sessao_sistema(self.fabrica) as s:
-            atual = await s.get(Tribunal, tribunal.id)
-            if atual is None:
-                return
-            atual.pausado_ate = self.relogio() + espera
-            atual.limite_req_min = max(1, atual.limite_req_min // 2)
-        logger.error(
-            "tribunal pausado por limite de requisições; taxa reduzida à metade",
-            extra={"tribunal": tribunal.sigla, "sistema": tribunal.sistema},
-        )
 
-    async def _bloquear(self, tribunal: Tribunal, motivo: str, erro: ErroAdaptador) -> None:
-        async with sessao_sistema(self.fabrica) as s:
-            atual = await s.get(Tribunal, tribunal.id)
-            if atual is None:
-                return
-            atual.bloqueado_motivo = motivo
-            atual.bloqueado_em = self.relogio()
-        logger.critical(
-            "tribunal bloqueado; exige intervenção manual",
-            extra={"tribunal": tribunal.sigla, "sistema": tribunal.sistema, "motivo": motivo},
-        )
-        await self._avisar_operacao(tribunal, motivo, erro)
-
-    async def _avisar_operacao(self, tribunal: Tribunal, motivo: str, erro: ErroAdaptador) -> None:
-        if self.enviador_operacao is None or not self.email_operacao:
-            return
-        acao = (
-            "A página exigiu CAPTCHA/verificação humana. Não há contorno automatizado: "
-            "reduza a frequência ou use a API paga para este tribunal."
-            if motivo == "desafio_humano"
-            else "Seletores esperados não foram encontrados. Abra incidente de manutenção."
-        )
-        texto = (
-            f"O adaptador {tribunal.sigla}/{tribunal.sistema} foi bloqueado ({motivo}).\n"
-            f"Detalhe: {erro.detalhe or '-'}\n{acao}\n"
-            "Depois de resolver, libere com agendador.orquestrador.liberar_tribunal."
-        )
-        email = Email(
-            self.email_operacao,
-            f"[OPERAÇÃO] {tribunal.sigla}/{tribunal.sistema} bloqueado: {motivo}",
-            texto,
-            f"<pre>{texto}</pre>",
-        )
-        try:
-            await self.enviador_operacao.enviar(email)
-        except Exception:
-            logger.exception("falha ao avisar a operação")
-
-
-async def liberar_tribunal(fabrica: Fabrica, tribunal_id: int) -> None:
-    """Liberação manual após DesafioHumano/LayoutAlterado ou fim antecipado de pausa."""
-    async with sessao_sistema(fabrica) as s:
-        await s.execute(
-            update(Tribunal)
-            .where(Tribunal.id == tribunal_id)
-            .values(bloqueado_motivo=None, bloqueado_em=None, pausado_ate=None)
-        )
+__all__ = ["Orquestrador", "ResultadoTribunal", "liberar_tribunal"]

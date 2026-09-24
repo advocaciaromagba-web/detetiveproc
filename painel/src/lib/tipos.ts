@@ -72,6 +72,20 @@ export interface ExecucaoRobo {
   processos_novos: number;
 }
 
+export interface SentinelaSaude {
+  numero_cnj: string;
+  executada_em: string | null;
+  sucesso: boolean | null;
+  erro: string | null;
+  campos_divergentes: string[];
+}
+
+export interface AlarmeSaude {
+  tipo: "sentinela" | "taxa_erro" | "volume_baixo";
+  aberto_em: string;
+  detalhes: Record<string, unknown>;
+}
+
 export interface TribunalSaude {
   id: number;
   sigla: string;
@@ -85,6 +99,8 @@ export interface TribunalSaude {
   ultima_execucao: ExecucaoRobo | null;
   varreduras_com_falha: number;
   estado: "ok" | "pausado" | "bloqueado" | "inativo";
+  sentinelas: SentinelaSaude[];
+  alarmes: AlarmeSaude[];
 }
 
 export interface Alvo {

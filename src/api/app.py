@@ -23,6 +23,7 @@ from api.rotas import alvos, auth, ocorrencias, processos, regras, saude
 from core.config import obter_settings
 from db.modelos import Auditoria
 from db.sessao import criar_engine, criar_fabrica, sessao_sistema
+from monitoramento.logs import configurar_logs
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,9 @@ def criar_app(
             app.state.fabrica = fabrica
             yield
             return
-        engine = criar_engine(obter_settings().database_url)
+        settings = obter_settings()
+        configurar_logs(settings.log_formato, settings.log_nivel)
+        engine = criar_engine(settings.database_url)
         app.state.fabrica = criar_fabrica(engine)
         try:
             yield

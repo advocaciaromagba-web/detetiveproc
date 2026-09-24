@@ -89,11 +89,20 @@ async def consultas_ativas(sessao: AsyncSession, chave: str | None) -> dict[str,
 
 
 async def sincronizar(
-    sessao: AsyncSession, tribunal_ids: list[int], consultas: dict[str, Consulta]
+    sessao: AsyncSession,
+    tribunal_ids: list[int],
+    consultas: dict[str, Consulta],
+    agora: datetime,
 ) -> None:
-    """Garante uma varredura por (tribunal, consulta); novas ficam vencidas já."""
+    """Garante uma varredura por (tribunal, consulta); novas ficam vencidas em ``agora``
+    (relógio do orquestrador, não o do banco, para o agendamento ser coerente)."""
     linhas = [
-        {"tribunal_id": tid, "tipo_consulta": c.tipo, "parametro_hash": h}
+        {
+            "tribunal_id": tid,
+            "tipo_consulta": c.tipo,
+            "parametro_hash": h,
+            "proxima_execucao_em": agora,
+        }
         for tid in tribunal_ids
         for h, c in consultas.items()
     ]

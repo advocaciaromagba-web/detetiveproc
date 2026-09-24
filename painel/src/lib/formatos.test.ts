@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   faixaUrgencia,
+  ROTULO_ALARME,
   ROTULO_BLOQUEIO,
   formatarData,
   formatarDataHora,
@@ -76,5 +77,11 @@ describe("rótulos de bloqueio", () => {
   it("explicam o que fazer", () => {
     expect(ROTULO_BLOQUEIO.desafio_humano).toContain("CAPTCHA");
     expect(ROTULO_BLOQUEIO.layout_alterado).toContain("manutenção");
+  });
+});
+
+describe("rótulos de alarme", () => {
+  it("cobrem os três alarmes da seção 9", () => {
+    expect(Object.keys(ROTULO_ALARME).sort()).toEqual(["sentinela", "taxa_erro", "volume_baixo"]);
   });
 });

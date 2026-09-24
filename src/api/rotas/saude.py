@@ -1,11 +1,10 @@
-from typing import Literal
-
 from fastapi import APIRouter
 from sqlalchemy import func, select
 
+from agendador.controle import estado_tribunal
 from api.dependencias import Ctx
-from api.esquemas import ExecucaoSaida, TribunalSaude
-from db.modelos import ExecucaoRobo, Tribunal, Varredura
+from api.esquemas import AlarmeSaude, ExecucaoSaida, SentinelaSaude, TribunalSaude
+from db.modelos import Alarme, ExecucaoRobo, ExecucaoSentinela, Sentinela, Tribunal, Varredura
 
 rotas = APIRouter(prefix="/v1/saude", tags=["operação"])
 
@@ -30,13 +29,41 @@ async def saude(ctx: Ctx) -> list[TribunalSaude]:
                 .order_by(ExecucaoRobo.iniciado_em.desc())
                 .limit(1)
             )
-            estado: Literal["ok", "pausado", "bloqueado", "inativo"] = "ok"
-            if not t.ativo:
-                estado = "inativo"
-            elif t.bloqueado_motivo:
-                estado = "bloqueado"
-            elif t.pausado_ate is not None and t.pausado_ate > ctx.agora:
-                estado = "pausado"
+            sentinelas = []
+            for sentinela in (
+                await s.scalars(
+                    select(Sentinela)
+                    .where(Sentinela.tribunal_id == t.id, Sentinela.ativo)
+                    .order_by(Sentinela.id)
+                )
+            ).all():
+                ultima = await s.scalar(
+                    select(ExecucaoSentinela)
+                    .where(ExecucaoSentinela.sentinela_id == sentinela.id)
+                    .order_by(ExecucaoSentinela.executada_em.desc())
+                    .limit(1)
+                )
+                sentinelas.append(
+                    SentinelaSaude(
+                        numero_cnj=sentinela.numero_cnj,
+                        executada_em=ultima.executada_em if ultima else None,
+                        sucesso=ultima.sucesso if ultima else None,
+                        erro=ultima.erro if ultima else None,
+                        campos_divergentes=[
+                            str(d.get("campo")) for d in (ultima.divergencias if ultima else [])
+                        ],
+                    )
+                )
+            alarmes = [
+                AlarmeSaude(tipo=a.tipo, aberto_em=a.aberto_em, detalhes=a.detalhes)
+                for a in (
+                    await s.scalars(
+                        select(Alarme)
+                        .where(Alarme.tribunal_id == t.id, Alarme.resolvido_em.is_(None))
+                        .order_by(Alarme.aberto_em)
+                    )
+                ).all()
+            ]
             saida.append(
                 TribunalSaude(
                     id=t.id,
@@ -50,7 +77,9 @@ async def saude(ctx: Ctx) -> list[TribunalSaude]:
                     bloqueado_em=t.bloqueado_em,
                     ultima_execucao=ExecucaoSaida.model_validate(execucao) if execucao else None,
                     varreduras_com_falha=falhas.get(t.id, 0),
-                    estado=estado,
+                    estado=estado_tribunal(t, ctx.agora),
+                    sentinelas=sentinelas,
+                    alarmes=alarmes,
                 )
             )
     return saida

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from db.modelos import Alerta, Alvo, Cliente, Ocorrencia, Parte, Pessoa, Processo, Regra, Tribunal
 from db.sessao import sessao_sistema
 from entrega.email import EnviadorEmail
+from monitoramento.metricas import ALERTAS
 from regras.config import ConfigAlertas, carregar_config
 from regras.mensagens import DadosAlerta, montar_email_alerta, montar_email_resumo
 from regras.score import modalidade
@@ -190,10 +191,12 @@ async def despachar_alertas(
             except Exception as erro:
                 _registrar_falha([alerta], erro, max_tentativas)
                 resultado.falhas += 1
+                ALERTAS.labels(canal="email", modalidade="imediato", resultado="falha").inc()
                 logger.warning("falha ao enviar alerta", extra={"alerta_id": alerta.id})
             else:
                 _registrar_envio([alerta])
                 resultado.enviados += 1
+                ALERTAS.labels(canal="email", modalidade="imediato", resultado="enviado").inc()
     return resultado
 
 
@@ -245,8 +248,10 @@ async def enviar_resumos_diarios(
             except Exception as erro:
                 _registrar_falha(alertas, erro, max_tentativas)
                 resultado.falhas += 1
+                ALERTAS.labels(canal="email", modalidade="resumo", resultado="falha").inc()
                 logger.warning("falha ao enviar resumo", extra={"cliente_id": cliente_id})
             else:
                 _registrar_envio(alertas)
                 resultado.enviados += 1
+                ALERTAS.labels(canal="email", modalidade="resumo", resultado="enviado").inc()
     return resultado

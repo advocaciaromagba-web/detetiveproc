@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from core.adaptador import AdaptadorTribunal
 from core.rate_limiter import ConfigLimite, TokenBucket, criar_limitador
 from db.modelos import Tribunal
+from monitoramento.instrumentacao import AdaptadorInstrumentado
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis
@@ -41,8 +42,9 @@ class RegistroAdaptadores:
         return (tribunal.sigla.upper(), tribunal.sistema.lower()) in self._fabricas
 
     def criar(self, tribunal: Tribunal) -> AdaptadorTribunal:
+        """Adaptador com o limitador do tribunal e instrumentado (métricas da seção 9)."""
         fabrica = self._fabricas[(tribunal.sigla.upper(), tribunal.sistema.lower())]
-        return fabrica(self._fabrica_limitador(tribunal))
+        return AdaptadorInstrumentado(fabrica(self._fabrica_limitador(tribunal)))
 
 
 def registro_padrao(redis: "Redis | None" = None) -> RegistroAdaptadores:

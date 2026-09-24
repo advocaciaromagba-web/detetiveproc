@@ -259,6 +259,68 @@ class VarreduraNumero(Base):
     visto_em: Mapped[datetime] = _agora()
 
 
+class Sentinela(Base):
+    """Processo público conhecido cuja capa é conferida a cada hora (seção 9).
+
+    ``campos_esperados`` guarda só os campos a conferir (ver
+    monitoramento.sentinelas.CAMPOS_SENTINELA); nunca partes ou documentos.
+    """
+
+    __tablename__ = "sentinela"
+    __table_args__ = (
+        UniqueConstraint("tribunal_id", "numero_cnj"),
+        CheckConstraint(f"numero_cnj ~ '{_REGEX_CNJ}'", name="numero_cnj_formato"),
+    )
+
+    id: Mapped[int] = _id()
+    tribunal_id: Mapped[int] = mapped_column(ForeignKey("tribunal.id"))
+    numero_cnj: Mapped[str] = mapped_column(String(25))
+    campos_esperados: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, server_default=text("'{}'::jsonb")
+    )
+    ativo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    criado_em: Mapped[datetime] = _agora()
+
+
+class ExecucaoSentinela(Base):
+    __tablename__ = "execucao_sentinela"
+    __table_args__ = (
+        Index("ix_execucao_sentinela_sentinela_executada", "sentinela_id", "executada_em"),
+    )
+
+    id: Mapped[int] = _id()
+    sentinela_id: Mapped[int] = mapped_column(ForeignKey("sentinela.id", ondelete="CASCADE"))
+    executada_em: Mapped[datetime] = _agora()
+    sucesso: Mapped[bool] = mapped_column(Boolean)
+    duracao_ms: Mapped[int | None] = mapped_column(Integer)
+    # [{campo, esperado, obtido}] quando a capa diverge dos campos esperados.
+    divergencias: Mapped[list[Any]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    erro: Mapped[str | None] = mapped_column(Text)
+
+
+class Alarme(Base):
+    """Alarme de operação (seção 9). No máximo um aberto por (tribunal, tipo)."""
+
+    __tablename__ = "alarme"
+    __table_args__ = (
+        CheckConstraint(_em("tipo", "sentinela", "taxa_erro", "volume_baixo"), name="tipo"),
+        Index(
+            "uq_alarme_aberto",
+            "tribunal_id",
+            "tipo",
+            unique=True,
+            postgresql_where=text("resolvido_em IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = _id()
+    tribunal_id: Mapped[int] = mapped_column(ForeignKey("tribunal.id"))
+    tipo: Mapped[str] = mapped_column(String(20))
+    aberto_em: Mapped[datetime] = _agora()
+    resolvido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    detalhes: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+
+
 class ExecucaoRobo(Base):
     __tablename__ = "execucao_robo"
     __table_args__ = (Index("ix_execucao_robo_tribunal_inicio", "tribunal_id", "iniciado_em"),)

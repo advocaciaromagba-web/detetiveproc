@@ -245,6 +245,20 @@ class ExecucaoSaida(Saida):
     processos_novos: int
 
 
+class SentinelaSaude(BaseModel):
+    numero_cnj: str
+    executada_em: datetime | None
+    sucesso: bool | None
+    erro: str | None
+    campos_divergentes: list[str]
+
+
+class AlarmeSaude(BaseModel):
+    tipo: str
+    aberto_em: datetime
+    detalhes: dict[str, object]
+
+
 class TribunalSaude(BaseModel):
     id: int
     sigla: str
@@ -258,3 +272,5 @@ class TribunalSaude(BaseModel):
     ultima_execucao: ExecucaoSaida | None
     varreduras_com_falha: int
     estado: Literal["ok", "pausado", "bloqueado", "inativo"]
+    sentinelas: list[SentinelaSaude]
+    alarmes: list[AlarmeSaude]

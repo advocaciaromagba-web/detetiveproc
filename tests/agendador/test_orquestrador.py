@@ -38,6 +38,7 @@ from db.modelos import (
 )
 from db.sessao import sessao_sistema
 from entrega.email import EnviadorMemoria
+from monitoramento.metricas import CONSULTAS, ERROS, PROCESSOS_NOVOS
 from pipeline.dedup import gravar_processo
 from pipeline.normalizador import normalizar_processo
 from tests.agendador.apoio import (
@@ -497,7 +498,35 @@ def test_jobs_do_agendador(fabrica) -> None:
     tarefas = Tarefas(fabrica, Orquestrador(fabrica, registro, chave_hash=CHAVE), EnviadorMemoria())
     agendador = montar_agendador(tarefas)
     jobs = {j.id: j for j in agendador.get_jobs()}
-    assert set(jobs) == {"varredura", "despacho", "resumo_diario", "limpeza"}
+    assert set(jobs) == {
+        "varredura",
+        "despacho",
+        "resumo_diario",
+        "limpeza",
+        "sentinelas",
+        "alarmes",
+        "volume_diario",
+    }
+    assert "hour='8'" in str(jobs["volume_diario"].trigger)
     assert str(jobs["resumo_diario"].trigger).startswith("cron[")
     assert "hour='7'" in str(jobs["resumo_diario"].trigger)
     assert all(j.max_instances == 1 for j in jobs.values())
+
+
+async def test_metricas_de_consultas_e_processos_novos(fabrica, base) -> None:
+    rotulos = {"tribunal": "TJSP", "sistema": "esaj"}
+    antes_novos = PROCESSOS_NOVOS.labels(**rotulos)._value.get()
+    antes_ok = CONSULTAS.labels(**rotulos, operacao="documento", resultado="ok")._value.get()
+    antes_erro = ERROS.labels(**rotulos, excecao="TribunalIndisponivel")._value.get()
+    amb = Ambiente(fabrica)
+    await alvo(fabrica, base["a"], "documento", CNPJ)
+    await alvo(fabrica, base["b"], "documento", CPF)
+    numero = cnj(14, 2026)
+    amb.cenario.por_documento[CNPJ] = [numero]
+    amb.cenario.por_documento[CPF] = TribunalIndisponivel("TJSP", "HTTP 503")
+    amb.cenario.processos[numero] = capa(numero, RECENTE)
+    await amb.ciclo()
+    assert PROCESSOS_NOVOS.labels(**rotulos)._value.get() == antes_novos + 1
+    ok = CONSULTAS.labels(**rotulos, operacao="documento", resultado="ok")._value.get()
+    assert ok == antes_ok + 1
+    assert ERROS.labels(**rotulos, excecao="TribunalIndisponivel")._value.get() == antes_erro + 1

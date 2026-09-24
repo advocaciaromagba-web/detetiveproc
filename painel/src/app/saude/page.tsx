@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { api } from "@/lib/api";
-import { formatarDataHora, ROTULO_BLOQUEIO } from "@/lib/formatos";
+import { formatarDataHora, ROTULO_ALARME, ROTULO_BLOQUEIO } from "@/lib/formatos";
 import type { Eu, TribunalSaude } from "@/lib/tipos";
 
 import { Topo } from "../Topo";
@@ -31,6 +31,8 @@ export default async function Saude() {
                 <th scope="col">Taxa</th>
                 <th scope="col">Última execução</th>
                 <th scope="col">Consultas com falha</th>
+                <th scope="col">Sentinela</th>
+                <th scope="col">Alarmes</th>
               </tr>
             </thead>
             <tbody>
@@ -65,6 +67,43 @@ export default async function Saude() {
                     )}
                   </td>
                   <td>{t.varreduras_com_falha}</td>
+                  <td>
+                    {t.sentinelas.length === 0 ? (
+                      <span className="suave">sem sentinela</span>
+                    ) : (
+                      t.sentinelas.map((s) => (
+                        <div key={s.numero_cnj}>
+                          <span
+                            className={`selo ${s.sucesso === null ? "selo-baixa" : s.sucesso ? "selo-ok" : "selo-alta"}`}
+                          >
+                            {s.sucesso === null ? "pendente" : s.sucesso ? "ok" : "falhou"}
+                          </span>
+                          <div className="suave">{s.numero_cnj}</div>
+                          {s.executada_em && (
+                            <div className="suave">{formatarDataHora(s.executada_em)}</div>
+                          )}
+                          {s.campos_divergentes.length > 0 && (
+                            <div className="suave">divergem: {s.campos_divergentes.join(", ")}</div>
+                          )}
+                          {s.erro && <div className="suave">{s.erro}</div>}
+                        </div>
+                      ))
+                    )}
+                  </td>
+                  <td>
+                    {t.alarmes.length === 0 ? (
+                      <span className="selo selo-ok">nenhum</span>
+                    ) : (
+                      <ul className="lista-curta">
+                        {t.alarmes.map((a) => (
+                          <li key={a.tipo}>
+                            <span className="selo selo-alta">{ROTULO_ALARME[a.tipo] ?? a.tipo}</span>
+                            <div className="suave">desde {formatarDataHora(a.aberto_em)}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

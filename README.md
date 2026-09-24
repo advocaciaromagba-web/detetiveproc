@@ -229,3 +229,37 @@ npm run lint && npm run typecheck && npm test && npm run build
   `httpOnly` + `SameSite=Strict`, e o navegador nunca o vê nem acessa a API ou o banco.
 - Configurações do cliente (pesos do score, e-mails de alerta) ainda são feitas no
   banco/linha de comando.
+
+## Saúde dos robôs e observabilidade (seção 9)
+
+**Sentinelas** — um processo público conhecido por tribunal, conferido a cada hora
+(sempre pelo rate limiter; a capa não entra na base):
+
+```bash
+docker compose run --rm api python -m api.admin criar-sentinela --tribunal-id 1 \
+  --numero 0000001-84.2020.8.26.0001 \
+  --esperado "classe=Procedimento Comum Cível" --esperado "comarca=São Paulo" \
+  --esperado quantidade_partes=2
+```
+
+Campos possíveis: `classe`, `comarca`, `vara`, `data_distribuicao` (AAAA-MM-DD),
+`valor_causa_centavos` e `quantidade_partes`. Texto é comparado sem caixa/acento.
+`LayoutAlterado`/`DesafioHumano` na sentinela bloqueiam o tribunal, como na varredura.
+
+**Alarmes** (e-mail para `EMAIL_OPERACAO` ao abrir e ao resolver, sem repetição):
+
+| Alarme | Regra | Avaliação |
+| --- | --- | --- |
+| `sentinela` | 2 falhas seguidas | a cada 5 min |
+| `taxa_erro` | > 10% de erro na última hora (com ≥ 10 consultas) | a cada 5 min |
+| `volume_baixo` | processos novos < 50% da média dos 14 dias anteriores (≥ 7 dias de histórico, média ≥ 3) | 8h, sobre o dia anterior |
+
+**Métricas** — o agendador expõe `/metrics` na porta 9100, só na rede interna. O
+Prometheus (<http://127.0.0.1:9090>) coleta, e o Grafana (<http://127.0.0.1:3000>,
+usuário/senha do `.env`) abre direto no painel *Monitor Processual — saúde dos robôs*:
+consultas/min, latência p95, erros por exceção, processos novos/dia, alertas enviados,
+sentinelas, alarmes e tribunais bloqueados/pausados. Em servidor remoto, acesse por
+túnel SSH (`ssh -L 3000:127.0.0.1:3000 servidor`).
+
+**Logs** — JSON por padrão (`LOG_FORMATO=json|texto`). Qualquer CPF/CNPJ que escape
+para o log (mensagem, campos extras ou traceback) sai como `[documento]`.

@@ -56,6 +56,12 @@ export const ROTULO_BLOQUEIO: Record<string, string> = {
   layout_alterado: "layout do tribunal mudou: exige manutenção",
 };
 
+export const ROTULO_ALARME: Record<string, string> = {
+  sentinela: "Sentinela falhou seguidamente",
+  taxa_erro: "Taxa de erro acima de 10% na última hora",
+  volume_baixo: "Processos novos abaixo de 50% da média",
+};
+
 export type FaixaUrgencia = "alta" | "media" | "baixa";
 
 /** Mesmas faixas da seção 7: >= 60 todos os canais; 30-59 e-mail imediato. */

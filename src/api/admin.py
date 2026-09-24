@@ -16,11 +16,12 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from agendador.orquestrador import liberar_tribunal
+from agendador.controle import liberar_tribunal
 from api.auth import criar_chave_api, criar_usuario, revogar_chave, revogar_sessoes
 from core.config import obter_settings
 from db.modelos import Cliente, Tribunal
 from db.sessao import criar_engine, criar_fabrica, sessao_sistema
+from monitoramento.sentinelas import CAMPOS_SENTINELA, criar_sentinela
 
 Fabrica = async_sessionmaker[AsyncSession]
 
@@ -56,6 +57,17 @@ def _analisador() -> argparse.ArgumentParser:
     t.add_argument("--sistema", choices=["esaj", "eproc", "pje"], required=True)
     t.add_argument("--grau", type=int, choices=[1, 2], default=1)
     t.add_argument("--limite-req-min", type=int, default=12)
+
+    sen = cmd.add_parser("criar-sentinela", help="processo público conferido a cada hora")
+    sen.add_argument("--tribunal-id", type=int, required=True)
+    sen.add_argument("--numero", required=True, help="número CNJ de um processo público")
+    sen.add_argument(
+        "--esperado",
+        action="append",
+        default=[],
+        metavar="CAMPO=VALOR",
+        help="repetível; campos: " + ", ".join(CAMPOS_SENTINELA),
+    )
 
     lib = cmd.add_parser("liberar-tribunal", help="após DesafioHumano/LayoutAlterado/pausa")
     lib.add_argument("--id", type=int, required=True)
@@ -130,6 +142,20 @@ async def _liberar_tribunal(args: argparse.Namespace, fabrica: Fabrica) -> dict[
     return {"liberado": args.id}
 
 
+async def _criar_sentinela(args: argparse.Namespace, fabrica: Fabrica) -> dict[str, Any]:
+    esperados: dict[str, str] = {}
+    for item in args.esperado:
+        campo, separador, valor = item.partition("=")
+        if not separador:
+            raise SystemExit(f"use CAMPO=VALOR em --esperado (recebido: {item!r})")
+        esperados[campo.strip()] = valor
+    try:
+        sentinela_id = await criar_sentinela(fabrica, args.tribunal_id, args.numero, esperados)
+    except ValueError as erro:
+        raise SystemExit(str(erro)) from None
+    return {"sentinela_id": sentinela_id}
+
+
 COMANDOS: dict[str, Callable[[argparse.Namespace, Fabrica], Awaitable[dict[str, Any]]]] = {
     "criar-cliente": _criar_cliente,
     "criar-usuario": _criar_usuario,
@@ -138,6 +164,7 @@ COMANDOS: dict[str, Callable[[argparse.Namespace, Fabrica], Awaitable[dict[str, 
     "revogar-sessoes": _revogar_sessoes,
     "criar-tribunal": _criar_tribunal,
     "liberar-tribunal": _liberar_tribunal,
+    "criar-sentinela": _criar_sentinela,
 }
 
 

@@ -1,0 +1,9 @@
+# Coleta as métricas do agendador (porta interna 9100; nunca publicada).
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: agendador
+    static_configs:
+      - targets: ["agendador:9100"]
