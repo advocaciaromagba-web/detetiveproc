@@ -100,3 +100,33 @@ async with sessao_sistema(fabrica) as s:
   pessoa existente se houver um único candidato (trigram ≥ 0,85) com o mesmo nome
   normalizado e atuação na mesma comarca, e o vínculo fica `a_verificar`.
 - Processo em segredo de justiça guarda só o número; se já tinha partes, elas são apagadas.
+
+## Motor de regras e alertas (seção 7)
+
+```python
+from regras.casamento import avaliar_processo
+from regras.alertas import despachar_alertas, enviar_resumos_diarios
+from entrega.email import EnviadorSMTP
+
+async with sessao_sistema(fabrica) as s:
+    gravado = await gravar_processo(s, normalizar_processo(dto, catalogo), tribunal_id)
+    await avaliar_processo(s, gravado.processo_id, documentos_consultados=[cpf_buscado])
+
+enviador = EnviadorSMTP.de_settings(obter_settings())
+await despachar_alertas(fabrica, enviador)  # a cada poucos minutos
+await enviar_resumos_diarios(fabrica, enviador)  # às 7h (America/Sao_Paulo)
+```
+
+- Uma ocorrência por (processo, alvo) e por (processo, regra); reavaliar não duplica.
+- Documento na capa ou na busca que devolveu o processo: `confirmada`. Nome, variação
+  ou similaridade ≥ 0,9: `a_verificar`. Parte ligada por nome a uma pessoa com CPF/CNPJ
+  não conta como documento.
+- Score conforme a seção 7, com pesos e limites em `cliente.config_alertas`
+  (ex.: `{"limite_valor_centavos": 1000000, "pesos": {"polo_passivo": 25}}`).
+  ≥ 60 todos os canais (hoje só e-mail), 30–59 e-mail imediato, < 30 resumo diário.
+- Alertas são gravados como pendentes na mesma transação da ocorrência e enviados
+  depois; falha soma tentativa, e após 3 o alerta fica `falhou`. E-mails nunca levam
+  CPF/CNPJ.
+- Regra com `polo` exige um alvo do mesmo cliente naquele polo. Termos livres são
+  procurados na capa (classe, assuntos, vara) até a integração com o OpenSearch.
+- Regras por classe/assunto usam códigos TPU: sem o catálogo oficial, não casam.

@@ -77,6 +77,7 @@ async def test_uma_ocorrencia_por_processo_e_alvo(fabrica, dados) -> None:
             processo_id=dados.processo,
             alvo_id=dados.alvo_a,
             confianca="confirmada",
+            criterio="documento",
         )
 
     async with sessao_sistema(fabrica) as s:
@@ -89,6 +90,7 @@ async def test_ocorrencia_exige_exatamente_alvo_ou_regra(fabrica, dados) -> None
         "cliente_id": dados.cliente_a,
         "processo_id": dados.processo,
         "confianca": "a_verificar",
+        "criterio": "nome",
     }
     await _falha(fabrica, Ocorrencia(**base), match="ck_ocorrencia_alvo_ou_regra")
     await _falha(

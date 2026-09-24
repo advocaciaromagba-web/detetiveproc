@@ -105,5 +105,6 @@ async def test_ocorrencia_nao_aponta_alvo_de_outro_cliente(fabrica, dados) -> No
                     processo_id=dados.processo,
                     alvo_id=dados.alvo_b,
                     confianca="confirmada",
+                    criterio="documento",
                 )
             )

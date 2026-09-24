@@ -13,3 +13,7 @@
 - Acesso ao banco só por db.sessao.sessao_cliente (API) ou sessao_sistema (workers).
 - Valores monetários em centavos (bigint); datas e horas com fuso (timestamptz).
 - Testes de banco: marcar com @pytest.mark.integracao (exigem TEST_DATABASE_URL).
+- Alvo: `valor` (tipo nome) e `variacoes` gravados já normalizados com
+  core.nomes.normalizar_nome; `valor` (tipo documento) só com dígitos/letras.
+- Ruff também formata blocos de código Python em Markdown: rode as checagens
+  (ruff check, ruff format --check, mypy, pytest) DEPOIS da última edição.

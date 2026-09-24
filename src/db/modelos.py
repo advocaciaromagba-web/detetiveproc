@@ -112,6 +112,7 @@ class Processo(Base):
     valor_causa_centavos: Mapped[int | None] = mapped_column(BigInteger)
     segredo: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     status_coleta: Mapped[str] = mapped_column(String(10), server_default="pendente")
+    url_origem: Mapped[str | None] = mapped_column(Text)  # link da consulta pública
     primeira_coleta_em: Mapped[datetime] = _agora()
     atualizado_em: Mapped[datetime] = _agora()
 
@@ -235,6 +236,10 @@ class Cliente(Base):
     cnpj: Mapped[str | None] = mapped_column(String(14))
     plano: Mapped[str] = mapped_column(String(30), server_default="padrao")
     contatos: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    # Pesos do score, limite de valor e limiares (regras.config.ConfigAlertas).
+    config_alertas: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, server_default=text("'{}'::jsonb")
+    )
     criado_em: Mapped[datetime] = _agora()
 
 
@@ -247,6 +252,9 @@ class Alvo(Base):
         CheckConstraint(_em("tipo", "documento", "nome"), name="tipo"),
         CheckConstraint(_em("prioridade", "critica", "padrao"), name="prioridade"),
         CheckConstraint("length(trim(finalidade)) > 0", name="finalidade"),
+        CheckConstraint(
+            f"tipo <> 'documento' OR valor ~ '{_REGEX_DOCUMENTO}'", name="documento_normalizado"
+        ),
         Index("ix_alvo_tipo_valor", "tipo", "valor"),
     )
 
@@ -296,6 +304,10 @@ class Ocorrencia(Base):
         CheckConstraint(_em("confianca", "confirmada", "a_verificar"), name="confianca"),
         CheckConstraint("score_urgencia BETWEEN 0 AND 100", name="score_urgencia"),
         CheckConstraint(_em("status", "novo", "visto", "descartado"), name="status"),
+        CheckConstraint(_em("polo", "ativo", "passivo", "terceiro"), name="polo"),
+        CheckConstraint(
+            _em("criterio", "documento", "busca_documento", "nome", "regra"), name="criterio"
+        ),
         Index("ix_ocorrencia_cliente_status_detectado", "cliente_id", "status", "detectado_em"),
     )
 
@@ -308,6 +320,9 @@ class Ocorrencia(Base):
     score_urgencia: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     detectado_em: Mapped[datetime] = _agora()
     status: Mapped[str] = mapped_column(String(10), server_default="novo")
+    polo: Mapped[str | None] = mapped_column(String(10))  # polo em que o alvo apareceu
+    # Como casou: documento na capa, documento da busca no tribunal, nome ou regra.
+    criterio: Mapped[str] = mapped_column(String(16))
 
 
 class Alerta(Base):
@@ -318,17 +333,22 @@ class Alerta(Base):
         ),
         CheckConstraint(_em("canal", "email", "whatsapp", "webhook"), name="canal"),
         CheckConstraint(_em("status_envio", "pendente", "enviado", "falhou"), name="status_envio"),
-        Index("ix_alerta_ocorrencia_id", "ocorrencia_id"),
+        CheckConstraint(_em("modalidade", "imediato", "resumo"), name="modalidade"),
+        # Nunca dois alertas da mesma ocorrência para o mesmo destino e canal.
+        UniqueConstraint("ocorrencia_id", "canal", "destino"),
+        Index("ix_alerta_pendentes", "status_envio", "modalidade", "cliente_id"),
     )
 
     id: Mapped[int] = _id()
     cliente_id: Mapped[int] = mapped_column(ForeignKey("cliente.id"))
     ocorrencia_id: Mapped[int] = mapped_column(BigInteger)
     canal: Mapped[str] = mapped_column(String(10))
+    modalidade: Mapped[str] = mapped_column(String(10), server_default="imediato")
     destino: Mapped[str] = mapped_column(Text)
     criado_em: Mapped[datetime] = _agora()
     enviado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status_envio: Mapped[str] = mapped_column(String(10), server_default="pendente")
+    tentativas: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     erro: Mapped[str | None] = mapped_column(Text)
 
 

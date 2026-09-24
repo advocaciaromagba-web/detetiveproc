@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     minio_bucket_bruto: str = "bruto"
     hash_documento_chave: SecretStr | None = None
 
+    smtp_host: str = "localhost"
+    smtp_porta: int = 587
+    smtp_usuario: str | None = None
+    smtp_senha: SecretStr | None = None
+    smtp_starttls: bool = True
+    smtp_remetente: str = "Monitor Processual <alertas@localhost>"
+
 
 @lru_cache
 def obter_settings() -> Settings:

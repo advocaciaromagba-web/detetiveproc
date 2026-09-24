@@ -31,7 +31,7 @@ class ResultadoGravacao:
     pessoas: list[PessoaResolvida] = field(default_factory=list)
 
 
-async def _travar(sessao: AsyncSession, numero_cnj: str) -> None:
+async def travar_processo(sessao: AsyncSession, numero_cnj: str) -> None:
     await sessao.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(numero_cnj, 0))))
 
 
@@ -48,13 +48,14 @@ def _campos(proc: ProcessoNormalizado, tribunal_id: int) -> dict[str, object]:
         "valor_causa_centavos": proc.valor_causa_centavos,
         "segredo": proc.segredo,
         "status_coleta": "sigiloso" if proc.segredo else "completo",
+        "url_origem": proc.url_origem or None,
     }
 
 
 async def gravar_processo(
     sessao: AsyncSession, proc: ProcessoNormalizado, tribunal_id: int
 ) -> ResultadoGravacao:
-    await _travar(sessao, proc.numero_cnj)
+    await travar_processo(sessao, proc.numero_cnj)
     existente = await sessao.scalar(
         select(Processo.id).where(Processo.numero_cnj == proc.numero_cnj)
     )
