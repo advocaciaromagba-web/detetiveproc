@@ -72,12 +72,14 @@ async def test_todas_as_tabelas_tem_permissao_para_o_sistema(engine) -> None:
     assert set(Base.metadata.tables) <= com_permissao
 
 
-async def test_api_nao_enxerga_parametros_de_varredura(engine) -> None:
+async def test_api_nao_enxerga_parametros_nem_credenciais(engine) -> None:
+    """Parâmetros de consulta e credenciais só são lidos pelo papel de sistema."""
     async with engine.connect() as c:
         linhas = await c.execute(
             text(
                 "SELECT table_name FROM information_schema.role_table_grants "
-                "WHERE grantee = 'monitor_api' AND table_name LIKE 'varredura%'"
+                "WHERE grantee = 'monitor_api' AND table_name IN "
+                "('varredura', 'varredura_numero', 'usuario', 'sessao_usuario', 'chave_api')"
             )
         )
         assert list(linhas) == []

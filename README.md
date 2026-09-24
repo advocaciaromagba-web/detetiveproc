@@ -155,3 +155,38 @@ uv run python -m agendador   # exige HASH_DOCUMENTO_CHAVE; uma instância por ba
   aviso para `EMAIL_OPERACAO`; liberar com `agendador.orquestrador.liberar_tribunal`.
 - Adaptadores são registrados em `agendador.registro.registro_padrao` (e-SAJ e eproc
   entram nas tarefas 6 e 7); até lá o agendador sobe sem tribunais para consultar.
+
+## API (seção 8)
+
+```bash
+uv run uvicorn api.app:app --port 8000   # documentação interativa em /docs
+```
+
+| Rota | Função |
+| --- | --- |
+| `POST /v1/auth/login` · `POST /v1/auth/logout` · `GET /v1/auth/eu` | Sessão do painel |
+| `POST /v1/alvos` · `GET /v1/alvos` · `GET/DELETE /v1/alvos/{id}` | Alvos (DELETE desativa) |
+| `POST /v1/regras` · `GET /v1/regras` · `GET/DELETE /v1/regras/{id}` | Regras por padrão |
+| `GET /v1/ocorrencias?status=&desde=&score_min=&limite=&antes_id=` | Ocorrências do cliente |
+| `GET/PATCH /v1/ocorrencias/{id}` | Detalhe; marcar `visto`, `descartado` ou `novo` |
+| `GET /v1/processos/{numero_cnj}` | Capa (só processos com ocorrência do cliente) |
+| `GET /v1/saude` | Estado dos robôs (somente operador) |
+
+- **Integrações:** header `X-API-Key: mp_...` (chave por cliente, guardada só como hash).
+- **Painel:** `POST /v1/auth/login` com e-mail, senha e código TOTP devolve um token
+  (`Authorization: Bearer ...`) válido por 12 h. 5 falhas bloqueiam a conta por 15 min.
+- Toda requisição roda como `monitor_api` sob RLS do cliente; toda chamada grava em
+  `auditoria`. CPF/CNPJ de partes nunca sai pela API; erros não repetem o valor enviado.
+
+### Implantação de um cliente
+
+```bash
+uv run python -m api.admin criar-tribunal --sigla TJSP --sistema esaj
+uv run python -m api.admin criar-cliente --nome "Escritório X" --email-alerta alertas@x.com.br
+uv run python -m api.admin criar-usuario --email ana@x.com.br --nome Ana --cliente-id 1
+#   -> pede a senha (mín. 12) e imprime o totp_uri para o aplicativo autenticador
+uv run python -m api.admin criar-usuario --email op@monitor --nome Operação --papel operador
+uv run python -m api.admin criar-chave --cliente-id 1 --descricao "ERP"   # chave exibida uma vez
+uv run python -m api.admin revogar-chave --id 1
+uv run python -m api.admin liberar-tribunal --id 2   # após CAPTCHA/layout, depois de resolver
+```

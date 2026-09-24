@@ -414,3 +414,66 @@ class Auditoria(Base):
     entidade_id: Mapped[str | None] = mapped_column(Text)
     em: Mapped[datetime] = _agora()
     detalhes: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+
+
+# --------------------------------------------------------------------------- acesso (API/painel)
+
+
+class Usuario(Base):
+    """Usuário do painel. Cliente: vê só o próprio cliente (RLS). Operador: sem cliente,
+    acessa a saúde dos robôs. Senha com Argon2 e TOTP obrigatório (seção 8)."""
+
+    __tablename__ = "usuario"
+    __table_args__ = (
+        CheckConstraint("email = lower(email)", name="email_minusculo"),
+        CheckConstraint(_em("papel", "cliente", "operador"), name="papel"),
+        CheckConstraint(
+            "(papel = 'cliente' AND cliente_id IS NOT NULL)"
+            " OR (papel = 'operador' AND cliente_id IS NULL)",
+            name="papel_cliente",
+        ),
+    )
+
+    id: Mapped[int] = _id()
+    cliente_id: Mapped[int | None] = mapped_column(ForeignKey("cliente.id"), index=True)
+    email: Mapped[str] = mapped_column(String(254), unique=True)
+    nome: Mapped[str] = mapped_column(Text)
+    senha_hash: Mapped[str] = mapped_column(Text)
+    totp_segredo: Mapped[str] = mapped_column(String(64))
+    totp_ultimo_passo: Mapped[int | None] = mapped_column(BigInteger)  # impede reuso do código
+    papel: Mapped[str] = mapped_column(String(10), server_default="cliente")
+    ativo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    falhas_login: Mapped[int] = mapped_column(Integer, server_default="0")
+    bloqueado_ate: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ultimo_login_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    criado_em: Mapped[datetime] = _agora()
+
+
+class SessaoUsuario(Base):
+    """Sessão do painel: token opaco guardado só como hash SHA-256."""
+
+    __tablename__ = "sessao_usuario"
+
+    id: Mapped[int] = _id()
+    usuario_id: Mapped[int] = mapped_column(
+        ForeignKey("usuario.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    criada_em: Mapped[datetime] = _agora()
+    expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revogada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ChaveApi(Base):
+    """Chave de integração por cliente, guardada só como hash SHA-256 (seção 8)."""
+
+    __tablename__ = "chave_api"
+
+    id: Mapped[int] = _id()
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("cliente.id"), index=True)
+    prefixo: Mapped[str] = mapped_column(String(12))  # para identificar a chave na tela
+    hash: Mapped[str] = mapped_column(String(64), unique=True)
+    descricao: Mapped[str] = mapped_column(Text, server_default="")
+    criada_em: Mapped[datetime] = _agora()
+    revogada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ultimo_uso_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -84,7 +84,7 @@ async def criar_alertas(
 # --------------------------------------------------------------------------- dados do e-mail
 
 
-def _rotulo_alvo(alvo: Alvo) -> str:
+def rotulo_alvo(alvo: Alvo) -> str:
     if alvo.tipo == "nome":
         return alvo.valor
     # Alvo de documento: nunca expor o CPF/CNPJ; usa o primeiro nome cadastrado.
@@ -108,7 +108,7 @@ async def carregar_dados_alerta(sessao: AsyncSession, ocorrencia_id: int) -> Dad
     )
     if ocorrencia.alvo_id is not None:
         alvo = await sessao.get(Alvo, ocorrencia.alvo_id)
-        motivo = f"Alvo: {_rotulo_alvo(alvo)}" if alvo else "Alvo monitorado"
+        motivo = f"Alvo: {rotulo_alvo(alvo)}" if alvo else "Alvo monitorado"
     else:
         nome_regra = await sessao.scalar(select(Regra.nome).where(Regra.id == ocorrencia.regra_id))
         motivo = f"Regra: {nome_regra}"
