@@ -190,3 +190,20 @@ uv run python -m api.admin criar-chave --cliente-id 1 --descricao "ERP"   # chav
 uv run python -m api.admin revogar-chave --id 1
 uv run python -m api.admin liberar-tribunal --id 2   # após CAPTCHA/layout, depois de resolver
 ```
+
+## Painel (Next.js)
+
+```bash
+cd painel
+npm ci
+MONITOR_API_URL=http://localhost:8000 npm run dev   # http://localhost:3100
+npm run lint && npm run typecheck && npm test && npm run build
+```
+
+- Telas: login (e-mail, senha e código do autenticador), ocorrências (filtros por
+  situação, score mínimo e data; marcar como vista, descartar, reabrir), detalhe
+  (capa, partes, advogados, link da consulta pública) e, para operadores, saúde
+  dos robôs.
+- O painel só fala com a API, pelo servidor do Next. O token fica em cookie
+  `httpOnly` + `SameSite=Strict`, e o navegador nunca o vê nem acessa a API ou o banco.
+- Telas de alvos, regras e configurações ainda não existem; a API já as atende.
