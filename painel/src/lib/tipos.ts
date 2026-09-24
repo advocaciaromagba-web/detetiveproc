@@ -86,3 +86,28 @@ export interface TribunalSaude {
   varreduras_com_falha: number;
   estado: "ok" | "pausado" | "bloqueado" | "inativo";
 }
+
+export interface Alvo {
+  id: number;
+  tipo: "documento" | "nome";
+  valor: string;
+  variacoes: string[];
+  prioridade: "critica" | "padrao";
+  finalidade: string;
+  ativo: boolean;
+  criado_em: string;
+}
+
+export interface Regra {
+  id: number;
+  nome: string;
+  finalidade: string;
+  classes: number[];
+  assuntos: number[];
+  termos: string[];
+  comarcas: string[];
+  polo: "ativo" | "passivo" | "terceiro" | null;
+  valor_min_centavos: number | null;
+  ativo: boolean;
+  criado_em: string;
+}

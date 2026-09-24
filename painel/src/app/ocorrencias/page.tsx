@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-
-import { api } from "@/lib/api";
+import { api, exigirCliente } from "@/lib/api";
 import {
   formatarData,
   formatarDataHora,
@@ -10,7 +8,7 @@ import {
   ROTULO_POLO,
   ROTULO_STATUS,
 } from "@/lib/formatos";
-import type { Eu, OcorrenciaResumo, Pagina } from "@/lib/tipos";
+import type { OcorrenciaResumo, Pagina } from "@/lib/tipos";
 
 import { Topo } from "../Topo";
 import { AcoesOcorrencia, SeloConfianca, SeloUrgencia } from "./componentes";
@@ -18,8 +16,7 @@ import { AcoesOcorrencia, SeloConfianca, SeloUrgencia } from "./componentes";
 type Filtros = { status?: string; score_min?: string; desde?: string; antes_id?: string };
 
 export default async function Ocorrencias({ searchParams }: { searchParams: Promise<Filtros> }) {
-  const eu = await api<Eu>("/v1/auth/eu");
-  if (eu.papel === "operador") redirect("/saude");
+  const eu = await exigirCliente();
   const filtros = await searchParams;
   const pagina = await api<Pagina<OcorrenciaResumo>>(
     `/v1/ocorrencias${queryOcorrencias(filtros)}`,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { api, ErroApi } from "@/lib/api";
+import { api, ErroApi, exigirCliente } from "@/lib/api";
 import {
   formatarData,
   formatarDataHora,
@@ -11,7 +11,7 @@ import {
   ROTULO_POLO,
   ROTULO_STATUS,
 } from "@/lib/formatos";
-import type { Eu, OcorrenciaDetalhe } from "@/lib/tipos";
+import type { OcorrenciaDetalhe } from "@/lib/tipos";
 
 import { Topo } from "../../Topo";
 import { AcoesOcorrencia, SeloConfianca, SeloUrgencia } from "../componentes";
@@ -28,7 +28,7 @@ async function carregar(id: string): Promise<OcorrenciaDetalhe> {
 
 export default async function DetalheOcorrencia({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [eu, o] = await Promise.all([api<Eu>("/v1/auth/eu"), carregar(id)]);
+  const [eu, o] = await Promise.all([exigirCliente(), carregar(id)]);
   const p = o.processo;
   const link = linkSeguro(p.url_origem);
   const polos = ["ativo", "passivo", "terceiro"].map((polo) => ({

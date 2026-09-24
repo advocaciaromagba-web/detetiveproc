@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { COOKIE_SESSAO } from "./sessao";
+import type { Eu } from "./tipos";
 
 const API_URL = process.env.MONITOR_API_URL ?? "http://localhost:8000";
 
@@ -12,6 +13,7 @@ export class ErroApi extends Error {
   constructor(
     readonly status: number,
     mensagem: string,
+    readonly corpo: unknown = null,
   ) {
     super(mensagem);
     this.name = "ErroApi";
@@ -62,7 +64,9 @@ export async function api<T>(
   if (resposta.status === 401) redirect("/login?expirada=1");
   if (resposta.status === 204) return undefined as T;
   const corpo: unknown = await resposta.json().catch(() => null);
-  if (!resposta.ok) throw new ErroApi(resposta.status, mensagemDeErro(corpo, resposta.status));
+  if (!resposta.ok) {
+    throw new ErroApi(resposta.status, mensagemDeErro(corpo, resposta.status), corpo);
+  }
   return corpo as T;
 }
 
@@ -74,6 +78,13 @@ export async function apiPublica(
   const resposta = await requisitar(caminho, init);
   const corpo: unknown = resposta.status === 204 ? null : await resposta.json().catch(() => null);
   return { status: resposta.status, corpo };
+}
+
+/** Usuário de cliente logado; operador vai para a saúde dos robôs. */
+export async function exigirCliente(): Promise<Eu> {
+  const eu = await api<Eu>("/v1/auth/eu");
+  if (eu.papel !== "cliente") redirect("/saude");
+  return eu;
 }
 
 export { mensagemDeErro };
