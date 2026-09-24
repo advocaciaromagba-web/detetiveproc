@@ -90,7 +90,8 @@ from pipeline.tpu import CatalogoTPU
 catalogo = CatalogoTPU.carregar(Path("dados/tpu/classes.csv"), Path("dados/tpu/assuntos.csv"))
 async with sessao_sistema(fabrica) as s:
     resultado = await gravar_processo(s, normalizar_processo(dto, catalogo), tribunal_id)
-    if resultado.novo: ...  # processo inédito na base
+    if resultado.novo:
+        ...  # processo inédito na base
 ```
 
 - A TPU é lida de CSVs `codigo,nome` exportados do SGT/CNJ (ainda não versionados;
