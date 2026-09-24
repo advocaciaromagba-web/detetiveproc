@@ -24,3 +24,6 @@
   operador); nunca devolver CPF/CNPJ de partes; erros não ecoam o valor recebido.
 - Painel (painel/): só fala com a API pelo servidor do Next (lib/api.ts); token só em
   cookie httpOnly. Checagens: npm run lint, typecheck, test e build.
+- Containers: uma imagem de backend (Dockerfile) para api, agendador e migracoes
+  (muda só o command); só o painel publica porta. Serviço novo nunca expõe porta sem
+  necessidade.

@@ -1,0 +1,14 @@
+.venv
+**/__pycache__
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.env
+.env.*
+!.env.example
+painel
+tests
+docs
+docker
+*.md
+!README.md

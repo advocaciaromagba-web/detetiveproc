@@ -15,6 +15,7 @@ from typing import Any
 from fastapi import FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from api.auth import Principal
@@ -116,6 +117,17 @@ def criar_app(
             for e in erro.errors()
         ]
         return JSONResponse({"detail": detalhes}, status.HTTP_422_UNPROCESSABLE_CONTENT)
+
+    @app.get("/healthz", include_in_schema=False)
+    async def healthz(request: Request) -> JSONResponse:
+        """Liveness/readiness para o orquestrador de containers (sem auth, sem auditoria)."""
+        try:
+            async with request.app.state.fabrica() as s:
+                await s.execute(text("SELECT 1"))
+        except Exception:
+            logger.exception("healthz: banco indisponível")
+            return JSONResponse({"status": "indisponivel"}, status.HTTP_503_SERVICE_UNAVAILABLE)
+        return JSONResponse({"status": "ok"})
 
     for modulo in (auth, alvos, regras, ocorrencias, processos, saude):
         app.include_router(modulo.rotas)

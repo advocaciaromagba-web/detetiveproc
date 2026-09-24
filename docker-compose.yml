@@ -1,5 +1,32 @@
 name: monitor-processual
 
+# Só o painel é publicado para fora. Postgres, Redis, MinIO e OpenSearch ficam
+# presos a 127.0.0.1 (acesso local de desenvolvimento); a API só é alcançável pela
+# rede interna do compose. Integrações externas devem chegar à API por um proxy
+# reverso com TLS (Caddy/Nginx) configurado na implantação.
+
+x-backend: &backend
+  build:
+    context: .
+  image: monitor-processual/backend:local
+  restart: unless-stopped
+  environment:
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@postgres:5432/${POSTGRES_DB:-monitor}
+    REDIS_URL: redis://redis:6379/0
+    OPENSEARCH_URL: http://opensearch:9200
+    MINIO_ENDPOINT: minio:9000
+    MINIO_ROOT_USER: ${MINIO_ROOT_USER:-monitor}
+    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
+    MINIO_BUCKET_BRUTO: ${MINIO_BUCKET_BRUTO:-bruto}
+    HASH_DOCUMENTO_CHAVE: ${HASH_DOCUMENTO_CHAVE:?defina HASH_DOCUMENTO_CHAVE no .env}
+    SMTP_HOST: ${SMTP_HOST:-localhost}
+    SMTP_PORTA: ${SMTP_PORTA:-587}
+    SMTP_USUARIO: ${SMTP_USUARIO:-}
+    SMTP_SENHA: ${SMTP_SENHA:-}
+    SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+    SMTP_REMETENTE: ${SMTP_REMETENTE:-Monitor Processual <alertas@localhost>}
+    EMAIL_OPERACAO: ${EMAIL_OPERACAO:-}
+
 services:
   postgres:
     image: postgres:16
@@ -9,7 +36,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-monitor}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -24,7 +51,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -41,8 +68,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-monitor}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
     ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -69,7 +96,7 @@ services:
         soft: 65536
         hard: 65536
     ports:
-      - "${OPENSEARCH_PORT:-9200}:9200"
+      - "127.0.0.1:${OPENSEARCH_PORT:-9200}:9200"
     volumes:
       - opensearch_data:/usr/share/opensearch/data
     healthcheck:
@@ -77,6 +104,51 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
+
+  # Roda as migrações Alembic uma vez e termina; os demais serviços esperam por ele.
+  migracoes:
+    <<: *backend
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    expose:
+      - "8000"
+    depends_on:
+      migracoes:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  agendador:
+    <<: *backend
+    command: ["python", "-m", "agendador"]
+    healthcheck:
+      disable: true
+    depends_on:
+      migracoes:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  painel:
+    build:
+      context: ./painel
+    image: monitor-processual/painel:local
+    restart: unless-stopped
+    environment:
+      MONITOR_API_URL: http://api:8000
+    ports:
+      - "${PAINEL_PORT:-3100}:3100"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:

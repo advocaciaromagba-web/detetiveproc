@@ -1,10 +1,12 @@
 """Toda chamada à API grava auditoria, sem dados pessoais."""
 
+import httpx
 import pytest
 from sqlalchemy import select
 
+from api.app import criar_app
 from db.modelos import Auditoria
-from db.sessao import sessao_sistema
+from db.sessao import criar_engine, criar_fabrica, sessao_sistema
 from tests.api.conftest import entrar
 
 pytestmark = pytest.mark.integracao
@@ -69,6 +71,8 @@ async def test_login_auditado_com_usuario(cliente_http, dados, relogio, fabrica)
 
 async def test_rotas_fora_da_v1_nao_sao_auditadas(cliente_http, dados, fabrica) -> None:
     assert (await cliente_http.get("/openapi.json")).status_code == 200
+    healthz = await cliente_http.get("/healthz")
+    assert (healthz.status_code, healthz.json()) == (200, {"status": "ok"})
     assert (await cliente_http.get("/nao-existe")).status_code == 404
     assert await linhas(fabrica) == []
 
@@ -78,3 +82,13 @@ async def test_cabecalhos_de_seguranca(cliente_http, dados) -> None:
     assert r.headers["Cache-Control"] == "no-store"
     assert r.headers["X-Content-Type-Options"] == "nosniff"
     assert r.headers["Referrer-Policy"] == "no-referrer"
+
+
+async def test_healthz_sem_banco_responde_503(banco_migrado) -> None:
+    engine = criar_engine("postgresql+asyncpg://ninguem:x@127.0.0.1:1/nada")
+    app = criar_app(criar_fabrica(engine))
+    transporte = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transporte, base_url="http://teste") as c:
+        r = await c.get("/healthz")
+    await engine.dispose()
+    assert (r.status_code, r.json()) == (503, {"status": "indisponivel"})

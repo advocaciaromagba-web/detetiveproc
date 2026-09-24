@@ -11,21 +11,40 @@ Este diretório é independente do restante do repositório (a aplicação Next.
 - Python 3.12 e [uv](https://docs.astral.sh/uv/)
 - Docker com Docker Compose
 
-## Subir a infraestrutura
+## Subir tudo com Docker
 
 ```bash
 cd monitor-processual
-cp .env.example .env          # ajuste senhas e HASH_DOCUMENTO_CHAVE
-docker compose up -d          # postgres 16 (pg_trgm), redis 7, minio, opensearch 2
-docker compose ps             # aguarde todos ficarem "healthy"
+cp .env.example .env    # troque as senhas; HASH_DOCUMENTO_CHAVE: python -c "import secrets; print(secrets.token_hex(32))"
+docker compose up -d --build
+docker compose ps       # aguarde "healthy" em api e painel; migracoes termina com "Exited (0)"
 ```
 
-| Serviço | Endereço local |
+Isso sobe a infraestrutura, roda as migrações (serviço `migracoes`, que termina) e
+inicia `api`, `agendador` e `painel`. O painel fica em <http://localhost:3100>.
+
+Para cadastrar o primeiro tribunal, cliente e usuário (ver "Implantação de um cliente"):
+
+```bash
+docker compose run --rm api python -m api.admin criar-tribunal --sigla TJSP --sistema esaj
+docker compose run --rm api python -m api.admin criar-cliente --nome "Escritório X" --email-alerta alertas@x.com.br
+docker compose run --rm api python -m api.admin criar-usuario --email ana@x.com.br --nome Ana --cliente-id 1
+```
+
+| Serviço | Exposição |
 | --- | --- |
-| PostgreSQL | `localhost:5432` |
-| Redis | `localhost:6379` |
-| MinIO (API / console) | `localhost:9000` / <http://localhost:9001> |
-| OpenSearch | <http://localhost:9200> |
+| Painel | `0.0.0.0:3100` (única porta publicada) |
+| API | só na rede interna do compose (`http://api:8000`) |
+| PostgreSQL / Redis | `127.0.0.1:5432` / `127.0.0.1:6379` (desenvolvimento local) |
+| MinIO (API / console) | `127.0.0.1:9000` / <http://127.0.0.1:9001> |
+| OpenSearch | <http://127.0.0.1:9200> |
+
+Integrações externas (chave de API) devem chegar à API por um proxy reverso com TLS
+(Caddy/Nginx) na implantação. Em produção o painel usa cookie `Secure`: sirva-o
+por HTTPS (em `localhost` o navegador aceita sem HTTPS).
+
+Para desenvolver sem Docker nos serviços Python, suba só a infraestrutura:
+`docker compose up -d postgres redis minio opensearch`.
 
 O OpenSearch exige `vm.max_map_count` ≥ 262144 no host Linux:
 `sudo sysctl -w vm.max_map_count=262144`.
