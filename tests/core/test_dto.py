@@ -4,6 +4,7 @@ import pytest
 
 from core.adaptador import AdaptadorTribunal
 from core.dto import ParteDTO, ProcessoDTO
+from core.rate_limiter import ConfigLimite, MemoriaTokenBucket
 
 
 def _processo() -> ProcessoDTO:
@@ -61,7 +62,9 @@ class _AdaptadorFalso(AdaptadorTribunal):
 
 
 async def test_contrato_do_adaptador() -> None:
-    adaptador = _AdaptadorFalso()
+    limitador = MemoriaTokenBucket("t", ConfigLimite(60))
+    adaptador = _AdaptadorFalso(limitador)
+    assert adaptador.limitador is limitador
     assert await adaptador.saude() is True
     assert await adaptador.buscar_por_documento("11222333000181") == ["1000123-35.2024.8.26.0100"]
     assert (await adaptador.obter_processo("x")).tribunal == "TJSP"
@@ -73,4 +76,4 @@ def test_adaptador_incompleto_nao_instancia() -> None:
         sistema = "x"
 
     with pytest.raises(TypeError):
-        Incompleto()  # type: ignore[abstract]
+        Incompleto(MemoriaTokenBucket("t", ConfigLimite(60)))  # type: ignore[abstract]

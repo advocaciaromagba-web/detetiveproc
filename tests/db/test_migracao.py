@@ -4,6 +4,7 @@ import pytest
 from alembic import command
 from sqlalchemy import text
 
+from db.base import Base
 from db.sessao import criar_engine
 from tests.conftest import config_alembic
 
@@ -56,3 +57,27 @@ async def test_pg_trgm_disponivel(engine) -> None:
     async with engine.connect() as c:
         sim = await c.scalar(text("SELECT similarity('ACME COMERCIO', 'ACME COMERCIAL')"))
     assert 0.5 < sim < 1
+
+
+async def test_todas_as_tabelas_tem_permissao_para_o_sistema(engine) -> None:
+    """Toda tabela criada por migração precisa de GRANT explícito (CLAUDE.md)."""
+    async with engine.connect() as c:
+        linhas = await c.execute(
+            text(
+                "SELECT table_name FROM information_schema.role_table_grants "
+                "WHERE grantee = 'monitor_sistema' AND privilege_type = 'SELECT'"
+            )
+        )
+        com_permissao = {r[0] for r in linhas}
+    assert set(Base.metadata.tables) <= com_permissao
+
+
+async def test_api_nao_enxerga_parametros_de_varredura(engine) -> None:
+    async with engine.connect() as c:
+        linhas = await c.execute(
+            text(
+                "SELECT table_name FROM information_schema.role_table_grants "
+                "WHERE grantee = 'monitor_api' AND table_name LIKE 'varredura%'"
+            )
+        )
+        assert list(linhas) == []

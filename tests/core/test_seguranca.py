@@ -1,6 +1,6 @@
 import pytest
 
-from core.seguranca import VARIAVEL_CHAVE, ChaveHashAusente, hash_documento
+from core.seguranca import VARIAVEL_CHAVE, ChaveHashAusente, hash_documento, hash_parametro
 
 CHAVE = "chave-de-teste"
 
@@ -29,3 +29,18 @@ def test_hash_sem_chave_falha(monkeypatch: pytest.MonkeyPatch) -> None:
         hash_documento("52998224725")
     with pytest.raises(ChaveHashAusente):
         hash_documento("52998224725", "")
+
+
+def test_hash_parametro_separa_tipos_e_valores() -> None:
+    doc = hash_parametro("documento", "52998224725", CHAVE)
+    assert len(doc) == 64
+    assert doc == hash_parametro("documento", "52998224725", CHAVE)
+    assert doc != hash_parametro("nome", "52998224725", CHAVE)
+    assert doc != hash_parametro("documento", "11144477735", CHAVE)
+    assert doc != hash_parametro("documento", "52998224725", "outra")
+
+
+def test_hash_parametro_sem_chave(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(VARIAVEL_CHAVE, raising=False)
+    with pytest.raises(ChaveHashAusente):
+        hash_parametro("nome", "FULANO")

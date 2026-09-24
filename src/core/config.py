@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     smtp_senha: SecretStr | None = None
     smtp_starttls: bool = True
     smtp_remetente: str = "Monitor Processual <alertas@localhost>"
+    # Recebe avisos de bloqueio de tribunal (DesafioHumano, LayoutAlterado).
+    email_operacao: str | None = None
 
 
 @lru_cache

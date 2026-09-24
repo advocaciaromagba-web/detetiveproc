@@ -130,3 +130,28 @@ await enviar_resumos_diarios(fabrica, enviador)  # às 7h (America/Sao_Paulo)
 - Regra com `polo` exige um alvo do mesmo cliente naquele polo. Termos livres são
   procurados na capa (classe, assuntos, vara) até a integração com o OpenSearch.
 - Regras por classe/assunto usam códigos TPU: sem o catálogo oficial, não casam.
+
+## Agendador e varredura (seção 5, estratégia A)
+
+```bash
+uv run python -m agendador   # exige HASH_DOCUMENTO_CHAVE; uma instância por banco
+```
+
+| Job | Quando |
+| --- | --- |
+| Varredura por alvo | a cada 5 min (executa só as consultas vencidas) |
+| Despacho de alertas imediatos | a cada 2 min |
+| Resumo diário | 7h (America/Sao_Paulo) |
+| Limpeza de varreduras órfãs | 3h30 |
+
+- Uma consulta por (tribunal, tipo, valor), compartilhada entre clientes; guarda só o
+  hash do parâmetro. Alvo crítico: a cada 4 h. Padrão: a cada 24 h, entre 21h e 6h.
+- Primeira execução de uma consulta = linha de base: números antigos são só
+  registrados; os do ano corrente têm a capa coletada e alertam se distribuídos
+  nos últimos 7 dias.
+- `TribunalIndisponivel`: nova tentativa em 1, 5, 15 e 60 min. `LimiteAtingido`:
+  tribunal pausado (mín. 15 min) e `limite_req_min` reduzido à metade (voltar à
+  taxa original é manual). `DesafioHumano`/`LayoutAlterado`: tribunal bloqueado e
+  aviso para `EMAIL_OPERACAO`; liberar com `agendador.orquestrador.liberar_tribunal`.
+- Adaptadores são registrados em `agendador.registro.registro_padrao` (e-SAJ e eproc
+  entram nas tarefas 6 e 7); até lá o agendador sobe sem tribunais para consultar.

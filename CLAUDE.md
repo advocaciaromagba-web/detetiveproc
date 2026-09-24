@@ -17,3 +17,6 @@
   core.nomes.normalizar_nome; `valor` (tipo documento) só com dígitos/letras.
 - Ruff também formata blocos de código Python em Markdown: rode as checagens
   (ruff check, ruff format --check, mypy, pytest) DEPOIS da última edição.
+- Adaptador: recebe o TokenBucket no construtor e chama `await self.limitador.adquirir()`
+  antes de CADA requisição HTTP (inclusive paginação). O `detalhe` das exceções nunca
+  contém CPF/CNPJ nem nome consultado.

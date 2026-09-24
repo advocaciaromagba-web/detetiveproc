@@ -29,6 +29,8 @@ TABELAS_ESPERADAS = {
     "execucao_robo",
     "cliente",
     "auditoria",
+    "varredura",
+    "varredura_numero",
 }
 
 
@@ -53,7 +55,9 @@ def test_tabelas_de_cliente_tem_cliente_id() -> None:
 
 def test_migracao_cobre_todas_as_tabelas_e_rls() -> None:
     migracao = _migracao()
-    assert set(migracao.TODAS) == TABELAS_ESPERADAS
+    # A 0001 criou as tabelas da seção 3; as posteriores são verificadas por GRANT
+    # no teste de integração test_todas_as_tabelas_tem_permissao.
+    assert set(migracao.TODAS) == TABELAS_ESPERADAS - {"varredura", "varredura_numero"}
     assert {"cliente", *migracao.TABELAS_CLIENTE} == set(TABELAS_CLIENTE)
     assert "coleta_bruta" not in migracao.LEITURA_API
 

@@ -62,6 +62,9 @@ class Tribunal(Base):
         CheckConstraint(_em("sistema", "esaj", "eproc", "pje"), name="sistema"),
         CheckConstraint("grau IN (1, 2)", name="grau"),
         CheckConstraint("limite_req_min > 0", name="limite_req_min"),
+        CheckConstraint(
+            _em("bloqueado_motivo", "desafio_humano", "layout_alterado"), name="bloqueado_motivo"
+        ),
     )
 
     id: Mapped[int] = _id()
@@ -70,6 +73,11 @@ class Tribunal(Base):
     grau: Mapped[int] = mapped_column(SmallInteger, server_default="1")
     ativo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     limite_req_min: Mapped[int] = mapped_column(Integer, server_default="12")
+    # LimiteAtingido: pausa temporária. DesafioHumano/LayoutAlterado: bloqueio até
+    # liberação manual (agendador.orquestrador.liberar_tribunal).
+    pausado_ate: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    bloqueado_motivo: Mapped[str | None] = mapped_column(String(20))
+    bloqueado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class TribunalUnidade(Base):
@@ -209,6 +217,46 @@ class ColetaBruta(Base):
     http_status: Mapped[int | None] = mapped_column(SmallInteger)
     objeto_storage: Mapped[str] = mapped_column(Text)
     coletado_em: Mapped[datetime] = _agora()
+
+
+class Varredura(Base):
+    """Consulta periódica de um parâmetro (CPF/CNPJ ou nome) em um tribunal (seção 5, A).
+
+    Compartilhada entre clientes que monitoram o mesmo valor. Guarda só o hash do
+    parâmetro (core.seguranca.hash_parametro); o valor é lido dos alvos na execução.
+    """
+
+    __tablename__ = "varredura"
+    __table_args__ = (
+        UniqueConstraint("tribunal_id", "tipo_consulta", "parametro_hash"),
+        CheckConstraint(_em("tipo_consulta", "documento", "nome"), name="tipo"),
+    )
+
+    id: Mapped[int] = _id()
+    tribunal_id: Mapped[int] = mapped_column(ForeignKey("tribunal.id"))
+    tipo_consulta: Mapped[str] = mapped_column(String(10))
+    parametro_hash: Mapped[str] = mapped_column(String(64))
+    # Nula até a primeira execução completa (linha de base: números antigos não alertam).
+    linha_base_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ultima_execucao_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    proxima_execucao_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    falhas_seguidas: Mapped[int] = mapped_column(Integer, server_default="0")
+    ultimo_erro: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = _agora()
+
+
+class VarreduraNumero(Base):
+    """Números CNJ já devolvidos por uma varredura (para detectar os novos)."""
+
+    __tablename__ = "varredura_numero"
+
+    varredura_id: Mapped[int] = mapped_column(
+        ForeignKey("varredura.id", ondelete="CASCADE"), primary_key=True
+    )
+    numero_cnj: Mapped[str] = mapped_column(String(25), primary_key=True)
+    visto_em: Mapped[datetime] = _agora()
 
 
 class ExecucaoRobo(Base):
