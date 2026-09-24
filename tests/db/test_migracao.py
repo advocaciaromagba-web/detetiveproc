@@ -5,7 +5,7 @@ from alembic import command
 from sqlalchemy import text
 
 from db.sessao import criar_engine
-from tests.db.conftest import config_alembic
+from tests.conftest import config_alembic
 
 pytestmark = pytest.mark.integracao
 

@@ -23,7 +23,7 @@ from db.modelos import Alvo, Cliente, Processo, Regra, Tribunal
 from db.sessao import criar_engine, criar_fabrica
 
 URL = os.environ.get("TEST_DATABASE_URL")
-RAIZ = Path(__file__).parents[2]
+RAIZ = Path(__file__).parents[1]
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

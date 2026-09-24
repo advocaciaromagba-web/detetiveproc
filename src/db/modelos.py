@@ -147,6 +147,9 @@ class Parte(Base):
     __table_args__ = (
         UniqueConstraint("processo_id", "pessoa_id", "polo"),
         CheckConstraint(_em("polo", "ativo", "passivo", "terceiro"), name="polo"),
+        CheckConstraint(
+            _em("confianca_vinculo", "confirmada", "a_verificar"), name="confianca_vinculo"
+        ),
     )
 
     id: Mapped[int] = _id()
@@ -154,10 +157,17 @@ class Parte(Base):
     pessoa_id: Mapped[int] = mapped_column(ForeignKey("pessoa.id"), index=True)
     polo: Mapped[str] = mapped_column(String(10))
     tipo_participacao: Mapped[str | None] = mapped_column(Text)
+    # "confirmada": pessoa identificada por CPF/CNPJ; "a_verificar": por nome (seção 6).
+    confianca_vinculo: Mapped[str] = mapped_column(String(12), server_default="a_verificar")
 
 
 class Advogado(Base):
     __tablename__ = "advogado"
+    __table_args__ = (
+        UniqueConstraint(
+            "parte_id", "nome", "oab_numero", "oab_uf", postgresql_nulls_not_distinct=True
+        ),
+    )
 
     id: Mapped[int] = _id()
     parte_id: Mapped[int] = mapped_column(ForeignKey("parte.id", ondelete="CASCADE"), index=True)

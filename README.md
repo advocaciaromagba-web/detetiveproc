@@ -79,3 +79,23 @@ CREATE ROLE worker_login LOGIN PASSWORD '...' IN ROLE monitor_sistema;
 ```
 
 A migração precisa rodar como superusuário (criação de papel com `BYPASSRLS`).
+
+## Pipeline (seção 6)
+
+```python
+from pipeline.normalizador import normalizar_processo
+from pipeline.dedup import gravar_processo
+from pipeline.tpu import CatalogoTPU
+
+catalogo = CatalogoTPU.carregar(Path("dados/tpu/classes.csv"), Path("dados/tpu/assuntos.csv"))
+async with sessao_sistema(fabrica) as s:
+    resultado = await gravar_processo(s, normalizar_processo(dto, catalogo), tribunal_id)
+    if resultado.novo: ...  # processo inédito na base
+```
+
+- A TPU é lida de CSVs `codigo,nome` exportados do SGT/CNJ (ainda não versionados;
+  `tests/fixtures/tpu` é só uma amostra). Sem catálogo, classe e assunto ficam sem código.
+- Pessoa com CPF/CNPJ válido: vínculo `confirmada`. Sem documento: só é ligada a uma
+  pessoa existente se houver um único candidato (trigram ≥ 0,85) com o mesmo nome
+  normalizado e atuação na mesma comarca, e o vínculo fica `a_verificar`.
+- Processo em segredo de justiça guarda só o número; se já tinha partes, elas são apagadas.
