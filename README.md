@@ -41,3 +41,41 @@ uv run pytest
 ```
 
 Os testes não acessam rede nem tribunais; o rate limiter é testado com `fakeredis`.
+
+### Testes de integração (PostgreSQL)
+
+Os testes marcados `integracao` (migração, RLS, restrições) usam um PostgreSQL real e
+são pulados se `TEST_DATABASE_URL` não estiver definida. **O schema `public` desse banco
+é apagado** a cada execução; use um banco descartável com usuário superusuário:
+
+```bash
+docker compose exec postgres createdb -U monitor monitor_teste
+TEST_DATABASE_URL=postgresql+asyncpg://monitor:SENHA@localhost:5432/monitor_teste uv run pytest
+```
+
+## Banco de dados
+
+```bash
+uv run alembic upgrade head                 # usa DATABASE_URL do .env
+uv run alembic revision --autogenerate -m "descricao"   # revise o arquivo gerado
+uv run alembic check                        # modelos x migrações
+```
+
+A migração inicial cria dois papéis sem login:
+
+| Papel | Uso | RLS |
+| --- | --- | --- |
+| `monitor_api` | API e painel | Vê só as linhas do cliente em `app.cliente_id` |
+| `monitor_sistema` | Workers e motor de regras | `BYPASSRLS` |
+
+O código assume o papel dentro de cada transação (`db.sessao.sessao_cliente` e
+`sessao_sistema`, via `SET LOCAL ROLE`). Em desenvolvimento o usuário do `.env` é
+superusuário e pode assumir ambos. Em produção, crie um usuário de login por serviço e
+conceda só o papel necessário, por exemplo:
+
+```sql
+CREATE ROLE api_login LOGIN PASSWORD '...' IN ROLE monitor_api;
+CREATE ROLE worker_login LOGIN PASSWORD '...' IN ROLE monitor_sistema;
+```
+
+A migração precisa rodar como superusuário (criação de papel com `BYPASSRLS`).

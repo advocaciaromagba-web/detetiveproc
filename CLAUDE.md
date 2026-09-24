@@ -6,3 +6,10 @@
 - CPF/CNPJ nunca em log em texto claro; usar core.seguranca.hash_documento().
 - Toda consulta a tribunal passa pelo rate limiter de core.
 - Migrações só via Alembic.
+
+## Convenções do repositório
+- Tabela nova: GRANT explícito a monitor_api e monitor_sistema na migração; se tiver
+  cliente_id, também ENABLE/FORCE ROW LEVEL SECURITY e a política isolamento_cliente.
+- Acesso ao banco só por db.sessao.sessao_cliente (API) ou sessao_sistema (workers).
+- Valores monetários em centavos (bigint); datas e horas com fuso (timestamptz).
+- Testes de banco: marcar com @pytest.mark.integracao (exigem TEST_DATABASE_URL).

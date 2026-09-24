@@ -5,7 +5,11 @@ description = "Monitoramento de distribuição processual contra CPFs e CNPJs mo
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.13",
+    "asyncpg>=0.29",
+    "pydantic-settings>=2.4",
     "redis>=5.0,<6",
+    "sqlalchemy[asyncio]>=2.0,<2.1",
 ]
 
 [dependency-groups]
@@ -22,7 +26,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/core", "src/adaptadores"]
+packages = ["src/core", "src/adaptadores", "src/db"]
 
 [tool.ruff]
 target-version = "py312"
@@ -49,7 +53,7 @@ ignore = [
 python_version = "3.12"
 strict = true
 mypy_path = "src"
-packages = ["core", "adaptadores"]
+packages = ["core", "adaptadores", "db"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
@@ -62,3 +66,6 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-ra --strict-markers"
+markers = [
+    "integracao: exige PostgreSQL real em TEST_DATABASE_URL (pulado sem ela)",
+]
