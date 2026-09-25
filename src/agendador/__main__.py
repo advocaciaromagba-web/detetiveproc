@@ -27,7 +27,7 @@ async def executar() -> None:
     enviador = EnviadorSMTP.de_settings(settings)
     orquestrador = Orquestrador(
         fabrica,
-        registro_padrao(redis),
+        registro_padrao(fabrica, settings, redis=redis),
         chave_hash=settings.hash_documento_chave.get_secret_value(),
         enviador_operacao=enviador,
         email_operacao=settings.email_operacao,

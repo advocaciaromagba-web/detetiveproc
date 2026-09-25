@@ -18,6 +18,9 @@ x-backend: &backend
     MINIO_ROOT_USER: ${MINIO_ROOT_USER:-monitor}
     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
     MINIO_BUCKET_BRUTO: ${MINIO_BUCKET_BRUTO:-bruto}
+    COLETOR_CONTATO: ${COLETOR_CONTATO:-}
+    COLETOR_MAX_PAGINAS: ${COLETOR_MAX_PAGINAS:-20}
+    COLETOR_CACHE_HORAS: ${COLETOR_CACHE_HORAS:-24}
     HASH_DOCUMENTO_CHAVE: ${HASH_DOCUMENTO_CHAVE:?defina HASH_DOCUMENTO_CHAVE no .env}
     SMTP_HOST: ${SMTP_HOST:-localhost}
     SMTP_PORTA: ${SMTP_PORTA:-587}
@@ -148,6 +151,8 @@ services:
       migracoes:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
   painel:

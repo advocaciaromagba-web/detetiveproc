@@ -286,3 +286,25 @@ comarca derivada do foro). CAPTCHA levanta `DesafioHumano`, segredo de justiça
 Foi escrito contra páginas **sintéticas** (`tests/fixtures/tjsp_esaj/sinteticos`),
 porque as reais da fase 0 ainda não chegaram. Quando chegarem, os seletores e os
 rótulos são conferidos contra elas e os testes passam a usá-las.
+
+## Adaptador e-SAJ/TJSP (tarefa 6)
+
+`adaptadores/tjsp_esaj/adaptador.py`, registrado em `agendador.registro.registro_padrao`
+como `TJSP/esaj`. Busca por CPF/CNPJ ou nome em `/cpopg/search.do`, segue a paginação
+(até `COLETOR_MAX_PAGINAS`) e, em `obter_processo`, busca pelo número e lê a capa.
+
+- **Saída para o tribunal** (`adaptadores/http.py`): httpx, uma sessão por consulta;
+  limitador antes de cada requisição (inclusive redirecionamentos e `robots.txt`); só
+  segue links do próprio site; User-Agent `MonitorProcessual/0.1 (+contato: …)` com
+  `COLETOR_CONTATO`; `robots.txt` lido a cada 24 h — caminho proibido bloqueia o
+  adaptador (`LayoutAlterado`) até revisão humana.
+- **Erros**: 429/403 → `LimiteAtingido` (com `Retry-After`); 5xx, 408, tempo esgotado e
+  falha de conexão → `TribunalIndisponivel`; CAPTCHA → `DesafioHumano`; outros 4xx e
+  página inesperada → `LayoutAlterado`. Nenhum detalhe ou log leva a URL com o valor
+  consultado (o log do httpx é filtrado).
+- **Bruto e cache** (`adaptadores/bruto.py`): cada página vai para o MinIO
+  (`tjsp/esaj/AAAA/MM/DD/<lote>/NNN.html`, UTF-8) e para `coleta_bruta` antes do
+  parsing, com a URL mascarada e o parâmetro só como HMAC. Uma consulta concluída nas
+  últimas `COLETOR_CACHE_HORAS` é reaproveitada inteira, sem ir ao tribunal; consulta
+  interrompida por erro não vira cache. As sentinelas consultam sempre o site
+  (`adaptadores.bruto.sem_cache`).

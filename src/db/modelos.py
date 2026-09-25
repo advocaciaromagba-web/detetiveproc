@@ -5,6 +5,7 @@ as demais formam a base compartilhada de processos (datalake) e de operação do
 Valores monetários em centavos (seção 6); datas e horas sempre com fuso.
 """
 
+import uuid
 from datetime import date, datetime
 from typing import Any
 
@@ -23,6 +24,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
     func,
     text,
 )
@@ -201,9 +203,17 @@ class Movimento(Base):
 
 
 class ColetaBruta(Base):
+    """Uma página baixada do tribunal; o HTML fica no MinIO (``objeto_storage``).
+
+    As páginas de uma mesma consulta (busca + paginação, ou busca + capa) formam um
+    ``lote``. ``completa`` marca o lote que terminou sem erro: só ele serve de cache.
+    ``url`` é gravada com o parâmetro consultado mascarado.
+    """
+
     __tablename__ = "coleta_bruta"
     __table_args__ = (
         CheckConstraint(_em("tipo_consulta", "documento", "nome", "processo"), name="tipo"),
+        CheckConstraint("pagina >= 1", name="pagina"),
         Index(
             "ix_coleta_bruta_cache", "tribunal_id", "tipo_consulta", "parametro_hash", "coletado_em"
         ),
@@ -217,6 +227,9 @@ class ColetaBruta(Base):
     http_status: Mapped[int | None] = mapped_column(SmallInteger)
     objeto_storage: Mapped[str] = mapped_column(Text)
     coletado_em: Mapped[datetime] = _agora()
+    lote: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
+    pagina: Mapped[int | None] = mapped_column(SmallInteger)
+    completa: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
 
 class Varredura(Base):

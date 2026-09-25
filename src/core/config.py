@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     minio_root_user: str = "monitor"
     minio_root_password: SecretStr = SecretStr("")
     minio_bucket_bruto: str = "bruto"
+    minio_tls: bool = False  # True quando o MinIO estiver fora da rede interna
     hash_documento_chave: SecretStr | None = None
 
     smtp_host: str = "localhost"
@@ -27,6 +28,13 @@ class Settings(BaseSettings):
     smtp_remetente: str = "Monitor Processual <alertas@localhost>"
     # Recebe avisos de bloqueio de tribunal (DesafioHumano, LayoutAlterado).
     email_operacao: str | None = None
+
+    # Coleta nos tribunais (seção 5). O contato técnico vai no User-Agent do robô.
+    coletor_contato: str = ""
+    coletor_timeout: float = 30.0
+    coletor_max_paginas: int = 20
+    coletor_cache_horas: float = 24.0
+    esaj_tjsp_url: str = "https://esaj.tjsp.jus.br"
 
     log_formato: Literal["json", "texto"] = "json"
     log_nivel: str = "INFO"

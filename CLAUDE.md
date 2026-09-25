@@ -20,6 +20,8 @@
 - Adaptador: recebe o TokenBucket no construtor e chama `await self.limitador.adquirir()`
   antes de CADA requisição HTTP (inclusive paginação). O `detalhe` das exceções nunca
   contém CPF/CNPJ nem nome consultado.
+- Adaptador HTTP: sair só por `adaptadores.http.ClienteTribunal` e guardar cada página
+  com `adaptadores.bruto.GuardaBruto` antes do parsing, com a URL mascarada.
 - API: toda requisição usa `Contexto.cliente()` (RLS) ou `Contexto.sistema()` (só
   operador); nunca devolver CPF/CNPJ de partes; erros não ecoam o valor recebido.
 - Painel (painel/): só fala com a API pelo servidor do Next (lib/api.ts); token só em

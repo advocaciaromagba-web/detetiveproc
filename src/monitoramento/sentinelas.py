@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from adaptadores.bruto import sem_cache
 from agendador.controle import bloquear_tribunal, pausar_tribunal, tribunal_disponivel
 from agendador.orquestrador import Orquestrador
 from core.cnj import formatar_cnj
@@ -144,7 +145,8 @@ async def _conferir(
     divergencias: list[dict[str, Any]] = []
     erro: str | None = None
     try:
-        dto = await adaptador.obter_processo(sentinela.numero_cnj)
+        with sem_cache():  # a sentinela confere o site agora, nunca a página guardada
+            dto = await adaptador.obter_processo(sentinela.numero_cnj)
         divergencias = comparar(sentinela.campos_esperados, normalizar_processo(dto))
     except ProcessoSigiloso:
         erro = "ProcessoSigiloso: a sentinela precisa ser um processo público"
