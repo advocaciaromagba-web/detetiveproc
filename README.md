@@ -263,3 +263,12 @@ túnel SSH (`ssh -L 3000:127.0.0.1:3000 servidor`).
 
 **Logs** — JSON por padrão (`LOG_FORMATO=json|texto`). Qualquer CPF/CNPJ que escape
 para o log (mensagem, campos extras ou traceback) sai como `[documento]`.
+
+## Coleta das páginas do TJSP (fase 0)
+
+`ferramentas/coletar_fixtures_tjsp.py` roda no computador de quem tem acesso ao TJSP
+(Python 3.9+, sem instalar pacotes): `python coletar_fixtures_tjsp.py`. Salva
+formulário, listas (por CNPJ de grandes litigantes, por nome e sem resultado), capas e
+a consulta pública do eproc; uma página a cada 5 s, respeitando o `robots.txt`; para em
+CAPTCHA, HTTP 403/429; troca CPF/CNPJ por fictícios e gera um `.zip` com `manifesto.json`.
+Os nomes das partes são anonimizados depois, ao entrar em `tests/fixtures/`.
