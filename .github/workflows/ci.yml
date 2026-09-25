@@ -1,0 +1,168 @@
+name: monitor-processual
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: monitor
+          POSTGRES_PASSWORD: monitor
+          POSTGRES_DB: monitor_teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U monitor -d monitor_teste"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://monitor:monitor@localhost:5432/monitor_teste
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependências
+        run: uv sync --locked
+      - name: Ruff (lint)
+        run: uv run ruff check .
+      - name: Ruff (formatação)
+        run: uv run ruff format --check .
+      - name: Mypy
+        run: |
+          uv run mypy
+          uv run mypy --strict ferramentas/coletar_fixtures_tjsp.py
+          uv run mypy --strict ferramentas/anonimizar_fixtures.py
+      - name: Script de coleta no Python 3.9 (roda no computador do usuário)
+        run: >-
+          uv run --no-project --python 3.9 --with pytest
+          python -m pytest --noconftest -c /dev/null -q tests/ferramentas
+      - name: Pytest (unitários e integração com PostgreSQL)
+        run: uv run pytest
+      - name: Módulos importam só com as dependências de produção (como na imagem)
+        env:
+          UV_PROJECT_ENVIRONMENT: /tmp/venv-producao
+        run: |
+          uv sync --locked --no-dev
+          cd src && /tmp/venv-producao/bin/python -c "
+          import importlib, pkgutil
+          nomes = [m.name for m in pkgutil.walk_packages(['.']) if 'migracoes' not in m.name]
+          for nome in nomes:
+              importlib.import_module(nome)
+          print(len(nomes), 'módulos importados')
+          "
+
+  painel:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: painel
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: painel/package-lock.json
+      - name: Instalar dependências
+        run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Vitest
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  imagens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar .env de CI
+        run: |
+          cp .env.example .env
+          sed -i "s/^HASH_DOCUMENTO_CHAVE=$/HASH_DOCUMENTO_CHAVE=$(openssl rand -hex 32)/" .env
+      - name: Validar docker-compose
+        run: docker compose config -q
+      - name: Build das imagens (backend e painel)
+        run: docker compose build migracoes painel
+      - name: Subir a pilha (postgres, redis, migrações, API e painel)
+        run: |
+          docker compose up -d painel
+          for i in $(seq 1 60); do
+            estado="$(docker compose ps painel --format '{{.Health}}')"
+            [ "$estado" = "healthy" ] && exit 0
+            sleep 3
+          done
+          echo "painel não ficou saudável (estado: $estado)"
+          exit 1
+      - name: Smoke test
+        run: |
+          set -e
+          docker compose ps
+          test "$(docker compose ps -a migracoes --format '{{.ExitCode}}')" = "0"
+          docker compose exec -T api python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/healthz').read())"
+          curl -fsS -o /dev/null http://127.0.0.1:3100/login
+          # A API não pode ser publicada fora da rede interna do compose.
+          if curl -fsS -o /dev/null --max-time 3 http://127.0.0.1:8000/healthz; then
+            echo "API exposta no host: deveria estar só na rede interna"
+            exit 1
+          fi
+          docker compose run --rm -T api python -m api.admin criar-tribunal --sigla TJSP --sistema esaj
+      - name: Observabilidade (agendador, Prometheus e Grafana)
+        run: |
+          set -e
+          docker compose up -d grafana
+          for i in $(seq 1 40); do
+            [ "$(docker compose ps agendador --format '{{.Health}}')" = "healthy" ] && break
+            sleep 3
+          done
+          test "$(docker compose ps agendador --format '{{.Health}}')" = "healthy"
+          # Armazenamento S3 do bruto: grava e lê com a credencial do .env; anônimo é recusado.
+          docker compose exec -T agendador python -c "
+          import asyncio
+          from adaptadores.bruto import ArmazemS3
+          from core.config import obter_settings
+          async def main():
+              armazem = ArmazemS3.de_settings(obter_settings())
+              await armazem.gravar('ci/teste.html', 'Pão'.encode(), 'text/html; charset=utf-8')
+              assert (await armazem.ler('ci/teste.html')).decode() == 'Pão'
+          asyncio.run(main())
+          print('S3 ok')
+          "
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8333/)" = "403"
+          # O Prometheus precisa ter coletado o agendador ao menos uma vez.
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:9090/api/v1/targets | grep -q '"health":"up"' && break
+            sleep 3
+          done
+          curl -fsS http://127.0.0.1:9090/api/v1/targets | grep -q '"health":"up"'
+          curl -fsS 'http://127.0.0.1:9090/api/v1/query?query=monitor_alarmes_abertos' | grep -q '"status":"success"'
+          # Painel do Grafana provisionado.
+          senha="$(grep '^GRAFANA_SENHA=' .env | cut -d= -f2-)"
+          for i in $(seq 1 30); do
+            curl -fsS -u "admin:$senha" http://127.0.0.1:3000/api/dashboards/uid/monitor-processual > /dev/null && break
+            sleep 2
+          done
+          curl -fsS -u "admin:$senha" http://127.0.0.1:3000/api/dashboards/uid/monitor-processual | grep -q "saúde dos robôs"
+          # Métricas só na rede interna.
+          if curl -fsS -o /dev/null --max-time 3 http://127.0.0.1:9100/metrics; then
+            echo "métricas do agendador expostas no host"
+            exit 1
+          fi
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Derrubar
+        if: always()
+        run: docker compose down -v
