@@ -340,3 +340,21 @@ docker compose run --rm api python -m api.admin remover-unidade --id 5
 
   Aparecem em Saúde dos robôs no painel. Tribunal eproc ativo sem nenhuma unidade
   vigente abre o alarme `sem_unidades`.
+
+## Fase 0: páginas reais (25/09/2026)
+
+A primeira coleta real mostrou:
+
+- **e-SAJ**: o leitor funcionou com a lista e a capa reais. Ajustes feitos: rótulos com
+  dois-pontos ("Credor:"), foro que não é comarca ("Foro 1 - Núcleo 4.0") e data de
+  **redistribuição** na capa (processo de 2009 "Direcionado" em 2026), que agora é
+  ignorada para não fazer processo antigo parecer novo.
+- **eproc**: a consulta pública unificada só pesquisa por número e exige Cloudflare
+  Turnstile. Sem contorno, o robô não busca no eproc por documento/nome; a candidata a
+  fonte é a Lista de Distribuição pública, a coletar na próxima rodada.
+- **Script de coleta** corrigido: falso CAPTCHA (a palavra aparece no JavaScript das
+  capas), página 2 pedida com o CNPJ fictício, `robots.txt` contado como página e
+  acentos perdidos sem `charset` no cabeçalho.
+
+Páginas novas passam por `ferramentas/anonimizar_fixtures.py` antes de entrar em
+`tests/fixtures/*/reais` (a ferramenta recusa gravar se sobrar nome original).

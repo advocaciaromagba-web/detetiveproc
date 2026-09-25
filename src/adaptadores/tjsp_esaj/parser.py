@@ -41,7 +41,9 @@ _DATA = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
 _DATA_E_FORO = re.compile(r"^\s*(\d{2}/\d{2}/\d{4})\s*-\s*(.+?)\s*$")
 _ROTULO_ADVOGADO = re.compile(r"^(ADVOGAD[OA]|DEFENSOR[A]?|PROCURADOR[A]?)S?\s*:\s*", re.I)
 _FORO_CAPITAL = re.compile(r"^FORO (CENTRAL|REGIONAL)\b")
-_FORO_DE = re.compile(r"^Foro\s+(?:Distrital\s+)?d[aeo]s?\s+", re.I)
+_FORO_DE = re.compile(r"^Foro\s+(?:Distrital\s+)?d[aeo]s?\s+(.+)$", re.I)
+# Unidades que não são comarca ("Foro 1 - Núcleo 4.0", "Foro das Execuções Fiscais").
+_NAO_COMARCA = re.compile(r"\d|\b(NUCLEO|EXECUCOES|JUIZADO|VARA|UNIDADE|FAZENDA)\b")
 _NUMERO = re.compile(r"\d[\d.]*")
 
 # Rótulos de participação do e-SAJ, comparados sem acento, em maiúsculas e sem ponto.
@@ -95,7 +97,7 @@ def _texto(no: Node | None) -> str | None:
 
 
 def _chave(texto: str) -> str:
-    return " ".join(remover_acentos(texto).upper().replace(".", " ").split())
+    return " ".join(remover_acentos(texto).upper().replace(".", " ").replace(":", " ").split())
 
 
 def _data(texto: str | None) -> date | None:
@@ -116,6 +118,18 @@ def _cnj(texto: str | None) -> str | None:
         return None
 
 
+def _data_distribuicao(texto: str | None, numero_cnj: str) -> date | None:
+    """Data da capa, salvo quando é de uma REDISTRIBUIÇÃO: o e-SAJ mostra a data mais
+    recente (ex.: processo de 2009 "Direcionado" a um Núcleo 4.0 em 2026). O ano do
+    número CNJ é o do ajuizamento; data a mais de um ano dele não é a distribuição
+    original e faria um processo antigo parecer novo."""
+    data = _data(texto)
+    if data is not None and abs(data.year - int(numero_cnj[11:15])) > 1:
+        logger.info("data de redistribuição ignorada", extra={"numero_cnj": numero_cnj})
+        return None
+    return data
+
+
 def polo_do_rotulo(rotulo: str | None) -> Polo:
     """Traduz o rótulo de participação do e-SAJ; rótulo desconhecido vira ``terceiro``."""
     chave = _chave(rotulo or "")
@@ -129,12 +143,16 @@ def polo_do_rotulo(rotulo: str | None) -> Polo:
 
 
 def comarca_do_foro(foro: str | None) -> str | None:
-    """Foro Central/Regional -> São Paulo; "Foro de X" -> X (heurística provisória)."""
+    """Foro Central/Regional -> São Paulo; "Foro [Distrital] de X" -> X; o resto (ex.:
+    "Foro 1 - Núcleo 4.0", unidade virtual) -> None, em vez de uma comarca errada."""
     if not foro:
         return None
     if _FORO_CAPITAL.match(_chave(foro)):
         return "São Paulo"
-    return _FORO_DE.sub("", foro).strip() or None
+    achado = _FORO_DE.match(foro.strip())
+    if achado is None or _NAO_COMARCA.search(_chave(achado.group(1))):
+        return None
+    return achado.group(1).strip()
 
 
 # --------------------------------------------------------------------------- classificação
@@ -209,7 +227,7 @@ def _item(no: Node, base: str) -> ItemLista | None:
         data_distribuicao=_data(data_foro.group(1)) if data_foro else None,
         foro=data_foro.group(2) if data_foro else None,
         nome_parte=_texto(no.css_first(".nomeParte")),
-        tipo_participacao=tipo,
+        tipo_participacao=tipo.rstrip(":").strip() if tipo else None,
         polo=polo_do_rotulo(tipo) if tipo else None,
     )
 
@@ -299,7 +317,9 @@ def extrair_capa(
         assuntos=[assunto] if assunto else [],
         comarca=comarca_do_foro(foro),
         vara=_texto(arvore.css_first("#varaProcesso")),
-        data_distribuicao=_data(_texto(arvore.css_first("#dataHoraDistribuicaoProcesso"))),
+        data_distribuicao=_data_distribuicao(
+            _texto(arvore.css_first("#dataHoraDistribuicaoProcesso")), numero
+        ),
         valor_causa=_valor(_texto(arvore.css_first("#valorAcaoProcesso"))),
         segredo=False,
         partes=_partes(arvore),

@@ -26,6 +26,7 @@ CUIDADOS (seção 5 da especificação):
 from __future__ import annotations
 
 import argparse
+import codecs
 import hashlib
 import html
 import http.cookiejar
@@ -45,9 +46,13 @@ from pathlib import Path
 from typing import Protocol
 
 BASE_ESAJ = "https://esaj.tjsp.jus.br"
-# Endereço provável da consulta pública do eproc do TJSP (confirmar na fase 0).
+# Consultas públicas do eproc do TJSP (a antiga eproc1g redireciona para a unificada).
+_EPROC = "https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao="
 URLS_EPROC = (
-    "https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_consulta_publica",
+    _EPROC + "tjsp@consulta_unificada_publica/consultar",
+    _EPROC + "tjsp@consulta_publica_eproc/consultar",
+    # Lista pública de distribuição (CPC, art. 285): candidata a fonte do eproc.
+    _EPROC + "processo_distribuicao_listar",
 )
 AGENTE = "MonitorProcessual-Fase0/1.0 (coleta de paginas para testes automatizados{contato})"
 
@@ -66,11 +71,17 @@ CAPAS_POR_BUSCA = 3
 LIMITE_PADRAO = 45
 INTERVALO_PADRAO = 5.0
 
+# Só os componentes do desafio: a palavra "captcha" sozinha aparece em JavaScript de
+# páginas normais (ex.: parâmetro uuidCaptcha nas capas do e-SAJ).
 _CAPTCHA = re.compile(
-    r"captcha|recaptcha|hcaptcha|cf-challenge|challenge-platform|"
+    r"class=[\"'][^\"']*\b(?:g-recaptcha|h-captcha|cf-turnstile)\b|"
+    r"google\.com/recaptcha|hcaptcha\.com/1/api|challenges\.cloudflare\.com|"
+    r"cf-challenge|/cdn-cgi/challenge-platform|"
+    r"<(?:img|input)\b[^>]*\b(?:id|name|src)=[\"'][^\"']*captcha|"
     r"verifica[cç][aã]o de seguran[cç]a|n[aã]o sou um rob[oô]",
     re.IGNORECASE,
 )
+_META_CHARSET = re.compile(rb"""<meta[^>]+charset\s*=\s*["']?([\w-]+)""", re.IGNORECASE)
 _SEM_RESULTADO = re.compile(
     r"n[aã]o existem informa[cç][oõ]es dispon[ií]veis|nenhum processo encontrado|"
     r"n[aã]o foram encontrados",
@@ -289,14 +300,18 @@ class Coletor:
     registros: list[Registro] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)
     requisicoes: int = 0
-    _robos: urllib.robotparser.RobotFileParser | None = None
+    paginas: int = 0
+    ultima_url: str = ""  # URL real (sem anonimizar) da última página salva
+    _robos: dict[str, urllib.robotparser.RobotFileParser] = field(default_factory=dict)
 
-    def _get(self, url: str) -> tuple[int, bytes, str, str]:
-        if self.requisicoes >= self.limite:
+    def _get(self, url: str, conta_no_limite: bool = True) -> tuple[int, bytes, str, str]:
+        # robots.txt respeita o intervalo, mas não conta como página coletada.
+        if conta_no_limite and self.paginas >= self.limite:
             raise Parada(f"limite de {self.limite} páginas atingido")
         if self.requisicoes:
             self.dormir(self.intervalo)
         self.requisicoes += 1
+        self.paginas += conta_no_limite
         exigir_url_do_tjsp(url)
         pedido = urllib.request.Request(url, headers={"User-Agent": self.agente})  # noqa: S310
         try:
@@ -311,17 +326,27 @@ class Coletor:
         return status, corpo, tipo, final
 
     def carregar_robots(self, base: str) -> None:
+        partes = urllib.parse.urlsplit(base)
         robos = urllib.robotparser.RobotFileParser()
         try:
-            status, corpo, _, _ = self._get(f"{base}/robots.txt")
+            status, corpo, _, _ = self._get(
+                f"{partes.scheme}://{partes.netloc}/robots.txt", conta_no_limite=False
+            )
             robos.parse(corpo.decode("utf-8", "replace").splitlines() if status == 200 else [])
         except (urllib.error.URLError, OSError):
             robos.parse([])
-        self._robos = robos
+        self._robos[partes.netloc.lower()] = robos
+
+    def permitido(self, url: str) -> bool:
+        partes = urllib.parse.urlsplit(url)
+        if partes.netloc.lower() not in self._robos:
+            self.carregar_robots(url)
+        return self._robos[partes.netloc.lower()].can_fetch(self.agente, url)
 
     def salvar(self, url: str, nome: str, esperado: str) -> str | None:
-        """Busca, anonimiza CPF/CNPJ e grava. Devolve o texto (para seguir links)."""
-        if self._robos is not None and not self._robos.can_fetch(self.agente, url):
+        """Busca, anonimiza CPF/CNPJ e grava. Devolve o texto ORIGINAL, só para seguir
+        links: o anonimizado tem documentos fictícios e levaria a buscas erradas."""
+        if not self.permitido(url):
             self.avisos.append(f"robots.txt não permite: {nome} (pulado)")
             return None
         try:
@@ -329,11 +354,9 @@ class Coletor:
         except (urllib.error.URLError, OSError) as erro:
             self.avisos.append(f"{nome}: falha de conexão ({type(erro).__name__})")
             return None
-        charset = "utf-8"
-        casamento = re.search(r"charset=([\w-]+)", tipo_conteudo, re.IGNORECASE)
-        if casamento:
-            charset = casamento.group(1)
+        charset = _charset(tipo_conteudo, corpo)
         texto = corpo.decode(charset, "replace")
+        self.ultima_url = final
         limpo = anonimizar_documentos(texto)
         dados = limpo.encode(charset, "replace")
         (self.pasta / nome).write_bytes(dados)
@@ -353,7 +376,23 @@ class Coletor:
         print(f"  [{self.requisicoes:02d}] {nome}: HTTP {status}, {detectado}")
         if detectado == "captcha":
             raise Parada("página com CAPTCHA/verificação humana: parando (não contornamos)")
-        return limpo
+        return texto
+
+
+def _charset(tipo_conteudo: str, corpo: bytes) -> str:
+    """Cabeçalho; na falta, o <meta charset> da página; na falta, UTF-8."""
+    casamento = re.search(r"charset=([\w-]+)", tipo_conteudo, re.IGNORECASE)
+    meta = _META_CHARSET.search(corpo[:4096])
+    for candidato in (
+        casamento.group(1) if casamento else "",
+        meta.group(1).decode("ascii") if meta else "",
+    ):
+        try:
+            if candidato:
+                return codecs.lookup(candidato).name
+        except LookupError:
+            continue
+    return "utf-8"
 
 
 def coletar_busca(
@@ -364,7 +403,7 @@ def coletar_busca(
         return
     if tipo_pagina(texto).startswith("capa"):
         return  # resultado único: o e-SAJ abriu a capa direto
-    base = coletor.registros[-1].url
+    base = coletor.ultima_url
     if pagina_2 and (proxima := link_pagina_2(texto, base)):
         coletor.salvar(proxima, f"{prefixo}_p2.html", "lista")
     for i, link in enumerate(links_capas(texto, base)[:capas], 1):
@@ -388,7 +427,6 @@ def executar(args: argparse.Namespace, abrir: Abridor | None = None) -> Path:
 
     print("e-SAJ (1º grau)…")
     try:
-        coletor.carregar_robots(BASE_ESAJ)
         coletor.salvar(f"{BASE_ESAJ}/cpopg/open.do", "esaj_formulario.html", "formulario")
         for i, (rotulo, cnpj) in enumerate({**CNPJS_PADRAO, **dict(args.cnpj_rotulado)}.items()):
             coletar_busca(coletor, url_busca_documento(cnpj), f"esaj_lista_cnpj_{rotulo}",

@@ -1,9 +1,11 @@
-"""Adaptador do eproc/TJSP, 1º grau — ESQUELETO, ainda sem leitor de páginas.
+"""Adaptador do eproc/TJSP, 1º grau — ESQUELETO, sem leitor de páginas.
 
-A especificação (seção 5) manda confirmar na fase 0 quais filtros a consulta pública do
-eproc do TJSP oferece (número, nome, documento) e se ela exige verificação humana. Sem
-as páginas reais, escrever o leitor seria adivinhar; por isso ``PRONTO = False`` e o
-registro não liga este adaptador, mesmo com ``EPROC_TJSP_ATIVO=true``.
+Fase 0 (coleta real de 25/09/2026, tests/fixtures/tjsp_eproc/reais): o endereço antigo
+(eproc1g) leva à Consulta Processual Unificada em eproc-consulta.tjsp.jus.br, que só
+pesquisa por NÚMERO e exige Cloudflare Turnstile (verificação humana) para consultar.
+Sem contorno (CLAUDE.md), o robô não pode buscar no eproc por documento nem por nome:
+``PRONTO`` fica False e a cobertura do eproc vem de outras fontes (DataJud,
+publicações). A "consulta avançada" do eproc ainda precisa ser coletada e conferida.
 
 Já pronto: a sessão HTTP comum (limitador, ``robots.txt``, guarda do bruto, cache) via
 ``AdaptadorHttp`` e a verificação de saúde, que abre o formulário público e detecta
@@ -26,10 +28,9 @@ from core.excecoes import ErroAdaptador
 from core.rate_limiter import TokenBucket
 
 TRIBUNAL = "TJSP"
-URL_BASE = "https://eproc1g.tjsp.jus.br/eproc"
-# Endereço provável da consulta pública (o mesmo que o script da fase 0 salva). Relativo
-# à base (sem "/" inicial) para manter o subcaminho /eproc.
-CAMINHO_CONSULTA = "externo_controlador.php?acao=processo_consulta_publica"
+URL_BASE = "https://eproc-consulta.tjsp.jus.br/consulta_1g"
+# Relativo à base (sem "/" inicial) para manter o subcaminho /consulta_1g.
+CAMINHO_CONSULTA = "externo_controlador.php?acao=tjsp@consulta_unificada_publica/consultar"
 PRONTO = False  # vira True quando o leitor for escrito contra as páginas reais
 
 

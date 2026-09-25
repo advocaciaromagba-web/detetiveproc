@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     esaj_tjsp_url: str = "https://esaj.tjsp.jus.br"
     # O eproc só é registrado quando o leitor de páginas existir (fase 0).
     eproc_tjsp_ativo: bool = False
-    eproc_tjsp_url: str = "https://eproc1g.tjsp.jus.br/eproc"
+    eproc_tjsp_url: str = "https://eproc-consulta.tjsp.jus.br/consulta_1g"
 
     log_formato: Literal["json", "texto"] = "json"
     log_nivel: str = "INFO"

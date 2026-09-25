@@ -13,6 +13,7 @@ _SELETOR = ", ".join(
         ".g-recaptcha",
         ".h-captcha",
         ".cf-turnstile",
+        "script[src*='challenges.cloudflare.com']",
         "iframe[src*='recaptcha']",
         "iframe[src*='hcaptcha']",
         "#captcha",

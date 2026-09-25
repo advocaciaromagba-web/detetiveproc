@@ -64,11 +64,11 @@ async def test_saude_abre_o_formulario_publico(resposta: httpx.Response, saudave
 
     assert await eproc_tjsp.saude() is saudavel
     assert str(pedidos[-1].url).startswith(
-        "https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_consulta_publica"
+        "https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=tjsp@consulta_unificada_publica/consultar"
     )
     assert limitador.fichas == len(pedidos)  # robots.txt e formulário pelo limitador
-    # robots.txt na raiz do host, não sob /eproc
-    assert str(pedidos[0].url) == "https://eproc1g.tjsp.jus.br/robots.txt"
+    # robots.txt na raiz do host, não sob /consulta_1g
+    assert str(pedidos[0].url) == "https://eproc-consulta.tjsp.jus.br/robots.txt"
 
 
 async def test_buscas_ainda_nao_existem_e_nao_consultam_o_tribunal() -> None:

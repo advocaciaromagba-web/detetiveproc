@@ -1,5 +1,7 @@
 """Script de coleta de fixtures (roda no computador do usuário), testado sem rede."""
 
+from __future__ import annotations
+
 import importlib.util
 import json
 import sys
@@ -45,11 +47,13 @@ SEM_RESULTADO = "<html>Não existem informações disponíveis para os parâmetr
 
 
 class Resp:
-    def __init__(self, url: str, status: int, corpo: str) -> None:
+    def __init__(
+        self, url: str, status: int, corpo: str | bytes, tipo: str = "text/html; charset=UTF-8"
+    ) -> None:
         self.status = status
-        self._corpo = corpo.encode("utf-8")
+        self._corpo = corpo if isinstance(corpo, bytes) else corpo.encode("utf-8")
         self._url = url
-        self.headers = {"Content-Type": "text/html; charset=UTF-8"}
+        self.headers = {"Content-Type": tipo}
 
     def read(self) -> bytes:
         return self._corpo
@@ -66,6 +70,7 @@ class TjspSimulado:
         self.robots = robots
         self.eproc = eproc
         self.forcar: dict[str, tuple[int, str]] = {}
+        self.respostas: dict[str, Resp] = {}
 
     def __call__(self, pedido: urllib.request.Request, tempo: float) -> Resp:  # noqa: PLR0911
         assert tempo == 30.0
@@ -73,12 +78,17 @@ class TjspSimulado:
         url = pedido.full_url
         partes = urllib.parse.urlsplit(url)
         consulta = urllib.parse.parse_qs(partes.query)
+        for trecho, resposta in self.respostas.items():
+            if trecho in url:
+                return resposta
         for trecho, (status, corpo) in self.forcar.items():
             if trecho in url:
                 return Resp(url, status, corpo)
         if partes.path == "/robots.txt":
             return Resp(url, 200, self.robots)
         if "eproc" in partes.hostname:  # type: ignore[operator]
+            if self.eproc == "captcha":  # Cloudflare Turnstile, como no eproc real
+                return Resp(url, 200, '<div class="cf-turnstile" data-sitekey="x"></div>')
             return Resp(url, 200, f"<html>consulta pública {self.eproc}</html>")
         if partes.path.endswith("open.do"):
             return Resp(url, 200, "<form id='formConsulta'></form>")
@@ -173,7 +183,11 @@ def test_http_429_interrompe(tmp_path: Path) -> None:
     simulado = TjspSimulado(eproc="ok")
     simulado.forcar["open.do"] = (429, "muitas requisições")
     m = manifesto(rodar(tmp_path, simulado)[0])
-    assert [p["arquivo"] for p in m["paginas"]] == ["eproc_consulta_publica_1.html"]
+    assert [p["arquivo"] for p in m["paginas"]] == [
+        "eproc_consulta_publica_1.html",
+        "eproc_consulta_publica_2.html",
+        "eproc_consulta_publica_3.html",
+    ]
     assert any("HTTP 429" in a for a in m["avisos"])
 
 
@@ -189,7 +203,7 @@ def test_limite_de_paginas(tmp_path: Path) -> None:
     simulado = TjspSimulado(eproc="ok")
     m = manifesto(rodar(tmp_path, simulado, "--limite", "5")[0])
     esaj = [p for p in simulado.pedidos if "esaj" in p.full_url]
-    assert len(esaj) == 5
+    assert len([p for p in esaj if not p.full_url.endswith("robots.txt")]) == 5
     assert any("limite de 5" in a for a in m["avisos"])
 
 
@@ -258,3 +272,50 @@ def test_argumentos_invalidos(capsys: pytest.CaptureFixture[str]) -> None:
             cf.analisador().parse_args(argv)
     assert cf.main(["--intervalo", "1"]) == 2
     assert "mínimo" in capsys.readouterr().out
+
+
+# ------------------------------------------------------------- defeitos da 1ª coleta real
+
+
+def test_capa_com_uuid_captcha_no_javascript_nao_e_desafio() -> None:
+    capa = CAPA + "<script>var captcha = $.saj.getUrlParameter('uuidCaptcha');</script>"
+    assert cf.tipo_pagina(capa) == "capa"
+    assert cf.tipo_pagina('<div class="cf-turnstile"></div>') == "captcha"
+    assert cf.tipo_pagina('<input type="text" name="txtInfraCaptcha">') == "captcha"
+
+
+def test_pagina_2_segue_o_link_original_com_o_documento_verdadeiro(tmp_path: Path) -> None:
+    cnpj = cf.CNPJS_PADRAO["banco_do_brasil"]
+    lista = LISTA.replace(
+        "paginaConsulta=2&amp;conversationId=",
+        f"paginaConsulta=2&amp;conversationId=&amp;dadosConsulta.valorConsulta={cnpj}",
+    )
+    simulado = TjspSimulado(eproc="ok")
+    simulado.forcar[
+        f"search.do?conversationId=&cbPesquisa=DOCPARTE&dadosConsulta.valorConsulta={cnpj}"
+    ] = (200, lista)
+    rodar(tmp_path, simulado, "--limite", "4")
+    (pagina_2,) = [p.full_url for p in simulado.pedidos if "trocarPagina" in p.full_url]
+    assert f"valorConsulta={cnpj}" in pagina_2  # o fictício levaria a "sem resultado"
+
+
+def test_charset_do_meta_quando_o_cabecalho_nao_informa(tmp_path: Path) -> None:
+    corpo = '<html><meta charset="iso-8859-1">Consulta Pública – Cível</html>'
+    simulado = TjspSimulado()
+    simulado.respostas["consulta_unificada_publica"] = Resp(
+        cf.URLS_EPROC[0], 200, corpo.encode("cp1252"), tipo="text/html"
+    )
+    arquivo_zip, _ = rodar(tmp_path, simulado, "--limite", "1")
+    with zipfile.ZipFile(arquivo_zip) as zf:
+        nome = next(n for n in zf.namelist() if n.endswith("eproc_consulta_publica_1.html"))
+        assert zf.read(nome).decode("cp1252") == corpo
+
+
+def test_robots_lido_em_cada_site(tmp_path: Path) -> None:
+    simulado = TjspSimulado(eproc="ok")
+    rodar(tmp_path, simulado, "--limite", "2")
+    robots = [p.full_url for p in simulado.pedidos if p.full_url.endswith("/robots.txt")]
+    assert robots == [
+        "https://esaj.tjsp.jus.br/robots.txt",
+        "https://eproc-consulta.tjsp.jus.br/robots.txt",
+    ]
