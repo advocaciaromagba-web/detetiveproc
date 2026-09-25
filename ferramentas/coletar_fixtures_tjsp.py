@@ -46,7 +46,7 @@ from pathlib import Path
 from typing import Protocol
 
 BASE_ESAJ = "https://esaj.tjsp.jus.br"
-VERSAO = "2 (25/09/2026)"
+VERSAO = "3 (25/09/2026)"
 # Consultas públicas do eproc do TJSP (a antiga eproc1g redireciona para a unificada).
 _EPROC = "https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao="
 URLS_EPROC = (
@@ -88,6 +88,7 @@ _SEM_RESULTADO = re.compile(
     r"n[aã]o foram encontrados",
     re.IGNORECASE,
 )
+_MUITOS = re.compile(r"foram encontrados muitos processos", re.IGNORECASE)
 _SEGREDO = re.compile(r"segredo de justi[cç]a|processo (?:sigiloso|em sigilo)", re.IGNORECASE)
 _CAPA = re.compile(r'id="(?:classeProcesso|tablePartesPrincipais|tableTodasPartes)"')
 _LISTA = re.compile(r"listagemDeProcessos|linkProcesso|processoPrincipal")
@@ -179,17 +180,22 @@ def tem_captcha(texto: str) -> bool:
     return bool(_CAPTCHA.search(texto))
 
 
+# Ordem importa: toda capa traz o texto do popup de senha ("segredo de justiça").
+_TIPOS = (
+    (_SEM_RESULTADO, "sem_resultado"),
+    (_MUITOS, "muitos_resultados"),
+    (_CAPA, "capa"),
+    (_SEGREDO, "sigilo"),
+    (_LISTA, "lista"),
+)
+
+
 def tipo_pagina(texto: str) -> str:
     if tem_captcha(texto):
         return "captcha"
-    if _SEM_RESULTADO.search(texto):
-        return "sem_resultado"
-    if _CAPA.search(texto):
-        return "capa_sigilo" if _SEGREDO.search(texto) else "capa"
-    if _SEGREDO.search(texto):
-        return "sigilo"
-    if _LISTA.search(texto):
-        return "lista"
+    for padrao, tipo in _TIPOS:
+        if padrao.search(texto):
+            return tipo
     return "desconhecida"
 
 
@@ -402,7 +408,7 @@ def coletar_busca(
     texto = coletor.salvar(url, f"{prefixo}.html", esperado)
     if texto is None:
         return
-    if tipo_pagina(texto).startswith("capa"):
+    if tipo_pagina(texto) in ("capa", "sigilo"):
         return  # resultado único: o e-SAJ abriu a capa direto
     base = coletor.ultima_url
     if pagina_2 and (proxima := link_pagina_2(texto, base)):
@@ -443,7 +449,9 @@ def executar(args: argparse.Namespace, abrir: Abridor | None = None) -> Path:
         coletor.salvar(url_busca_nome(NOME_INEXISTENTE), "esaj_sem_resultado.html",
                        "sem_resultado")  # fmt: skip
         for i, numero in enumerate(args.processo, 1):
-            coletor.salvar(url_busca_processo(numero), f"esaj_processo_{i}.html", "capa")
+            # A busca por número devolve uma lista de 1 item: seguir até a capa.
+            coletar_busca(coletor, url_busca_processo(numero), f"esaj_processo_{i}", "capa",
+                          pagina_2=False, capas=1)  # fmt: skip
     except Parada as motivo:
         coletor.avisos.append(f"e-SAJ: {motivo}")
         print(f"  ! {motivo}")

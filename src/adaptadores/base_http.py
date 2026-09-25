@@ -87,6 +87,8 @@ def _navegar_cache(paginas: list[PaginaGuardada]) -> Navegar:
 class AdaptadorHttp(AdaptadorTribunal):
     # Parâmetros de query que carregam CPF/CNPJ ou nome: nunca gravados nem logados.
     parametros_sensiveis: ClassVar[frozenset[str]] = frozenset()
+    # Exceções que são resposta válida do tribunal: o lote guardado vale como cache.
+    respostas_validas: ClassVar[tuple[type[Exception], ...]] = (ProcessoSigiloso,)
 
     def __init__(
         self,
@@ -150,7 +152,7 @@ class AdaptadorHttp(AdaptadorTribunal):
         async with self._cliente() as cliente:
             try:
                 resultado = await fluxo(self._navegar_ao_vivo(cliente, lote), url)
-            except ProcessoSigiloso:
+            except self.respostas_validas:
                 await lote.concluir()  # resposta válida: também vale como cache
                 raise
         await lote.concluir()

@@ -14,6 +14,7 @@ import pytest
 
 from adaptadores.bruto import ArmazemMemoria, GuardaBruto, RepositorioColetaMemoria, sem_cache
 from adaptadores.tjsp_esaj.adaptador import AdaptadorEsajTJSP, ConfigEsaj
+from adaptadores.tjsp_esaj.parser import BuscaAmpla
 from core.excecoes import (
     DesafioHumano,
     ErroAdaptador,
@@ -417,3 +418,14 @@ async def test_sem_cache_vai_ao_tribunal_e_continua_guardando() -> None:
 
     assert amb.site.caminhos().count("/cpopg/search.do") == 2
     assert len(amb.repositorio.linhas) == 2
+
+
+async def test_busca_ampla_e_resposta_valida_e_vale_como_cache() -> None:
+    real = (SINTETICOS.parent / "reais" / "muitos_resultados.html").read_text(encoding="utf-8")
+    amb = ambiente({"/cpopg/search.do": html(real)})
+    for _ in range(2):
+        with pytest.raises(BuscaAmpla) as erro:
+            await amb.adaptador.buscar_por_nome("BANCO GENERICO S/A")
+        assert "GENERICO" not in str(erro.value)
+    assert amb.site.caminhos().count("/cpopg/search.do") == 1  # 2ª vez veio do cache
+    assert all(linha.completa for linha in amb.repositorio.linhas)

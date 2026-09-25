@@ -243,7 +243,11 @@ def test_anonimizacao() -> None:
 def test_tipo_de_pagina_e_links() -> None:
     assert cf.tipo_pagina(LISTA) == "lista"
     assert cf.tipo_pagina(CAPA) == "capa"
-    assert cf.tipo_pagina(CAPA + "Segredo de Justiça") == "capa_sigilo"
+    assert cf.tipo_pagina(CAPA + "senha para acessar processo em segredo de justiça") == "capa"
+    assert cf.tipo_pagina("<html>Processo em segredo de justiça</html>") == "sigilo"
+    assert cf.tipo_pagina("<html>Foram encontrados muitos processos</html>") == (
+        "muitos_resultados"
+    )
     assert cf.tipo_pagina(SEM_RESULTADO) == "sem_resultado"
     assert cf.tipo_pagina("<script src='https://www.google.com/recaptcha/api.js'>") == "captcha"
     assert cf.tipo_pagina("<html>erro</html>") == "desconhecida"

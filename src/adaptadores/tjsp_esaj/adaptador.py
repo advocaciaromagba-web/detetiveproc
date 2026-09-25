@@ -28,6 +28,7 @@ from adaptadores.http import Robots
 from adaptadores.tjsp_esaj.parser import (
     TRIBUNAL,
     URL_BASE,
+    BuscaAmpla,
     classificar,
     extrair_capa,
     extrair_lista,
@@ -104,6 +105,7 @@ class AdaptadorEsajTJSP(AdaptadorHttp):
     sigla = TRIBUNAL
     sistema = "esaj"
     parametros_sensiveis = PARAMETROS_SENSIVEIS
+    respostas_validas = (ProcessoSigiloso, BuscaAmpla)
     config: ConfigEsaj
 
     def __init__(

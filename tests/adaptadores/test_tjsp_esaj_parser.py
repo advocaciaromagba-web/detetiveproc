@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from adaptadores.tjsp_esaj.parser import (
+    BuscaAmpla,
     classificar,
     comarca_do_foro,
     extrair_capa,
@@ -35,6 +36,7 @@ def capa(nome: str) -> ProcessoDTO:
         ("lista_documento.html", "lista"),
         ("lista_nome_ultima_pagina.html", "lista"),
         ("sem_resultado.html", "sem_resultado"),
+        ("muitos_resultados.html", "muitos_resultados"),
         ("capa_procedimento_comum.html", "capa"),
         ("capa_execucao_varias_partes.html", "capa"),
         ("capa_foro_interior.html", "capa"),
@@ -76,9 +78,11 @@ def test_lista_com_proxima_pagina() -> None:
     assert primeiro.classe == "Procedimento Comum Cível"
     assert primeiro.assunto == "Indenização por Dano Moral"
     assert primeiro.data_distribuicao == date(2024, 5, 2)
-    assert primeiro.foro == "Foro Central Cível"
+    assert primeiro.foro == "Foro Central Cível"  # do cabeçalho h2 do grupo
+    assert primeiro.vara == "12ª Vara Cível"
     assert (primeiro.nome_parte, primeiro.polo) == (None, None)
     assert resultado.itens[1].foro == "Foro Regional I - Santana"
+    assert resultado.itens[2].foro == "Foro de Campinas"
 
 
 def test_lista_ultima_pagina_por_nome() -> None:
@@ -96,6 +100,12 @@ def test_lista_ultima_pagina_por_nome() -> None:
 def test_sem_resultado_devolve_lista_vazia() -> None:
     resultado = extrair_lista(pagina("sem_resultado.html"))
     assert (resultado.itens, resultado.total, resultado.proxima_pagina) == ([], 0, None)
+
+
+def test_muitos_resultados_pede_refinar_a_busca() -> None:
+    with pytest.raises(BuscaAmpla) as erro:
+        extrair_lista(pagina("muitos_resultados.html"))
+    assert erro.value.tribunal == "TJSP"
 
 
 def test_lista_com_todos_os_itens_ilegiveis_indica_layout_alterado() -> None:

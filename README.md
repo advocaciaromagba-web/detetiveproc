@@ -356,5 +356,16 @@ A primeira coleta real mostrou:
   capas), página 2 pedida com o CNPJ fictício, `robots.txt` contado como página e
   acentos perdidos sem `charset` no cabeçalho.
 
+Terceira coleta (script v2, 25 páginas): o leitor leu todas as listas e capas. Achados
+incorporados: a lista vem **agrupada por foro** (`h2.foroDosProcessos`; o texto após a
+data é a vara); busca por nome de grande litigante devolve "Foram encontrados muitos
+processos... refine" (`BuscaAmpla`, resposta válida, vale como cache); a busca por
+número devolve uma lista de 1 item (o adaptador segue até a capa); números fora do
+padrão CNJ são descartados; "Araçatuba/DEECRIM UR2" vira comarca Araçatuba. No eproc,
+a consulta avançada tem nome/CPF/CNPJ, mas "entidades com muitos processos não podem
+ser consultadas", e ela, a unificada e a Lista de Distribuição exigem Turnstile.
+
 Páginas novas passam por `ferramentas/anonimizar_fixtures.py` antes de entrar em
-`tests/fixtures/*/reais` (a ferramenta recusa gravar se sobrar nome original).
+`tests/fixtures/*/reais` (a ferramenta recusa gravar se sobrar nome original). Processo
+que não pode ser identificado (segredo de justiça): `--processo NUMERO` troca número,
+código interno, foro e vara por fictícios.

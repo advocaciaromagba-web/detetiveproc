@@ -1,11 +1,15 @@
 """Adaptador do eproc/TJSP, 1º grau — ESQUELETO, sem leitor de páginas.
 
-Fase 0 (coleta real de 25/09/2026, tests/fixtures/tjsp_eproc/reais): o endereço antigo
-(eproc1g) leva à Consulta Processual Unificada em eproc-consulta.tjsp.jus.br, que só
-pesquisa por NÚMERO e exige Cloudflare Turnstile (verificação humana) para consultar.
-Sem contorno (CLAUDE.md), o robô não pode buscar no eproc por documento nem por nome:
-``PRONTO`` fica False e a cobertura do eproc vem de outras fontes (DataJud,
-publicações). A "consulta avançada" do eproc ainda precisa ser coletada e conferida.
+Fase 0 (coleta real de 25/09/2026, tests/fixtures/tjsp_eproc/reais), em
+eproc-consulta.tjsp.jus.br/consulta_1g, para onde o endereço antigo (eproc1g) leva:
+- Consulta Unificada: só por número; exige Cloudflare Turnstile (verificação humana);
+- Consulta avançada (``tjsp@consulta_publica_eproc/consultar``): número, nome da parte,
+  CPF/CNPJ e OAB, mas "entidades com muitos processos não podem ser consultadas" e
+  também exige Turnstile;
+- Lista de Distribuição (``processo_distribuicao_listar``): por dia ou período; também
+  exige Turnstile.
+Sem contorno (CLAUDE.md), o robô não consulta o eproc: ``PRONTO`` fica False e a
+cobertura do eproc vem de outras fontes (DataJud, publicações/DJEN).
 
 Já pronto: a sessão HTTP comum (limitador, ``robots.txt``, guarda do bruto, cache) via
 ``AdaptadorHttp`` e a verificação de saúde, que abre o formulário público e detecta

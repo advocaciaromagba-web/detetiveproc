@@ -23,7 +23,7 @@ from selectolax.parser import HTMLParser, Node
 from adaptadores.desafio import eh_desafio_humano
 from core.cnj import NumeroCNJInvalido, formatar_cnj
 from core.dto import AdvogadoDict, ParteDTO, Polo, ProcessoDTO
-from core.excecoes import DesafioHumano, LayoutAlterado, ProcessoSigiloso
+from core.excecoes import DesafioHumano, ErroAdaptador, LayoutAlterado, ProcessoSigiloso
 from core.nomes import remover_acentos
 from pipeline.normalizador import valor_para_centavos
 
@@ -32,9 +32,25 @@ logger = logging.getLogger(__name__)
 TRIBUNAL = "TJSP"
 URL_BASE = "https://esaj.tjsp.jus.br"
 
-TipoPagina = Literal["lista", "capa", "sem_resultado", "captcha", "sigilo", "desconhecida"]
+TipoPagina = Literal[
+    "lista", "capa", "sem_resultado", "muitos_resultados", "captcha", "sigilo", "desconhecida"
+]  # fmt: skip
 
-_SEM_RESULTADO = "NAO EXISTEM INFORMACOES DISPONIVEIS"
+
+class BuscaAmpla(ErroAdaptador):
+    """O e-SAJ recusou listar: "Foram encontrados muitos processos... refine sua busca".
+
+    Resposta válida do tribunal (não é falha de layout nem bloqueio): o parâmetro é
+    genérico demais (ex.: nome de grande litigante) e a busca precisa ser refinada."""
+
+    def __init__(self, tribunal: str = "TJSP") -> None:
+        super().__init__(tribunal, "tribunal pediu para refinar a busca (muitos processos)")
+
+
+_MENSAGENS: tuple[tuple[str, TipoPagina], ...] = (
+    ("NAO EXISTEM INFORMACOES DISPONIVEIS", "sem_resultado"),
+    ("FORAM ENCONTRADOS MUITOS PROCESSOS", "muitos_resultados"),
+)
 _SEGREDO = "SEGREDO DE JUSTICA"
 
 _DATA = re.compile(r"(\d{2})/(\d{2})/(\d{4})")
@@ -42,6 +58,8 @@ _DATA_E_FORO = re.compile(r"^\s*(\d{2}/\d{2}/\d{4})\s*-\s*(.+?)\s*$")
 _ROTULO_ADVOGADO = re.compile(r"^(ADVOGAD[OA]|DEFENSOR[A]?|PROCURADOR[A]?)S?\s*:\s*", re.I)
 _FORO_CAPITAL = re.compile(r"^FORO (CENTRAL|REGIONAL)\b")
 _FORO_DE = re.compile(r"^Foro\s+(?:Distrital\s+)?d[aeo]s?\s+(.+)$", re.I)
+# Unidades regionais fora do padrão "Foro de X": "Araçatuba/DEECRIM UR2" -> Araçatuba.
+_COMARCA_BARRA = re.compile(r"^([^/\d]+?)\s*/\s*\S")
 # Unidades que não são comarca ("Foro 1 - Núcleo 4.0", "Foro das Execuções Fiscais").
 _NAO_COMARCA = re.compile(r"\d|\b(NUCLEO|EXECUCOES|JUIZADO|VARA|UNIDADE|FAZENDA)\b")
 _NUMERO = re.compile(r"\d[\d.]*")
@@ -73,7 +91,8 @@ class ItemLista:
     classe: str | None = None
     assunto: str | None = None
     data_distribuicao: date | None = None
-    foro: str | None = None
+    foro: str | None = None  # do cabeçalho que agrupa a lista (h2.foroDosProcessos)
+    vara: str | None = None  # "dd/mm/aaaa - 1ª Vara Judicial"
     nome_parte: str | None = None  # só nas buscas por nome/documento
     tipo_participacao: str | None = None
     polo: Polo | None = None
@@ -149,7 +168,7 @@ def comarca_do_foro(foro: str | None) -> str | None:
         return None
     if _FORO_CAPITAL.match(_chave(foro)):
         return "São Paulo"
-    achado = _FORO_DE.match(foro.strip())
+    achado = _FORO_DE.match(foro.strip()) or _COMARCA_BARRA.match(foro.strip())
     if achado is None or _NAO_COMARCA.search(_chave(achado.group(1))):
         return None
     return achado.group(1).strip()
@@ -162,8 +181,9 @@ def _classificar(arvore: HTMLParser) -> TipoPagina:
     if eh_desafio_humano(arvore):
         return "captcha"
     mensagem = _chave(_texto(arvore.css_first("#mensagemRetorno")) or "")
-    if _SEM_RESULTADO in mensagem:
-        return "sem_resultado"
+    for trecho, tipo in _MENSAGENS:
+        if trecho in mensagem:
+            return tipo
     if arvore.css_first("#listagemDeProcessos") is not None:
         return "lista"
     tem_classe = arvore.css_first("#classeProcesso") is not None
@@ -171,9 +191,9 @@ def _classificar(arvore: HTMLParser) -> TipoPagina:
         not tem_classe and _SEGREDO in _chave(_texto(arvore.body) or "")
     ):
         return "sigilo"
-    if arvore.css_first("#numeroProcesso") is not None and tem_classe:
-        return "capa"
-    return "desconhecida"
+    return (
+        "capa" if arvore.css_first("#numeroProcesso") is not None and tem_classe else "desconhecida"
+    )
 
 
 def classificar(html: str) -> TipoPagina:
@@ -193,6 +213,8 @@ def _exigir(arvore: HTMLParser, esperado: TipoPagina) -> None:
     if tipo == "sigilo":
         numero = _cnj(_texto(arvore.css_first("#numeroProcesso"))) or ""
         raise ProcessoSigiloso(TRIBUNAL, numero)
+    if tipo == "muitos_resultados":
+        raise BuscaAmpla(TRIBUNAL)
     raise LayoutAlterado(TRIBUNAL, f"esperada página '{esperado}', recebida '{tipo}'")
 
 
@@ -210,22 +232,24 @@ def _proxima(arvore: HTMLParser, base: str) -> str | None:
     return urljoin(base, href) if href and href != "#" else None
 
 
-def _item(no: Node, base: str) -> ItemLista | None:
+def _item(no: Node, base: str, foro: str | None) -> ItemLista | None:
     link = no.css_first("a.linkProcesso")
     numero = _cnj(_texto(link))
     href = (link.attributes.get("href") or "").strip() if link is not None else ""
     if numero is None or not href or href == "#":
-        logger.warning("item da lista sem número CNJ ou link válido descartado")
+        # Processos antigos ainda aparecem com número fora do padrão CNJ.
+        logger.info("item da lista sem número CNJ ou link válido descartado")
         return None
-    data_foro = _DATA_E_FORO.match(_texto(no.css_first(".dataLocalDistribuicaoProcesso")) or "")
+    data_vara = _DATA_E_FORO.match(_texto(no.css_first(".dataLocalDistribuicaoProcesso")) or "")
     tipo = _texto(no.css_first(".tipoDeParticipacao"))
     return ItemLista(
         numero_cnj=numero,
         url_capa=urljoin(base, href),
         classe=_texto(no.css_first(".classeProcesso")),
         assunto=_texto(no.css_first(".assuntoPrincipalProcesso")),
-        data_distribuicao=_data(data_foro.group(1)) if data_foro else None,
-        foro=data_foro.group(2) if data_foro else None,
+        data_distribuicao=_data(data_vara.group(1)) if data_vara else None,
+        foro=foro,
+        vara=data_vara.group(2) if data_vara else None,
         nome_parte=_texto(no.css_first(".nomeParte")),
         tipo_participacao=tipo.rstrip(":").strip() if tipo else None,
         polo=polo_do_rotulo(tipo) if tipo else None,
@@ -235,15 +259,28 @@ def _item(no: Node, base: str) -> ItemLista | None:
 def extrair_lista(html: str, base: str = URL_BASE) -> ResultadoLista:
     """Lista de resultados de uma busca (``search.do``/``trocarPagina.do``).
 
-    "Sem resultado" devolve lista vazia. CAPTCHA -> ``DesafioHumano``; qualquer outra
-    página (inclusive a capa) -> ``LayoutAlterado``.
+    "Sem resultado" devolve lista vazia. "Muitos processos, refine" -> ``BuscaAmpla``;
+    CAPTCHA -> ``DesafioHumano``; qualquer outra página (inclusive a capa) ->
+    ``LayoutAlterado``. Os itens vêm agrupados por foro (cabeçalho ``h2``).
     """
     arvore = HTMLParser(html)
     if _classificar(arvore) == "sem_resultado":
         return ResultadoLista(total=0)
     _exigir(arvore, "lista")
-    nos = arvore.css("#listagemDeProcessos li")
-    itens = [item for item in (_item(no, base) for no in nos) if item is not None]
+    container = arvore.css_first("#listagemDeProcessos")
+    if container is None:  # _exigir garante que existe; defesa contra regressão
+        raise LayoutAlterado(TRIBUNAL, "lista sem #listagemDeProcessos")
+    nos: list[Node] = []
+    itens: list[ItemLista] = []
+    foro: str | None = None
+    for no in container.traverse():
+        if no.tag == "h2" and "foroDosProcessos" in (no.attributes.get("class") or ""):
+            foro = _texto(no)
+        elif no.tag == "li":
+            nos.append(no)
+            item = _item(no, base, foro)
+            if item is not None:
+                itens.append(item)
     if nos and not itens:
         raise LayoutAlterado(TRIBUNAL, "nenhum item da lista pôde ser lido")
     return ResultadoLista(itens=itens, total=_total(arvore), proxima_pagina=_proxima(arvore, base))

@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="pt-br" >
+<head >
+<link rel="shortcut icon" href="/imagens/icons/favicons/favicon_P_SP.ico" /><meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no"><input id="url_log_erro_javascript" name="url_log_erro_javascript" type="hidden" value="controlador_ajax.php?acao_ajax=log_erro_javascript&acao_origem=tjsp@consulta_publica_eproc/consultar&hash=efc8ff23432c328a067252fc9fa908eb" />
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/>
+<meta name="robots" content="noindex"/>
+<title>:: eproc - Consulta Processual - Busca de Processo ::</title>
+<link rel="stylesheet" href="css/dist/bundle-bs4.4e03c2164e9d6fbfac1a.css"><link rel="stylesheet" href="css/dist/bundle-bs4-contrast.d48ad96935e61a07dafb.css"><link rel="stylesheet" href="css/dist/bundle-global.d8623d223e389968cb16.css"><link rel="stylesheet" href="css/dist/bundle-infra.74dcfa6d713134e5ef04.css"><link rel="stylesheet" href="css/dist/bundle-infra-contrast.079c8a1d7910fa75d7f4.css"><link href="infra_js/multiple-select/multiple-select.css?9.22.19-20260924-3.0.8" rel="stylesheet" type="text/css" media="all" />
+<style>
+
+    #selClasseJudicial, .classeMultipleSelect {
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        -ms-box-sizing: border-box;
+        box-sizing: border-box;
+        width: 29%;
+        margin-top: 5px;
+        margin-left: 4px;
+    }
+
+    dl {
+        margin-bottom: 0!important;
+    }
+
+    dd.ddFldForm {
+        margin-left: 0!important;
+        width: 307px!important;
+    }
+
+    dt.dtLblForm {
+        margin-right: 5px!important;
+        width: 174px!important;
+    }
+
+    #txtStrIpl {
+        width: 170px!important;
+    }
+
+    dd.ddChkForm {
+        display: inline-block;
+        margin: 11px 0px 0px 0px;
+        width: auto;
+    }
+    .classeMultipleSelect .ms-drop {
+        width: 99%;
+    }
+    .localizadorPrincipal {
+        font-weight: 600;
+        text-decoration: underline;
+    }
+    
+    /** Alinhar bot�o "Exportar" */
+    .row:has(.dt-buttons.btn-group) {
+        text-align: right;
+        margin-top: 16px;
+        margin-bottom: 16px;
+    }
+
+</style>
+<link href="js/multiple-select/multiple-select.css?9.22.19-20260924-3.0.8" rel="stylesheet" type="text/css" media="all"/>
+<link href="css/captchaGenericoEproc.css?9.22.19-20260924-3.0.8" rel="stylesheet" type="text/css" media="all"/>
+<script>var INFRA_PATH_CSS = "infra_css",
+    INFRA_PATH_IMAGENS = "infra_css\/imagens",
+    INFRA_PATH_JS = "infra_js",
+    INFRA_PATH_SVG = "infra_css\/svg",
+    INFRA_LUPA_TIPO_JANELA = 1,
+    INFRA_BARRA_TIPO_JANELA = 1,
+    INFRA_TIPO_ALERTA = 1,
+    ENV = "prod",
+    LOGAR_ERROS_JS = false;</script>				<script charset="utf-8" src="js/dist/runtime.29e3254c61c00a76ae7c.js"></script><script charset="utf-8" src="js/dist/npm.jquery-ui.92a8e650f4b5451c6e81.js"></script><script charset="utf-8" src="js/dist/npm.jquery.db93d612e517c67739d5.js"></script><script charset="utf-8" src="js/dist/npm.js-cookie.14f3186a57736ae5e5ad.js"></script><script charset="utf-8" src="js/dist/npm.jquery-contextmenu.b5636b90f0dde6f99c2c.js"></script><script charset="utf-8" src="js/dist/npm.expose-loader.370c01bb730bd4cf7283.js"></script><script charset="utf-8" src="js/dist/shared.3039ad4cb600f3010d90.js"></script><script charset="utf-8" src="js/dist/3247.8bb6ac9bcdbce41b9548.js"></script><script charset="utf-8" src="js/dist/websocket.7ebbb902a90ae666e646.js"></script><script charset="utf-8" src="js/dist/npm.lodash.7e8d6ae734003ec18add.js"></script><script charset="utf-8" src="js/dist/npm.trf4.048901bf561adaacb78f.js"></script><script charset="utf-8" src="js/dist/npm.unorm.47cc161ba83e52f1e6ae.js"></script><script charset="utf-8" src="js/dist/npm.imask.9e5eaf4d2efafb4fe47c.js"></script><script charset="utf-8" src="js/dist/npm.hotwired.3ef291892b97e281f78f.js"></script><script charset="utf-8" src="js/dist/npm.lodash.debounce.191b0f64bbcdf669f89f.js"></script><script charset="utf-8" src="js/dist/npm.core-js.ea72d3965a96975854a9.js"></script><script charset="utf-8" src="js/dist/npm.moment.b821744409b917fab105.js"></script><script charset="utf-8" src="js/dist/npm.bootstrap-fileinput.51b9a0b4102ca12b573b.js"></script><script charset="utf-8" src="js/dist/npm.local-storage-fallback.d08fdb4590045f5272b9.js"></script><script charset="utf-8" src="js/dist/npm.bootstrap-select.add788e9a401a483f286.js"></script><script charset="utf-8" src="js/dist/npm.yaireo.e79196e7996e1f57dd9f.js"></script><script charset="utf-8" src="js/dist/npm.axios.5be569efb5d72b6a3b1f.js"></script><script charset="utf-8" src="js/dist/npm.tempusdominus-bootstrap-4.9ff0eb91c9e5f49a0bc1.js"></script><script charset="utf-8" src="js/dist/npm.regenerator-runtime.58f1def8d4ab41d513f8.js"></script><script charset="utf-8" src="js/dist/npm.popper.js.e70d69dbb5554c640b2b.js"></script><script charset="utf-8" src="js/dist/npm.lodash.throttle.09bbb3940da5a2421739.js"></script><script charset="utf-8" src="js/dist/npm.jstree.f1bc0f58dfe777fe3bbd.js"></script><script charset="utf-8" src="js/dist/npm.cookie.2919f10e6c4063394e0a.js"></script><script charset="utf-8" src="js/dist/npm.bs-custom-file-input.b5579505d605be14552c.js"></script><script charset="utf-8" src="js/dist/npm.bootstrap.83f4700d85eceac25b4a.js"></script><script charset="utf-8" src="js/dist/npm.abortcontroller-polyfill.12791e4b290d1f27570e.js"></script><script charset="utf-8" src="js/dist/5298.0d6f5a9340e5e72e1d8e.js"></script><script charset="utf-8" src="js/dist/466.c1f1fcbc1c8a9b6fbef0.js"></script><script charset="utf-8" src="js/dist/1504.4ce3e37330ae2c42e136.js"></script><script charset="utf-8" src="js/dist/3354.202830f13311b592fae9.js"></script><script charset="utf-8" src="js/dist/main.897e85612e21bf910fc9.js"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraUtil.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraCookie.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraUpload.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraMenu.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraBotaoMenu.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraAcaoMenu.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraTabelaDinamica.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraLupas.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraSelectEditavel.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraAjax.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraTooltip.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/InfraPagina.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/calendario/v1/InfraCalendario.js?9.22.19-20260924-3.0.8"></script>
+				<script type="text/javascript" charset="iso-8859-1" src="infra_js/arvore/InfraArvore.js?9.22.19-20260924-3.0.8"></script>
+                <script type="text/javascript" charset="utf-8" src="js/exibir-aviso.js?9.22.19-20260924-3.0.8"></script><script type="text/javascript" charset="iso-8859-1" src="infra_js/infra_pagina_renderer/bs4/main.js?9.22.19-20260924-3.0.8"></script><script type="text/javascript" charset="iso-8859-1" src="js/multiple-select/jquery.multiple.select.js?9.22.19-20260924-3.0.8"></script>
+<script>
+    
+                $(document).ready(function(){
+                    $("#txtStrIpl").attr("maxlength", obterNumeroMaximoDigitosIpl());
+                    $("#txtStrIpl").addClass("ipl-somente-numeros");
+
+                    $("#txtStrIpl").on("input",function(e){
+                        if (e.key === "Backspace") return;
+                        var digitado = infraRetirarFormatacao($(this).val());
+                        digitado = formatarIplDigitado(digitado + e.key);
+                        $(this).val(digitado);
+                    });
+
+                    $(".ipl-somente-numeros").keypress(function(event) {
+                        var tecla = (window.event) ? event.keyCode : event.which;
+                        if ((tecla > 47 && tecla < 58)) return true;
+                        else {
+                            if (tecla != 8) return false;
+                            else return true;
+                        }
+                    });
+                });
+            function retirarSeparadorFormatoIpl(formato) {
+                var res = "";
+                var arrSeparadores = ["/"];
+                for (var i = 0; i < formato.length; i++) {
+                    if (!arrSeparadores.includes(formato[i]))
+                        res = res + formato[i];
+                }
+                return res;
+            }
+        
+            function obterSeparadorFormatoIpl(formato) {
+                var arrSeparadores = ["/"];
+                for (var i = 0; i < arrSeparadores.length; i++) {
+                    if (formato.indexOf(arrSeparadores[i]) > 0)
+                        return arrSeparadores[i];
+                }
+                return null;
+            }
+            
+            function obterParteAnoFormatoIpl(formato) {
+                var partes = formato.split(obterSeparadorFormatoIpl(formato));
+                for (var i = 0; i < partes.length; i++) {
+                    if (partes[i] == "AAAA") {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+            
+            function obterNumeroMaximoDigitosIpl() {
+                var arrFormatoIpl = ["NNNNNNN/AAAA"];
+                var max = 0;
+                for (var i = 0; i < arrFormatoIpl.length; i++) {
+                    var formato = arrFormatoIpl[i];
+                    if (formato.length > max)
+                        max = formato.length;
+                }
+                return max;
+            }
+        
+            function formatarIplDigitado(digitado) {                
+                // Retirar formata��o
+                digitado = infraRetirarFormatacao(digitado);
+                
+                // Se vazio, retornar vazio
+                if (digitado == "") return "";
+                
+                // Formatos do IPL
+                var arrFormatoIpl = ["NNNNNNN/AAAA"];
+                
+                // Formato Padr�o
+                var formatoPadrao = arrFormatoIpl[0];
+                
+                // Identificar o poss�vel padr�o
+                for (var i = 0; i < arrFormatoIpl.length; i++) {
+                    var formato = arrFormatoIpl[i];
+                    var formatoSemSep = retirarSeparadorFormatoIpl(formato);
+                    var separador = obterSeparadorFormatoIpl(formato);
+                    var posSep = formato.indexOf(separador);
+                    
+                    if (formatoSemSep.length >= digitado.length) {
+                        if (digitado.length-1 >= posSep) {
+                            digitado = digitado.substr(0, posSep) + separador + digitado.substr(posSep, digitado.length - posSep);
+                        }
+                        break;
+                    }
+                }
+                
+                return digitado;
+            }
+            
+            function validarIpl(ipl) {
+                ipl = infraTrim(ipl);
+                if (ipl == "") return "Falta informar n�mero do IPL.";
+
+                // Obter o separador
+                var separadorIPL = obterSeparadorFormatoIpl(ipl);
+                if (separadorIPL == null || separadorIPL == "") return "Falta informar n�mero do IPL.";
+                
+                // Partes do IPL
+                var arrPartesIPL = ipl.split(separadorIPL);
+            
+                // Formatos do IPL
+                var arrFormatoIpl = ["NNNNNNN/AAAA"];
+                
+                // Identificar o poss�vel padr�o
+                for (var i = 0; i < arrFormatoIpl.length; i++) {
+                    var formato = arrFormatoIpl[i];
+                    var separador = obterSeparadorFormatoIpl(formato);
+                    var partes = formato.split(separador);
+                    
+                    // Compara separador
+                    if (separadorIPL != separador) continue;
+                    // Compara n�mero de partes
+                    if (arrPartesIPL.length != partes.length) continue;
+                    // Compara primeira parte
+                    if (arrPartesIPL[0].length != partes[0].length) continue;
+                    // Compara segunda parte
+                    if (arrPartesIPL[1].length != partes[1].length) continue;
+                    // Valida o ano
+                    var parteAno = obterParteAnoFormatoIpl(formato);
+                    var ano = parseInt(arrPartesIPL[parteAno]);
+                    var anoAtual = (new Date()).getFullYear();
+                    if (ano < 2000 || ano > anoAtual) {
+                        return "Ano do IPL � inv�lido";
+                    } 
+                    // Se chegar aqui, o IPL � v�lido!
+                    return true;
+                }
+                var msgErro = "N�mero de IPL inv�lido. Precisa estar em um dos seguintes formatos: ";
+                if (arrFormatoIpl.length == 1)
+                    msgErro = "N�mero de IPL inv�lido. Precisa estar no seguinte formato: ";
+                for (var i = 0; i < arrFormatoIpl.length; i++) {
+                    if (i > 0) {
+                        if (i == arrFormatoIpl.length-1)
+                            msgErro = msgErro + " ou ";
+                        else
+                            msgErro = msgErro + ", ";
+                    }
+                    msgErro = msgErro + arrFormatoIpl[i];
+                }
+                return msgErro;
+            }        
+        
+    window.particulasDesconsideradas = [{"CodStopwo":"!"},{"CodStopwo":"\""},{"CodStopwo":"#"},{"CodStopwo":"$"},{"CodStopwo":"%"},{"CodStopwo":"&"},{"CodStopwo":"'"},{"CodStopwo":"("},{"CodStopwo":")"},{"CodStopwo":"*"},{"CodStopwo":"+"},{"CodStopwo":","},{"CodStopwo":"-"},{"CodStopwo":"."},{"CodStopwo":"..."},{"CodStopwo":"\/"},{"CodStopwo":":"},{"CodStopwo":";"},{"CodStopwo":"<"},{"CodStopwo":"="},{"CodStopwo":">"},{"CodStopwo":"?"},{"CodStopwo":"@"},{"CodStopwo":"a"},{"CodStopwo":"anonima"},{"CodStopwo":"\u2013"},{"CodStopwo":"cia"},{"CodStopwo":"cia."},{"CodStopwo":"cia\/"},{"CodStopwo":"comp"},{"CodStopwo":"comp."},{"CodStopwo":"comp\/"},{"CodStopwo":"companhia"},{"CodStopwo":"d"},{"CodStopwo":"da"},{"CodStopwo":"das"},{"CodStopwo":"de"},{"CodStopwo":"do"},{"CodStopwo":"dos"},{"CodStopwo":"e"},{"CodStopwo":"em"},{"CodStopwo":"esp"},{"CodStopwo":"esp."},{"CodStopwo":"esp\/"},{"CodStopwo":"espolio"},{"CodStopwo":"falida"},{"CodStopwo":"limitada"},{"CodStopwo":"limitada\/"},{"CodStopwo":"ltda"},{"CodStopwo":"ltda."},{"CodStopwo":"ltda\/"},{"CodStopwo":"m.e"},{"CodStopwo":"m.e."},{"CodStopwo":"m.f."},{"CodStopwo":"massa"},{"CodStopwo":"me"},{"CodStopwo":"mf"},{"CodStopwo":"outro"},{"CodStopwo":"outros"},{"CodStopwo":"para"},{"CodStopwo":"por"},{"CodStopwo":"s"},{"CodStopwo":"s.a"},{"CodStopwo":"s.a."},{"CodStopwo":"s.c"},{"CodStopwo":"s.c."},{"CodStopwo":"s\/a"},{"CodStopwo":"s\/c"},{"CodStopwo":"sc"},{"CodStopwo":"trf"},{"CodStopwo":"["},{"CodStopwo":"\\"},{"CodStopwo":"]"},{"CodStopwo":"_"},{"CodStopwo":"`"},{"CodStopwo":"{"},{"CodStopwo":"|"},{"CodStopwo":"}"},{"CodStopwo":"~"},{"CodStopwo":"\u0096"},{"CodStopwo":"\u00a7"},{"CodStopwo":"\u00a8"},{"CodStopwo":"\u00aa"},{"CodStopwo":"\u00ba"}];
+    window.captchaObrigatorio = true;
+    
+    function validarConsulta() {
+        return true;
+    }
+
+    function inicializar() {
+        tratarMultipleSelect();
+    }
+
+    function tratarMultipleSelect()
+    {
+        $('#selIdClasse').multipleSelect({
+            filter: true,
+            minimumCountSelected: 0,
+            selectAll: true
+        }); 
+
+        var arrSels = '';
+        if (arrSels != "") {
+            $('#selIdClasse').multipleSelect("setSelects", (arrSels.split(',')));
+        }
+    }
+
+    function retornaOrgaosConsulta() {
+        return ["SP","EF","CR"];
+    }
+
+</script>
+<script language="JavaScript" src="modulos/tjsp/js/MdTjspConsulta_publica_eproc_v02.js?9.22.19-20260924-3.0.8"></script>
+</head>
+<body onload="infraProcessarResize(); infraProcessarMouseDown(); inicializar();" class="bootstrap-styles instancia-1g" class=&quot;bg-light&quot;>
+
+    
+
+    <div id="divInfraAreaGlobal">
+        
+                    <div class="bootstrap-styles navbar-wrapper">
+                
+<nav id="navbar-accessibility" class="accessibility-bar bg-instancia collapse" data-id="69"
+     data-ativo="S">
+    <a href="#divInfraBarraLocalizacao" id="ancora-conteudo" tabindex="0" title="Conte�do principal da p�gina (Alt+1 e ENTER)" class="item-acessibilidade">Ir para conte�do</a>
+    <a href="#sidebar-searchbox" id="ancora-menu" tabindex="0" title="(Alt+M)" class="item-acessibilidade">Ir para menu</a>
+
+    
+            <a href="#/" id="btn-aumentar-fonte" tabindex="0" title="Aumentar fonte" class="item-acessibilidade" data-id="70"
+           data-ativo="N" data-numvalor="">
+            <i class="material-icons icon-aligned-sm" aria-hidden="true">text_increase</i>
+        </a>
+        <a href="#/" id="btn-diminuir-fonte" tabindex="0" title="Dimiuir fonte" class="item-acessibilidade" data-id="70"
+           data-ativo="N" data-numvalor="">
+            <i class="material-icons icon-aligned-sm" aria-hidden="true">text_decrease</i>
+        </a>
+        <a href="#/" id="btn-theme-contrast" tabindex="0" title="Alto contraste" data-id="68" data-ativo="N"
+       class="item-acessibilidade">
+        <i class="material-icons icon-aligned-sm" aria-hidden="true">contrast</i>
+    </a>
+    <a href="#/" id="btn-vlibras" tabindex="0" title="Habilitar o tradutor para libras" class="item-acessibilidade">
+        <img src="imagens/icons/maos_libras.png" aria-hidden="true"/> Libras
+    </a>
+    <input type="hidden" id="link-usuario-configuracao-personalizacao" value="controlador_ajax.php?acao_ajax=usuario_configuracao_personalizacao&amp;acao_origem=tjsp@consulta_publica_eproc/consultar&amp;hash=4591d38a15be1339886038ec8934e6ff"/>
+    <a href="externo_controlador.php?acao=tutorial_acessibilidade&amp;acao_origem=tjsp@consulta_publica_eproc/consultar&amp;hash=a3d57bcf2b68572c72cbcdc747110ec3" id="btn-pagina-acessibilidade" tabindex="0" title="Acessibilidade (Alt+F1)" class="item-acessibilidade">Acessibilidade</a>
+
+    </nav>                <nav id='navbar' class="navbar text-white d-xl-flex bg-instancia ">
+                    <div class="d-flex w-100 justify-content-between" style="font-size: 14px;">
+    <div class="d-flex align-items-center">
+                    <div style="padding: 8px">
+
+                                
+                <button
+                    type="button"
+                    class="btn btn-link"
+                    id="menu-btn"
+                    aria-label="Abrir menu"
+                    aria-expanded="true"
+                    aria-controls="sidebar-wrapper"
+                >
+                    <i title="Abrir menu" aria-hidden="true" class="material-icons navbar-icons">menu</i>
+                </button>
+            </div>
+        
+        <div><a href='http://www.tjsp.jus.br' title='http://www.tjsp.jus.br'>
+						<span class='pr-3 d-none text-white d-sm-block'>C�vel - Tribunal de Justi�a do Estado de S�o Paulo</span>
+						<span class='navbar-span pr-3 d-block d-sm-none'>SP</span>
+					</a>
+				</div>
+    </div>
+    <div class="d-none d-flex align-items-center">
+        
+            </div>
+</div>
+                </nav>
+            </div>
+            <!-- Modal -->
+            <div class="bootstrap-styles">
+                <div class="modal fade" id="modal-pesquisar-processo" tabindex="-1" aria-labelledby="pesquisaProcessoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="pesquisaProcessoModalLabel">Pesquisar processo</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="infraButton" data-dismiss="modal">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+                    <div id='wrapper' class="abre-automaticamente">
+        
+                                
+            <div class="bootstrap-styles">
+                <nav id="sidebar-wrapper" aria-labelledby="menu-title" aria-expanded="true" class="abre-automaticamente show menu-dark">
+                    <h2 id="menu-title" class="sr-only">Menu lateral</h2>
+                    <div class="menu-searchbox input-group input-group-sm">
+                        <input id="sidebar-searchbox" type="text" class="form-control menu-search-box" style="margin: 5px;" title="Pesquisar no menu (Alt + m)" placeholder="Pesquisar no Menu (Alt + m)">
+                    </div>
+                    <ul id="main-menu" class="sidebar-nav search-list">
+                        
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=tutorial_acessibilidade&amp;hash=7fa3def099493dae91345c4d94efd028"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-37"
+           aria-label="Acessibilidade"
+         >
+            <span class="menu-item-text">Acessibilidade</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=pauta_audiencias&amp;hash=90a854ba87fed0ddd66114b7113fe285"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-2"
+           aria-label="Audi�ncias"
+         >
+            <span class="menu-item-text">Audi�ncias</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=principal&amp;hash=3ad415f4fd6f25e121e85e40360dbcfb"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-1"
+           aria-label="Entrar no Sistema"
+         >
+            <span class="menu-item-text">Entrar no Sistema</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://www.tjsp.jus.br/auxiliaresdajustica"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-32"
+           aria-label="Auxiliares da Justi�a"
+         >
+            <span class="menu-item-text">Auxiliares da Justi�a</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class='has-submenu'>
+
+        <a href="#"
+           class="collapsed"
+           tabindex="0"
+           data-toggle="collapse"
+           data-target="#menu-ul-40"
+           aria-label="CEJUSC Virtual"
+         >
+            <span class="menu-item-text">CEJUSC Virtual</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+                    <ul class="collapse" id="menu-ul-40">
+                
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=FormularioAtermacao/CadastrarAtermacao&amp;hash=202921a2baf43b367b25532515756f6e"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-42"
+           aria-label="Formul�rio Aterma��o"
+         >
+            <span class="menu-item-text">Formul�rio Aterma��o</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+            </ul>
+            </li>
+
+    <li class='has-submenu'>
+
+        <a href="#"
+           class="collapsed"
+           tabindex="0"
+           data-toggle="collapse"
+           data-target="#menu-ul-3"
+           aria-label="Cadastre-se AQUI!"
+         >
+            <span class="menu-item-text">Cadastre-se AQUI!</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+                    <ul class="collapse" id="menu-ul-3">
+                
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=selecionar_tipo_advogado_cadastrar&amp;hash=97f3351698ca59432c9dbbad3620a5a9"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-4"
+           aria-label="Cadastrar Advogado"
+         >
+            <span class="menu-item-text">Cadastrar Advogado</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=selecionar_tipo_jus_postulandi_cadastrar&amp;hash=8204a11db8442174eaf367fdcf6652ac"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-5"
+           aria-label="Cadastrar Jus Postulandi"
+         >
+            <span class="menu-item-text">Cadastrar Jus Postulandi</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://www.cnj.jus.br/tecnologia-da-informacao-e-comunicacao/justica-4-0/domicilio-judicial-eletronico"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-17"
+           aria-label="Domic�lio Judicial Eletr�nico"
+         target="_blank"  >
+            <span class="menu-item-text">Domic�lio Judicial Eletr�nico</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+            </ul>
+            </li>
+
+    <li class='has-submenu'>
+
+        <a href="#"
+           class="collapsed"
+           tabindex="0"
+           data-toggle="collapse"
+           data-target="#menu-ul-6"
+           aria-label="Consulta P�blica"
+         >
+            <span class="menu-item-text">Consulta P�blica</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+                    <ul class="collapse" id="menu-ul-6">
+                
+    <li class=''>
+
+        <a href="https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=consulta_autenticidade_certidao_narratoria&amp;hash=5d1c87afbc29deefbc73737e7e1f6722"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-26"
+           aria-label="Consulta Autenticidade de Certid�o Narrat�ria"
+         >
+            <span class="menu-item-text">Consulta Autenticidade de Certid�o Narrat�ria</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=certidaoexecucao/consultar&amp;hash=419635475122d20ffe61025218b3a82f"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-10"
+           aria-label="Consulta Certid�o para Execu��es"
+         >
+            <span class="menu-item-text">Consulta Certid�o para Execu��es</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=processo_consulta_publica_chave/consultar&amp;hash=07f3b522d08b450ed7fe2cee2aeb32d8"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-9"
+           aria-label="Consulta Documento pela Chave"
+         >
+            <span class="menu-item-text">Consulta Documento pela Chave</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=consulta_autenticidade_documentos&amp;hash=7b5f1daf3c86f3844671c3d986bf2eb9"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-8"
+           aria-label="Consulta de autenticidade de documento"
+         >
+            <span class="menu-item-text">Consulta de autenticidade de documento</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=processo_distribuicao_listar&amp;hash=a5c5b8adf2f6d4243cf2435d4921275b"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-31"
+           aria-label="Lista de Distribui��o"
+         >
+            <span class="menu-item-text">Lista de Distribui��o</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=relatorios/processosOrdemCronologicaJulgamento&amp;hash=2bcc2b6308106cd0cfee3f54271e4895"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-18"
+           aria-label="Ordem Cronol�gica de Julgamento"
+         >
+            <span class="menu-item-text">Ordem Cronol�gica de Julgamento</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+            </ul>
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=tjsp@consulta_unificada_publica/consultar&amp;hash=0fe739d286b916616a8faf2343bfeef2"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-39"
+           aria-label="Consulta Unificada"
+         >
+            <span class="menu-item-text">Consulta Unificada</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc1g-crim.tjsp.jus.br/eproc"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-44"
+           aria-label="Criminal Comum e Juizado Especial"
+         >
+            <span class="menu-item-text">Criminal Comum e Juizado Especial</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href=""
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-24"
+           aria-label="Custas processuais"
+         >
+            <span class="menu-item-text">Custas processuais</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc1g-ef.tjsp.jus.br/eproc"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-43"
+           aria-label="Execu��o Fiscal e Fazenda P�blica"
+         >
+            <span class="menu-item-text">Execu��o Fiscal e Fazenda P�blica</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=fale&amp;hash=59c0ee7124e0a571ac427121f2c49f58"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-11"
+           aria-label="Fale Conosco"
+         >
+            <span class="menu-item-text">Fale Conosco</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="externo_controlador.php?acao=jurisprudencia@jurisprudencia/pesquisar&amp;hash=5484cbaa22c8f56719c35c131352631e"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-38"
+           aria-label="Jurisprud�ncia"
+         >
+            <span class="menu-item-text">Jurisprud�ncia</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc1g.tjsp.jus.br/eproc/externo_controlador.php?acao=legislacao&amp;hash=d7d9a00ff8c2e4c16dcc0209ae31d45c"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-12"
+           aria-label="Legisla��o"
+         >
+            <span class="menu-item-text">Legisla��o</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="externo_controlador.php?acao=precedente_qualificado_publico/index&amp;hash=ecd006266749b3ed1b4505bc873ae4e9"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-45"
+           aria-label="Precedentes Qualificados"
+         >
+            <span class="menu-item-text">Precedentes Qualificados</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=consultaPublica/sessoesDeJulgamento&amp;hash=f2f2a5799954ba2914e42c1f88934398"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-28"
+           aria-label="Sess�es de Julgamento"
+         >
+            <span class="menu-item-text">Sess�es de Julgamento</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class='has-submenu'>
+
+        <a href="#"
+           class="collapsed"
+           tabindex="0"
+           data-toggle="collapse"
+           data-target="#menu-ul-13"
+           aria-label="Tutoriais"
+         >
+            <span class="menu-item-text">Tutoriais</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+                    <ul class="collapse" id="menu-ul-13">
+                
+    <li class=''>
+
+        <a href="https://www.tjsp.jus.br/eproc/ManuaisTutoriais"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-14"
+           aria-label="Tutoriais eproc usu�rios externos"
+         >
+            <span class="menu-item-text">Tutoriais eproc usu�rios externos</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+
+    <li class=''>
+
+        <a href="https://www.tjsp.jus.br/moodle/eproc/"
+           class="collapsed"
+           tabindex="0"
+           data-toggle=""
+           data-target="#menu-ul-15"
+           aria-label="Tutoriais eproc usu�rios internos"
+         >
+            <span class="menu-item-text">Tutoriais eproc usu�rios internos</span>
+            <span class="sub-arrow material-icons">arrow_drop_down</span>
+        </a>
+
+            </li>
+            </ul>
+            </li>
+                                            </ul>
+                    <div id="empty-space" style="height: 200px"></div>
+                </nav>
+                <div id="sidebar-wrapper-background"></div>
+            </div>
+                            <div id='page-content-wrapper' class="bootstrap-styles">
+                <div id='divInfraAreaTela' class='infraAreaTela mt-2'>
+                    <div id='divInfraAreaTelaD' class="container-fluid">
+                                                    <div class='bootstrap-styles' id='divInfraBarraLocalizacao'>
+				<div class='pl-0 pr-0 pt-1 col-md-12 justify-content-between d-flex'>
+					<h1>Consulta Processual - Busca de Processo</h1>
+				</div>
+			</div>
+                                                                        <script>
+                            $(document).ready(function () {
+                                $('#menu-btn').on('click', function () {
+                                    var isExpanded = $(this).attr('aria-expanded') === 'true';
+                                    $(this).attr('aria-expanded', !isExpanded);
+
+                                    $('#sidebar-wrapper').attr('aria-expanded', !isExpanded);
+                                });
+                            });
+                        </script>
+                            <form id="frmProcessoListaAjax" method="post" action="">
+        <input type="hidden" id="hdnInfraTipoPagina" name="hdnInfraTipoPagina" value="1"/>
+<div id="divInfraBarraComandosSuperior" class="infraBarraComandos">
+<button type="submit" accesskey="C" name="sbmConsultar" id="sbmConsultar" value="Consultar" class="infraButton btn-primary" onclick="gerenciadorTelaConsulta.resetarPaginacao();"><span class="infraTeclaAtalho">C</span>onsultar</button><button type="button" accesskey="V" id="btnVoltar" value="Voltar" onclick="location.href='externo_controlador.php?acao=principal&hash=3ad415f4fd6f25e121e85e40360dbcfb'" class="infraButton"><span class="infraTeclaAtalho">V</span>oltar</button>
+</div><div id="divInfraAreaDadosDinamica" class="infraAreaDadosDinamica" >
+
+        <fieldset class="infraFieldset">
+
+            <div>
+                <input type="hidden" name="acao_origem" id="hdnAcaoOrigem" value=""  />
+                <input type="hidden" name="acao_retorno" id="hdnAcaoRetorno" value=""  />
+                <input type="hidden" name="acao" id="hdnAcao" value="tjsp@consulta_publica_eproc/consultar"  />
+                <input type="hidden" id="numProcessoAnterior" value=""/>
+                <input type="hidden" id="getNumProcesso" value=""/>
+                <input type="hidden" id="getNomeParte" value=""/>
+                <input type="hidden" id="getIdParte" value=""/>
+                <input type="hidden" id="getAutoCarregar" value=""/>
+
+                <dl>
+                    <dt class="dtLblForm">
+                        <label for="tipoPesquisa" class="infraLabelObrigatorio">Tipo de Pesquisa:</label>
+                    </dt>
+                    <dd class="ddFldForm">
+                        <select id="selTipoPesquisa" name="tipoPesquisa" class="infraSelect" >
+                            
+        <option data-camposObrigatorios="divNumNrProcesso"  data-camposOpcionais="divStrChave"  data-acaoNumProcessoAnterior="true"  data-acaoInfo="tjsp@consulta_publica_eproc/consultar&tipoConsulta=NU" data-acaoAssinada="externo_controlador.php?acao=tjsp@consulta_publica_eproc/consultar&tipoConsulta=NU&hash=fff89e2fd8cbe929a7254ff36844a36a"   data-acaoConsultaAssinada="externo_controlador.php?acao=tjsp@consulta_publica_eproc/consultar_processo_por_numero&hash=b3075e471f19719e6296f18a3cc8f1a6" value="NU" >N�mero de Processo, Chave</option>
+
+        
+        <option data-camposObrigatorios="divStrNomeParte"  data-camposOpcionais="divCheckPesquisaFonetica"  data-acaoInfo="tjsp@consulta_publica_eproc/consultar&tipoConsulta=NO" data-acaoAssinada="externo_controlador.php?acao=tjsp@consulta_publica_eproc/consultar&tipoConsulta=NO&hash=a872453e982eeb7337d0d39a832eb66b"   data-acaoConsultaAssinada="externo_controlador.php?acao=tjsp@consulta_publica_eproc/consultar_processos_por_nome_parte&hash=6c4bd96ae3b11a43e7a839359c905061" value="NO" >Nome da Parte</option>
+
+        
+        <option data-camposObrigatorios="divStrDocParte"  data-camposOpcionais=""  data-acaoInfo="tjsp@consulta_publica_eproc/consultar&tipoConsulta=CP" data-acaoAssinada="externo_controlador.php?acao=tjsp@consulta_publica_eproc/consultar&tipoConsulta=CP&hash=f3c28e42b825498235ed8a74b028a6bc"   data-acaoConsultaAssinada="externo_controlador.php?acao=tjsp@consulta_publica_eproc/consultar_processos_por_documento_parte&hash=972a377cc0d46b38e3e8691eb3c3b5e3" value="CP" >CPF/CNPJ</option>
+
+        
+        <option data-camposObrigatorios="divNumNumOab"  data-camposOpcionais=""  data-acaoInfo="tjsp@consulta_publica_eproc/consultar&tipoConsulta=OA" data-acaoAssinada="externo_controlador.php?acao=tjsp@consulta_publica_eproc/consultar&tipoConsulta=OA&hash=c587e090c1bdab9ffce927480c453100"   data-acaoConsultaAssinada="externo_controlador.php?acao=tjsp@consulta_publica_eproc/consultar_processos_por_oab&hash=f8a3014fe3bda4f85f8c05ba0f307132" value="OA" >OAB</option>
+
+                                </select>
+                    </dd>
+                </dl>
+            </div>
+
+                            <div class="divSet" data-campoParaOpcao="NU,OO,V1,SI" data-funcaoValidacao="processoObrigatorio"  data-ocultarChkBaixados="true" data-acaoPadraoPara="NU" id="divNumNrProcesso">
+                    <dl>
+                        <dt class="dtLblForm">
+                            <label for="numNrProcesso" class="infraLabelObrigatorio">N� Processo:</label>
+                            <a href="#/" id="" data-toggle="popover" data-trigger="hover" data-placement="top" data-html="true" title="" data-content="Utilizar numera��o padr�o CNJ. Exemplo: 0000123-45.2025.8.26.0037" data-original-title="Consulta por n�mero de processo">
+                                <i class="material-icons icon-aligned">help_outline</i>
+                            </a>
+                        </dt>
+                        <dd class="ddFldForm">
+                            <input type="text" class="infraText inputFormularioGenerico" onkeypress="return infraMascara(this,event,'#######-##.####.#.##.####');" maxlength="25" name="numNrProcesso"  id="numNrProcesso" />
+                        </dd>
+                    </dl>
+                </div>
+            
+
+                            <div class="divSet" data-campoParaOpcao="NO,SN" data-funcaoValidacao="minimoDuasEntradas" id="divStrNomeParte">
+                    <dl>
+                        <dt class="dtLblForm">
+                            <label for="strNomeParte" class="infraLabelObrigatorio">Nome Parte:*</label>
+                        </dt>
+                        <dd class="ddFldForm">
+                            <input type="text" class="infraText inputFormularioGenerico" name="strNomeParte" id="strNomeParte"/>
+                            <small class="font-italic">*entidades com muitos processos n�o podem ser consultadas</small>
+                        </dd>
+                    </dl>
+                    <input type="hidden" name="numIdPessoa" id="numIdParte" disabled="disabled" />
+                </div>
+            
+                            <div class="divSet" data-campoParaOpcao="CP,SC" data-funcaoValidacao="validarDocumento" id="divStrDocParte">
+                    <dl>
+                        <dt class="dtLblForm">
+                            <label for="strDocParte" class="infraLabelObrigatorio">N�mero do CPF/CNPJ:*</label>
+                        </dt>
+                        <dd class="ddFldForm">
+                            <input type="text" class="infraText inputFormularioGenerico" name="strDocParte" maxlength="18" value="" />
+                            <small class="font-italic">*entidades com muitos processos n�o podem ser consultadas</small>
+                        </dd>
+                    </dl>
+                </div>
+            
+                            <div class="divSet" data-campoParaOpcao="OA,SO" data-funcaoValidacao="formatoOAB" id="divNumNumOab">
+                    <dl>
+                        <dt class="dtLblForm">
+                            <label for="numNumOab" class="infraLabelObrigatorio">N�mero da OAB:</label>
+                            <a href="#/" id="" data-toggle="popover" data-trigger="hover" data-placement="top" data-html="true" title="" data-content="UF + 6 digitos (Ex: RS123456)<br>N�meros com menos algarismos, preencher com zeros � esquerda (Ex: RS000123)" data-original-title="Consulta por n�mero da OAB">
+                                <i class="material-icons icon-aligned">help_outline</i>
+                            </a>
+                        </dt>
+                        <dd class="ddFldForm">
+                            <input type="text" class="infraText inputFormularioGenerico" id="numNumOab" name="numNumOab" />
+                                                    </dd>
+                    </dl>
+                </div>
+            
+            
+            
+            
+            
+            
+                            <div class="divSet" data-campoParaOpcao="NU" data-ocultarChkBaixados="true" data-acaoPadraoPara="NC" id="divStrChave">
+                    <dl>
+                        <dt class="dtLblForm">
+                            <label for="strChave"  class="infraLabelOpcional">Chave:</label>
+                        </dt>
+                        <dd class="ddFldForm">
+                            <input type="text" class="infraText inputFormularioGenerico" onkeypress="return infraMascaraNumero(this, event);" maxlength="12" name="strChave" />
+                        </dd>
+                    </dl>
+                </div>
+            
+                            <div class="divSet" data-campoParaOpcao="NO" id="divCheckPesquisaFonetica">
+                    <dl>
+                        <dt class="dtLblForm">
+                            <label for="chkNomeParte" class="infraLabelOpcional">Pesquisa Fon�tica:</label>
+                        </dt>
+                        <dd class="ddChkForm">
+                            <input type="checkbox" value="true" name="chkNomeParte" checked />
+                        </dd>
+                    </dl>
+                </div>
+            
+            <div class="divSet" id="divChkExibirBaixados">
+                <dl>
+                    <dt class="dtLblForm">
+                        <label for="dtaInquerito" class="infraLabelOpcional">Exibir Baixados:</label>
+                    </dt>
+                    <dd class="ddChkForm">
+                        <input type="checkbox"  class="checkBoxFormularioGenerico"  name="chkExibirBaixados" />
+                    </dd>
+                </dl>
+            </div>            
+
+            <div id="divCaptchaReload">
+                <br>
+                <style type="text/css">
+          #divInfraCaptcha {margin:.3em 0;}
+          </style>
+<div id="divInfraCaptcha" class="infraAreaDados">
+  <div class="cf-turnstile" data-sitekey="0x4AAAAAABC6galUOytMs1K-"  data-callback="callbackCloudflare"></div>
+  <input type="hidden" id="hdnInfraCaptcha" name="hdnInfraCaptcha" value="0" />
+</div>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+              <script>
+              var bolCloudflareSucess = false;
+              function callbackCloudflare(token){
+                  bolCloudflareSucess = true;
+              }
+              </script>
+            <script>
+                (function(window, document) {
+                    function sobrescrever() {
+                        var txtInfraCaptcha = document.getElementById('txtInfraCaptcha');
+                        if (txtInfraCaptcha) {
+                            txtInfraCaptcha.classList.add('evento-tecla-enter');
+                            txtInfraCaptcha.setAttribute('tabindex', '2');
+                            txtInfraCaptcha.onkeypress = function(event) {
+                                if (window.SubmitFormLogin !== undefined) {
+                                    window.SubmitFormLogin(this, event);
+                                }
+                            } 
+                        }
+                        var divInfraCaptcha = document.getElementById('divInfraCaptcha');
+                        if (divInfraCaptcha) {
+                            divInfraCaptcha.setAttribute('data-url-verificar-captcha', 'controlador_ajax.php?acao_ajax=verifica_estado_captcha&hash=7e8ead40a8d20779b44f6477ff3eafe3');
+                        }
+                        
+                        $(function() {                       
+                            var validarFn = _.get(window, ['validarConsulta']) || function() {return true;};
+                            _.set(window, ['validarConsulta'], function () {                    
+                                return validarFn.apply(this, arguments) && (function(){
+                                    
+          if (bolCloudflareSucess == false){
+          alert('Aguarde a verifica��o do captcha.');
+          return false;
+          }else{
+          document.getElementById('hdnInfraCaptcha').value='1';
+          return true;
+          }
+                                })();
+                            });                        
+                        });
+                    }
+                    
+                    if (typeof $ === 'function') {
+                        $(sobrescrever);
+                    } else {                        
+                        document.addEventListener('DOMContentLoaded', sobrescrever);
+                    }
+                                        
+                })(window, document)
+            </script>
+                    </div>
+
+        </fieldset>
+
+        </div>
+<div id="divInfraBarraComandosInferior" class="infraBarraComandos">
+<br /><button tabindex="0" type="submit" accesskey="C" name="sbmConsultar" id="sbmConsultar" value="Consultar" class="infraButton btn-primary" onclick="gerenciadorTelaConsulta.resetarPaginacao();"><span class="infraTeclaAtalho">C</span>onsultar</button>&nbsp;
+<button tabindex="0" type="button" accesskey="V" id="btnVoltar" value="Voltar" onclick="location.href='externo_controlador.php?acao=principal&hash=3ad415f4fd6f25e121e85e40360dbcfb'" class="infraButton"><span class="infraTeclaAtalho">V</span>oltar</button>&nbsp;
+</div>
+        <div id="divAreaResultadosAjax"></div>
+    </form>
+
+                <link rel="stylesheet" href="css/dist/bundle-jquery-ui.e3bd7f6ac8b4ac3742bd.css">
+                <script charset="utf-8" src="js/dist/npm.lodash.7e8d6ae734003ec18add.js"></script><script charset="utf-8" src="js/dist/npm.marked.ba6cfddd67995a84bad9.js"></script><script charset="utf-8" src="js/dist/npm.unorm.47cc161ba83e52f1e6ae.js"></script><script charset="utf-8" src="js/dist/npm.lodash.debounce.191b0f64bbcdf669f89f.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-buttons.851336fcb766320233cf.js"></script><script charset="utf-8" src="js/dist/npm.pdfmake.61cc0450e2a5af08d343.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net.2f928245904c88325960.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-select.4f12cbea803e9743c7db.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-select-bs4.79be88935ba4f35b2256.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-rowgroup.93ba3420cdba631aea19.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-rowgroup-bs4.9e84b03ed914f52a1724.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-responsive.149053dfe724d7e5227d.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-responsive-bs4.054c4b66d217da398913.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-buttons-bs4.d258718e2b7101f458a0.js"></script><script charset="utf-8" src="js/dist/npm.datatables.net-bs4.bac12b9c70f4806f457d.js"></script><script charset="utf-8" src="js/dist/npm.plupload.04190cc81e53c54d6293.js"></script><script charset="utf-8" src="js/dist/npm.jszip.49e0f853af13b429baa9.js"></script><script charset="utf-8" src="js/dist/npm.focus-within-polyfill.9da5adff5426235e5862.js"></script><script charset="utf-8" src="js/dist/5298.0d6f5a9340e5e72e1d8e.js"></script><script charset="utf-8" src="js/dist/466.c1f1fcbc1c8a9b6fbef0.js"></script><script charset="utf-8" src="js/dist/1504.4ce3e37330ae2c42e136.js"></script><script charset="utf-8" src="js/dist/4312.48aca1eee5ac2ef5a26f.js"></script><script charset="utf-8" src="js/dist/main-pos.70273987203ae5d77fe6.js"></script>                
+			<link href="infra_css/infra-barra-progresso.css?9.22.19-20260924-3.0.8" rel="stylesheet" type="text/css" media="all" /><link href="infra_css/infra-impressao-global.css?9.22.19-20260924-3.0.8" rel="stylesheet" type="text/css" media="print" />
+	<link href="infra_css/infra-ajax.css?9.22.19-20260924-3.0.8" rel="stylesheet" type="text/css" media="all" />
+				<link href="infra_js/calendario/v1/infra-calendario.css?9.22.19-20260924-3.0.8" rel="stylesheet" type="text/css" media="all" />
+				<link href="infra_js/mapa/infra-mapa.css?9.22.19-20260924-3.0.8" rel="stylesheet" type="text/css" media="all" />
+		                        <div class="bootstrap-styles">
+                            
+                        </div>
+                    </div>
+                </div>
+                            </div>
+        </div>
+    </div>
+
+                        <div class="bootstrap-styles ">
+                <button id="backTop" type="button" class="btn btn-light shadow-sm" style="display:none;" aria-label="Navegar para in�cio" tabindex="-1">
+                    <i class="material-icons p-0">keyboard_arrow_up</i>
+                </button>
+                <button id="backBottom" type="button" class="btn btn-light shadow-sm" style="display:none;" aria-label="Navegar para fim" tabindex="-1">
+                    <i class="material-icons p-0">keyboard_arrow_down</i>
+                </button>
+            </div>
+            
+    <input type="hidden" id="hdnInfraPrefixoCookie" name="hdnInfraPrefixoCookie" value="TJSP_Eproc_"/>
+
+                                                <input type="hidden" name="url_websocket" value="wss://eproc1g-wsk.tjsp.jus.br:443/wss">
+            <input type="hidden" name="url_gerar_ticket" value="controlador_ajax.php?acao_ajax=controle_acesso_websocket_gerar_ticket&acao_origem=tjsp@consulta_publica_eproc/consultar&hash=cd7942b188eb72f252a5e14746188c04">
+            <input type="hidden" name="url_websocket_teste" value="controlador.php?acao=infra/teste_websocket/notificar&acao_origem=tjsp@consulta_publica_eproc/consultar&hash=46f03dc18da4c208372baa6abea92068">
+        
+                
+    
+    <div id="infraDivImpressao" class="infraImpressao"></div>
+    
+
+    <div class='bootstrap-styles' aria-live="polite">
+        <div id="toasts-container" class="d-block flex-column-reverse w-100 p-2 align-content-end h-100 w-100 fixed-bottom pe-none" style="pointer-events: none"></div>
+    </div>
+
+    <script src="js/siscom_desktop_icone.js"></script>
+</body>
+
+
+
+</html>

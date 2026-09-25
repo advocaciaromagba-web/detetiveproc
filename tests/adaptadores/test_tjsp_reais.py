@@ -7,10 +7,11 @@ números fictícios (script de coleta). Os números CNJ e demais dados são púb
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import pytest
 from selectolax.parser import HTMLParser
 
 from adaptadores.desafio import eh_desafio_humano
-from adaptadores.tjsp_esaj.parser import classificar, extrair_capa, extrair_lista
+from adaptadores.tjsp_esaj.parser import BuscaAmpla, classificar, extrair_capa, extrair_lista
 from pipeline.normalizador import normalizar_processo
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
@@ -83,5 +84,104 @@ def test_capa_real_redistribuida() -> None:
 
 def test_eproc_real_exige_turnstile() -> None:
     pagina = ler(EPROC / "consulta_unificada_turnstile.html")
+    assert 'class="cf-turnstile"' in pagina
+    assert eh_desafio_humano(HTMLParser(pagina))
+
+
+# --------------------------------------------------------------------------- 3ª coleta (v2)
+
+
+def test_lista_real_agrupada_por_varios_foros() -> None:
+    resultado = extrair_lista(ler(ESAJ / "lista_documento_p2_varios_foros.html"))
+
+    assert len(resultado.itens) == 25
+    assert len({i.numero_cnj for i in resultado.itens}) == 25
+    assert resultado.itens[0].foro == "Foro 12 - Núcleo 4.0"
+    foros = [i.foro for i in resultado.itens]
+    assert len(set(foros)) == 4
+    assert foros == sorted(foros, key=foros.index)  # itens em blocos por foro
+    assert all(i.vara and "Núcleo 4.0" in i.vara for i in resultado.itens)
+    assert resultado.proxima_pagina is not None
+
+
+def test_lista_real_descarta_numero_fora_do_padrao_cnj() -> None:
+    resultado = extrair_lista(ler(ESAJ / "lista_documento_numero_antigo.html"))
+    assert len(resultado.itens) == 24  # 25 na página; "2050004-46.1999.9.82.6035" descartado
+    assert all(len(i.numero_cnj) == 25 for i in resultado.itens)
+
+
+def test_lista_real_rotulos_variados() -> None:
+    resultado = extrair_lista(ler(ESAJ / "lista_documento_rotulos_variados.html"))
+    polos = {i.tipo_participacao: i.polo for i in resultado.itens}
+    assert polos["Exectdo"] == "passivo"
+    assert polos["TerIntCer"] == "terceiro"
+    assert polos["AlinteTerc"] == "terceiro"
+
+
+def test_busca_por_nome_generico_pede_refinar() -> None:
+    pagina = ler(ESAJ / "muitos_resultados.html")
+    assert classificar(pagina) == "muitos_resultados"
+    with pytest.raises(BuscaAmpla):
+        extrair_lista(pagina)
+
+
+def test_busca_por_numero_devolve_lista_de_um_item() -> None:
+    pagina = ler(ESAJ / "busca_por_numero_lista_um_item.html")
+    assert classificar(pagina) == "lista"
+    resultado = extrair_lista(pagina)
+
+    (item,) = resultado.itens
+    assert resultado.total == 1
+    assert resultado.proxima_pagina is None
+    assert item.numero_cnj.endswith(".2021.8.26.0100")  # fictício, foro 0100
+    assert (item.classe, item.assunto) == ("Divórcio Litigioso", "Dissolução")
+    assert (item.foro, item.vara) == ("Foro de Exemplo", "1ª Vara Exemplo")
+    assert item.data_distribuicao == date(2021, 3, 1)
+    assert "processo.codigo=00000000A0000" in item.url_capa
+    assert "cbPesquisa=NUMPROC" in item.url_capa
+
+
+def test_capa_real_recente_distribuicao_livre() -> None:
+    dto = extrair_capa(
+        ler(ESAJ / "capa_execucao_penal_livre.html"),
+        url_origem="u",
+        coletado_em=datetime(2026, 9, 25, tzinfo=UTC),
+    )
+    assert dto.classe == "Execução da Pena"
+    assert dto.data_distribuicao == date(2025, 4, 9)  # "09/04/2025 às 14:56 - Livre"
+    assert dto.comarca == "Araçatuba"  # "Araçatuba/DEECRIM UR2"
+    assert dto.valor_causa is None
+    assert [p.polo for p in dto.partes] == ["ativo", "terceiro", "passivo"]
+
+
+def test_capa_real_distribuicao_por_dependencia() -> None:
+    dto = extrair_capa(
+        ler(ESAJ / "capa_execucao_penal_dependencia.html"),
+        url_origem="u",
+        coletado_em=datetime(2026, 9, 25, tzinfo=UTC),
+    )
+    assert dto.numero_cnj == "0012301-54.2025.8.26.0502"
+    assert dto.data_distribuicao == date(2025, 7, 24)  # "... - Dependência (nº principal)"
+    assert dto.comarca == "Bauru"
+
+
+def test_capa_real_de_1999_redistribuida_com_sete_partes() -> None:
+    dto = extrair_capa(
+        ler(ESAJ / "capa_execucao_fiscal_1999_sete_partes.html"),
+        url_origem="u",
+        coletado_em=datetime(2026, 9, 25, tzinfo=UTC),
+    )
+    assert dto.numero_cnj == "0001275-56.1999.8.26.0539"
+    assert dto.data_distribuicao is None  # "12/08/2025 - Direcionada" é redistribuição
+    assert dto.valor_causa == 40550.73
+    assert len(dto.partes) == 7
+    assert all(p.nome.startswith(("Parte Fictícia", "Advogado")) for p in dto.partes)
+
+
+@pytest.mark.parametrize(
+    "arquivo", ["consulta_avancada_turnstile.html", "lista_distribuicao_turnstile.html"]
+)
+def test_eproc_consulta_avancada_e_lista_de_distribuicao_exigem_turnstile(arquivo: str) -> None:
+    pagina = ler(EPROC / arquivo)
     assert 'class="cf-turnstile"' in pagina
     assert eh_desafio_humano(HTMLParser(pagina))
