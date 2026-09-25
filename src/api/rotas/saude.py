@@ -2,8 +2,15 @@ from fastapi import APIRouter
 from sqlalchemy import func, select
 
 from agendador.controle import estado_tribunal
+from agendador.unidades import listar_unidades
 from api.dependencias import Ctx
-from api.esquemas import AlarmeSaude, ExecucaoSaida, SentinelaSaude, TribunalSaude
+from api.esquemas import (
+    AlarmeSaude,
+    ExecucaoSaida,
+    SentinelaSaude,
+    TribunalSaude,
+    UnidadeSaude,
+)
 from db.modelos import Alarme, ExecucaoRobo, ExecucaoSentinela, Sentinela, Tribunal, Varredura
 
 rotas = APIRouter(prefix="/v1/saude", tags=["operação"])
@@ -64,6 +71,12 @@ async def saude(ctx: Ctx) -> list[TribunalSaude]:
                     )
                 ).all()
             ]
+            unidades = [
+                UnidadeSaude(
+                    comarca=u.comarca, competencia=u.competencia, vigente_desde=u.vigente_desde
+                )
+                for u in await listar_unidades(s, t.id)
+            ]
             saida.append(
                 TribunalSaude(
                     id=t.id,
@@ -80,6 +93,7 @@ async def saude(ctx: Ctx) -> list[TribunalSaude]:
                     estado=estado_tribunal(t, ctx.agora),
                     sentinelas=sentinelas,
                     alarmes=alarmes,
+                    unidades=unidades,
                 )
             )
     return saida

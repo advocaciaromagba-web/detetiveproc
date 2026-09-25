@@ -3,7 +3,9 @@
 - sentinela: a sentinela do tribunal falhou 2 vezes seguidas;
 - taxa_erro: mais de 10% de erro nas consultas da última hora (com >= 10 consultas);
 - volume_baixo: processos novos do dia < 50% da média dos 14 dias anteriores
-  (avaliado às 8h sobre o dia anterior; exige >= 7 dias com execução e média >= 3).
+  (avaliado às 8h sobre o dia anterior; exige >= 7 dias com execução e média >= 3);
+- sem_unidades: tribunal eproc ativo sem nenhuma comarca/competência vigente em
+  ``tribunal_unidade`` (mapeamento refeito a cada ciclo do cronograma, seção 5).
 
 No máximo um alarme aberto por (tribunal, tipo) — garantido por índice único parcial.
 A operação recebe um e-mail ao abrir e outro ao resolver; nada se repete enquanto aberto.
@@ -20,19 +22,27 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from agendador.controle import ESTADOS_TRIBUNAL, Operacao, estado_tribunal
-from db.modelos import Alarme, ExecucaoRobo, ExecucaoSentinela, Sentinela, Tribunal
+from db.modelos import (
+    Alarme,
+    ExecucaoRobo,
+    ExecucaoSentinela,
+    Sentinela,
+    Tribunal,
+    TribunalUnidade,
+)
 from db.sessao import sessao_sistema
 from monitoramento.metricas import ALARMES_ABERTOS, TIPOS_ALARME, TRIBUNAL_ESTADO
 
 logger = logging.getLogger(__name__)
 
 Fabrica = async_sessionmaker[AsyncSession]
-TipoAlarme = Literal["sentinela", "taxa_erro", "volume_baixo"]
+TipoAlarme = Literal["sentinela", "taxa_erro", "volume_baixo", "sem_unidades"]
 
 DESCRICOES: dict[str, str] = {
     "sentinela": "a consulta sentinela falhou seguidamente (layout, bloqueio ou indisponibilidade)",
     "taxa_erro": "taxa de erro das consultas acima do limite na última hora",
     "volume_baixo": "processos novos do dia muito abaixo da média recente",
+    "sem_unidades": "sistema eproc ativo sem comarcas/competências cadastradas",
 }
 
 
@@ -153,6 +163,20 @@ async def _regra_taxa_erro(
     return taxa > config.limite_taxa_erro, detalhes
 
 
+async def _regra_sem_unidades(
+    s: AsyncSession, tribunal: Tribunal, agora: datetime, config: ConfigAlarmes
+) -> tuple[bool, dict[str, Any]] | None:
+    if tribunal.sistema != "eproc":
+        return None
+    hoje = agora.astimezone(config.fuso).date()
+    vigentes = await s.scalar(
+        select(func.count()).where(
+            TribunalUnidade.tribunal_id == tribunal.id, TribunalUnidade.vigente_desde <= hoje
+        )
+    )
+    return not vigentes, {"unidades_vigentes": int(vigentes or 0)}
+
+
 # --------------------------------------------------------------------------- avaliação
 
 
@@ -171,6 +195,7 @@ async def avaliar_alarmes(
             regras: list[tuple[TipoAlarme, tuple[bool, dict[str, Any]] | None]] = [
                 ("sentinela", await _regra_sentinela(s, tribunal, config)),
                 ("taxa_erro", await _regra_taxa_erro(s, tribunal, agora, config)),
+                ("sem_unidades", await _regra_sem_unidades(s, tribunal, agora, config)),
             ]
             for tipo, regra in regras:
                 if regra is not None:

@@ -259,6 +259,12 @@ class AlarmeSaude(BaseModel):
     detalhes: dict[str, object]
 
 
+class UnidadeSaude(BaseModel):
+    comarca: str
+    competencia: str
+    vigente_desde: date
+
+
 class TribunalSaude(BaseModel):
     id: int
     sigla: str
@@ -274,3 +280,4 @@ class TribunalSaude(BaseModel):
     estado: Literal["ok", "pausado", "bloqueado", "inativo"]
     sentinelas: list[SentinelaSaude]
     alarmes: list[AlarmeSaude]
+    unidades: list[UnidadeSaude]  # comarcas/competências já no eproc (só sistema eproc)

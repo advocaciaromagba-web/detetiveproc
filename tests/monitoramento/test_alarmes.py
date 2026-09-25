@@ -7,7 +7,14 @@ import pytest
 from sqlalchemy import select
 
 from agendador.controle import Operacao
-from db.modelos import Alarme, ExecucaoRobo, ExecucaoSentinela, Sentinela, Tribunal
+from db.modelos import (
+    Alarme,
+    ExecucaoRobo,
+    ExecucaoSentinela,
+    Sentinela,
+    Tribunal,
+    TribunalUnidade,
+)
 from db.sessao import sessao_sistema
 from entrega.email import EnviadorMemoria
 from monitoramento.alarmes import avaliar_alarmes, avaliar_volume
@@ -166,3 +173,31 @@ async def test_estado_dos_tribunais_nas_metricas(fabrica, base) -> None:
     await avaliar_alarmes(fabrica, operacao()[0], AGORA)
     assert gauge(TRIBUNAL_ESTADO, "TJSP", "esaj", "bloqueado") == 1
     assert gauge(TRIBUNAL_ESTADO, "TJSP", "esaj", "ok") == 0
+
+
+async def test_eproc_sem_unidades(fabrica) -> None:
+    async with sessao_sistema(fabrica) as s:
+        eproc = Tribunal(sigla="TJSP", sistema="eproc", grau=1, limite_req_min=6)
+        s.add(eproc)
+        await s.flush()
+        eproc_id = eproc.id
+    op, enviador = operacao()
+
+    (m,) = await avaliar_alarmes(fabrica, op, AGORA)
+    assert (m.tribunal, m.tipo, m.acao) == ("TJSP/eproc", "sem_unidades", "aberto")
+    assert gauge(ALARMES_ABERTOS, "sem_unidades") == 1
+    assert "eproc ativo sem comarcas" in enviador.enviados[-1].texto
+
+    # Unidade com vigência futura ainda não conta.
+    async with sessao_sistema(fabrica) as s:
+        s.add(TribunalUnidade(tribunal_id=eproc_id, comarca="CAMPINAS", competencia="CIVEL",
+                              vigente_desde=AGORA.date() + timedelta(days=1)))  # fmt: skip
+    assert await avaliar_alarmes(fabrica, op, AGORA) == []
+
+    (m,) = await avaliar_alarmes(fabrica, op, AGORA + timedelta(days=1))
+    assert (m.tipo, m.acao, m.detalhes) == ("sem_unidades", "resolvido", {"unidades_vigentes": 1})
+
+
+async def test_esaj_nunca_abre_alarme_de_unidades(fabrica, base) -> None:
+    op, _ = operacao()
+    assert all(m.tipo != "sem_unidades" for m in await avaliar_alarmes(fabrica, op, AGORA))

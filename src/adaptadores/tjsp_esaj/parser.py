@@ -20,6 +20,7 @@ from urllib.parse import urljoin
 
 from selectolax.parser import HTMLParser, Node
 
+from adaptadores.desafio import eh_desafio_humano
 from core.cnj import NumeroCNJInvalido, formatar_cnj
 from core.dto import AdvogadoDict, ParteDTO, Polo, ProcessoDTO
 from core.excecoes import DesafioHumano, LayoutAlterado, ProcessoSigiloso
@@ -33,18 +34,6 @@ URL_BASE = "https://esaj.tjsp.jus.br"
 
 TipoPagina = Literal["lista", "capa", "sem_resultado", "captcha", "sigilo", "desconhecida"]
 
-_SELETOR_DESAFIO = ", ".join(
-    [
-        ".g-recaptcha",
-        ".h-captcha",
-        "iframe[src*='recaptcha']",
-        "iframe[src*='hcaptcha']",
-        "#captcha",
-        "img[id*='captcha']",
-        "img[src*='captcha']",
-    ]
-)
-_TEXTO_DESAFIO = ("NAO SOU UM ROBO", "CONFIRME QUE VOCE E HUMANO", "DIGITE OS CARACTERES")
 _SEM_RESULTADO = "NAO EXISTEM INFORMACOES DISPONIVEIS"
 _SEGREDO = "SEGREDO DE JUSTICA"
 
@@ -151,15 +140,8 @@ def comarca_do_foro(foro: str | None) -> str | None:
 # --------------------------------------------------------------------------- classificação
 
 
-def _eh_desafio(arvore: HTMLParser) -> bool:
-    if arvore.css_first(_SELETOR_DESAFIO) is not None:
-        return True
-    texto = _chave(_texto(arvore.body) or "")
-    return any(trecho in texto for trecho in _TEXTO_DESAFIO)
-
-
 def _classificar(arvore: HTMLParser) -> TipoPagina:
-    if _eh_desafio(arvore):
+    if eh_desafio_humano(arvore):
         return "captcha"
     mensagem = _chave(_texto(arvore.css_first("#mensagemRetorno")) or "")
     if _SEM_RESULTADO in mensagem:

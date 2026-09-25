@@ -61,7 +61,7 @@ TRIBUNAL_ESTADO = Gauge(
     registry=REGISTRO,
 )
 
-TIPOS_ALARME = ("sentinela", "taxa_erro", "volume_baixo")
+TIPOS_ALARME = ("sentinela", "taxa_erro", "volume_baixo", "sem_unidades")
 
 NOMES = (
     "monitor_consultas_total",

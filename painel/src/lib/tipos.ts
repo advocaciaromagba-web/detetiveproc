@@ -81,7 +81,7 @@ export interface SentinelaSaude {
 }
 
 export interface AlarmeSaude {
-  tipo: "sentinela" | "taxa_erro" | "volume_baixo";
+  tipo: "sentinela" | "taxa_erro" | "volume_baixo" | "sem_unidades";
   aberto_em: string;
   detalhes: Record<string, unknown>;
 }
@@ -101,6 +101,14 @@ export interface TribunalSaude {
   estado: "ok" | "pausado" | "bloqueado" | "inativo";
   sentinelas: SentinelaSaude[];
   alarmes: AlarmeSaude[];
+  /** Comarcas/competências já migradas para o eproc (vazio fora do eproc). */
+  unidades: UnidadeSaude[];
+}
+
+export interface UnidadeSaude {
+  comarca: string;
+  competencia: string;
+  vigente_desde: string;
 }
 
 export interface Alvo {

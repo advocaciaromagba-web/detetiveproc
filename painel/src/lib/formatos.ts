@@ -60,6 +60,7 @@ export const ROTULO_ALARME: Record<string, string> = {
   sentinela: "Sentinela falhou seguidamente",
   taxa_erro: "Taxa de erro acima de 10% na última hora",
   volume_baixo: "Processos novos abaixo de 50% da média",
+  sem_unidades: "eproc sem comarcas/competências cadastradas",
 };
 
 export type FaixaUrgencia = "alta" | "media" | "baixa";

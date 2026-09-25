@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     coletor_max_paginas: int = 20
     coletor_cache_horas: float = 24.0
     esaj_tjsp_url: str = "https://esaj.tjsp.jus.br"
+    # O eproc só é registrado quando o leitor de páginas existir (fase 0).
+    eproc_tjsp_ativo: bool = False
+    eproc_tjsp_url: str = "https://eproc1g.tjsp.jus.br/eproc"
 
     log_formato: Literal["json", "texto"] = "json"
     log_nivel: str = "INFO"

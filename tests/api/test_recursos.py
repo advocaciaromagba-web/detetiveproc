@@ -1,5 +1,7 @@
 """Alvos, regras, ocorrências, processos e saúde, com isolamento entre clientes."""
 
+from datetime import date
+
 import pytest
 from sqlalchemy import select
 
@@ -11,6 +13,7 @@ from db.modelos import (
     Processo,
     Sentinela,
     Tribunal,
+    TribunalUnidade,
 )
 from db.sessao import sessao_sistema
 from pipeline.dedup import gravar_processo
@@ -315,6 +318,25 @@ async def test_saude_dos_robos(cliente_http, dados, relogio, fabrica) -> None:
     assert estados == {("esaj", "ok"), ("eproc", "bloqueado")}
     esaj = next(t for t in r.json() if t["sistema"] == "esaj")
     assert (esaj["ultima_execucao"], esaj["varreduras_com_falha"]) == (None, 0)
+    eproc = next(t for t in r.json() if t["sistema"] == "eproc")
+    assert (esaj["unidades"], eproc["unidades"]) == ([], [])
+    async with sessao_sistema(fabrica) as s:
+        s.add(
+            TribunalUnidade(
+                tribunal_id=eproc["id"],
+                comarca="CAMPINAS",
+                competencia="CIVEL",
+                vigente_desde=date(2025, 10, 1),
+            )
+        )
+    eproc = next(
+        t
+        for t in (await cliente_http.get("/v1/saude", headers=op)).json()
+        if t["sistema"] == "eproc"
+    )
+    assert eproc["unidades"] == [
+        {"comarca": "CAMPINAS", "competencia": "CIVEL", "vigente_desde": "2025-10-01"}
+    ]
 
 
 # --------------------------------------------------------------------------- ocorrência sigilosa

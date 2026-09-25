@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 
 import { api } from "@/lib/api";
-import { formatarDataHora, ROTULO_ALARME, ROTULO_BLOQUEIO } from "@/lib/formatos";
+import {
+  formatarData,
+  formatarDataHora,
+  ROTULO_ALARME,
+  ROTULO_BLOQUEIO,
+} from "@/lib/formatos";
 import type { Eu, TribunalSaude } from "@/lib/tipos";
 
 import { Topo } from "../Topo";
@@ -33,6 +38,7 @@ export default async function Saude() {
                 <th scope="col">Consultas com falha</th>
                 <th scope="col">Sentinela</th>
                 <th scope="col">Alarmes</th>
+                <th scope="col">Unidades no eproc</th>
               </tr>
             </thead>
             <tbody>
@@ -45,11 +51,14 @@ export default async function Saude() {
                     <span className={`selo ${SELO[t.estado]}`}>{t.estado}</span>
                     {t.bloqueado_motivo && (
                       <div className="suave">
-                        {ROTULO_BLOQUEIO[t.bloqueado_motivo] ?? t.bloqueado_motivo}
+                        {ROTULO_BLOQUEIO[t.bloqueado_motivo] ??
+                          t.bloqueado_motivo}
                       </div>
                     )}
                     {t.estado === "pausado" && t.pausado_ate && (
-                      <div className="suave">até {formatarDataHora(t.pausado_ate)}</div>
+                      <div className="suave">
+                        até {formatarDataHora(t.pausado_ate)}
+                      </div>
                     )}
                   </td>
                   <td>{t.limite_req_min} req/min</td>
@@ -58,7 +67,8 @@ export default async function Saude() {
                       <>
                         {formatarDataHora(t.ultima_execucao.iniciado_em)}
                         <div className="suave">
-                          {t.ultima_execucao.consultas} consultas, {t.ultima_execucao.erros} erros,{" "}
+                          {t.ultima_execucao.consultas} consultas,{" "}
+                          {t.ultima_execucao.erros} erros,{" "}
                           {t.ultima_execucao.processos_novos} processos novos
                         </div>
                       </>
@@ -76,14 +86,22 @@ export default async function Saude() {
                           <span
                             className={`selo ${s.sucesso === null ? "selo-baixa" : s.sucesso ? "selo-ok" : "selo-alta"}`}
                           >
-                            {s.sucesso === null ? "pendente" : s.sucesso ? "ok" : "falhou"}
+                            {s.sucesso === null
+                              ? "pendente"
+                              : s.sucesso
+                                ? "ok"
+                                : "falhou"}
                           </span>
                           <div className="suave">{s.numero_cnj}</div>
                           {s.executada_em && (
-                            <div className="suave">{formatarDataHora(s.executada_em)}</div>
+                            <div className="suave">
+                              {formatarDataHora(s.executada_em)}
+                            </div>
                           )}
                           {s.campos_divergentes.length > 0 && (
-                            <div className="suave">divergem: {s.campos_divergentes.join(", ")}</div>
+                            <div className="suave">
+                              divergem: {s.campos_divergentes.join(", ")}
+                            </div>
                           )}
                           {s.erro && <div className="suave">{s.erro}</div>}
                         </div>
@@ -97,11 +115,38 @@ export default async function Saude() {
                       <ul className="lista-curta">
                         {t.alarmes.map((a) => (
                           <li key={a.tipo}>
-                            <span className="selo selo-alta">{ROTULO_ALARME[a.tipo] ?? a.tipo}</span>
-                            <div className="suave">desde {formatarDataHora(a.aberto_em)}</div>
+                            <span className="selo selo-alta">
+                              {ROTULO_ALARME[a.tipo] ?? a.tipo}
+                            </span>
+                            <div className="suave">
+                              desde {formatarDataHora(a.aberto_em)}
+                            </div>
                           </li>
                         ))}
                       </ul>
+                    )}
+                  </td>
+                  <td>
+                    {t.sistema !== "eproc" ? (
+                      <span className="suave">—</span>
+                    ) : t.unidades.length === 0 ? (
+                      <span className="selo selo-alta">nenhuma cadastrada</span>
+                    ) : (
+                      <details>
+                        <summary>{t.unidades.length} unidade(s)</summary>
+                        <ul className="lista-curta">
+                          {t.unidades.map((u) => (
+                            <li
+                              key={`${u.comarca}|${u.competencia}|${u.vigente_desde}`}
+                            >
+                              {u.comarca} · {u.competencia}
+                              <div className="suave">
+                                desde {formatarData(u.vigente_desde)}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
                     )}
                   </td>
                 </tr>

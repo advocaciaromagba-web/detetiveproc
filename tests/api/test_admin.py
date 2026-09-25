@@ -141,3 +141,51 @@ async def test_criar_sentinela(fabrica) -> None:
             fabrica, "criar-sentinela", "--tribunal-id", str(t["tribunal_id"]),
             "--numero", "00000018420208260001", "--esperado", "classe",
         )  # fmt: skip
+
+
+async def test_unidades_do_eproc(fabrica) -> None:
+    esaj = await rodar(fabrica, "criar-tribunal", "--sigla", "tjsp", "--sistema", "esaj")
+    eproc = await rodar(fabrica, "criar-tribunal", "--sigla", "tjsp", "--sistema", "eproc")
+    tid = str(eproc["tribunal_id"])
+
+    criada = await rodar(
+        fabrica, "adicionar-unidade", "--tribunal-id", tid, "--comarca", "Comarca de São Paulo",
+        "--competencia", "Fazenda  Pública", "--vigente-desde", "2026-08-03",
+    )  # fmt: skip
+    await rodar(
+        fabrica, "adicionar-unidade", "--tribunal-id", tid, "--comarca", "Campinas",
+        "--competencia", "Cível", "--vigente-desde", "2025-10-01",
+    )  # fmt: skip
+    listadas = (await rodar(fabrica, "listar-unidades", "--tribunal-id", tid))["unidades"]
+    assert [(u["comarca"], u["competencia"], u["vigente_desde"]) for u in listadas] == [
+        ("CAMPINAS", "CIVEL", "2025-10-01"),
+        ("SAO PAULO", "FAZENDA PUBLICA", "2026-08-03"),
+    ]
+
+    with pytest.raises(SystemExit, match="já cadastrada"):
+        await rodar(
+            fabrica, "adicionar-unidade", "--tribunal-id", tid, "--comarca", "SÃO PAULO",
+            "--competencia", "fazenda pública", "--vigente-desde", "2026-08-03",
+        )  # fmt: skip
+    with pytest.raises(SystemExit, match="sistema eproc"):
+        await rodar(
+            fabrica, "adicionar-unidade", "--tribunal-id", str(esaj["tribunal_id"]),
+            "--comarca", "Campinas", "--competencia", "Cível", "--vigente-desde", "2025-10-01",
+        )  # fmt: skip
+    with pytest.raises(SystemExit, match="não existe"):
+        await rodar(
+            fabrica, "adicionar-unidade", "--tribunal-id", "999", "--comarca", "X",
+            "--competencia", "Y", "--vigente-desde", "2025-10-01",
+        )  # fmt: skip
+    with pytest.raises(SystemExit, match="obrigatórias"):
+        await rodar(
+            fabrica, "adicionar-unidade", "--tribunal-id", tid, "--comarca", " - ",
+            "--competencia", "Cível", "--vigente-desde", "2025-10-01",
+        )  # fmt: skip
+
+    assert await rodar(fabrica, "remover-unidade", "--id", str(criada["unidade_id"])) == {
+        "removida": criada["unidade_id"]
+    }
+    with pytest.raises(SystemExit, match="não existe"):
+        await rodar(fabrica, "remover-unidade", "--id", str(criada["unidade_id"]))
+    assert len((await rodar(fabrica, "listar-unidades"))["unidades"]) == 1

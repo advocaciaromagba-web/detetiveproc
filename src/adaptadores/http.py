@@ -194,7 +194,9 @@ class ClienteTribunal:
             raise LayoutAlterado(self.tribunal, f"HTTP {status} inesperado")
 
     async def _carregar_robots(self) -> None:
-        resposta = await self._requisitar(f"{self.base}/robots.txt")
+        esquema, host = self._origem
+        # O robots.txt fica sempre na raiz do host, mesmo com base em subcaminho (/eproc).
+        resposta = await self._requisitar(f"{esquema}://{host}/robots.txt")
         status = resposta.status_code
         if status == 429 or status >= 500:
             self._checar_status(resposta)  # não dá para saber o que é permitido: tenta depois
@@ -214,6 +216,7 @@ class ClienteTribunal:
     # ----------------------------------------------------------------------- público
 
     async def obter(self, url: str) -> Resposta:
+        """``url`` absoluta, caminho absoluto no host ("/x") ou relativo à base ("x")."""
         url = urljoin(self.base + "/", url)
         for _ in range(self._max_redirecionamentos + 1):
             self._exigir_mesmo_site(url)

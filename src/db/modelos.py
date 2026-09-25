@@ -316,7 +316,9 @@ class Alarme(Base):
 
     __tablename__ = "alarme"
     __table_args__ = (
-        CheckConstraint(_em("tipo", "sentinela", "taxa_erro", "volume_baixo"), name="tipo"),
+        CheckConstraint(
+            _em("tipo", "sentinela", "taxa_erro", "volume_baixo", "sem_unidades"), name="tipo"
+        ),
         Index(
             "uq_alarme_aberto",
             "tribunal_id",

@@ -66,9 +66,14 @@ describe("linkSeguro", () => {
 
 describe("queryOcorrencias", () => {
   it("só filtros conhecidos e preenchidos", () => {
-    expect(queryOcorrencias({ status: "novo", score_min: "", outro: "x", antes_id: "9" })).toBe(
-      "?status=novo&antes_id=9",
-    );
+    expect(
+      queryOcorrencias({
+        status: "novo",
+        score_min: "",
+        outro: "x",
+        antes_id: "9",
+      }),
+    ).toBe("?status=novo&antes_id=9");
     expect(queryOcorrencias({})).toBe("");
   });
 });
@@ -81,7 +86,12 @@ describe("rótulos de bloqueio", () => {
 });
 
 describe("rótulos de alarme", () => {
-  it("cobrem os três alarmes da seção 9", () => {
-    expect(Object.keys(ROTULO_ALARME).sort()).toEqual(["sentinela", "taxa_erro", "volume_baixo"]);
+  it("cobrem os alarmes da seção 9 e o de unidades do eproc", () => {
+    expect(Object.keys(ROTULO_ALARME).sort()).toEqual([
+      "sem_unidades",
+      "sentinela",
+      "taxa_erro",
+      "volume_baixo",
+    ]);
   });
 });

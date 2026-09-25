@@ -316,3 +316,27 @@ compose usa o SeaweedFS (`chrislusf/seaweedfs`, versão fixada), que fala o mesm
 protocolo S3; o código continua usando o cliente S3 `minio` (`ArmazemS3`). Variáveis:
 `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` (obrigatória: sem ela o S3 ficaria
 aberto) e `S3_BUCKET_BRUTO`. O bucket é criado na primeira gravação.
+
+## eproc/TJSP (tarefa 7, primeira parte)
+
+O TJSP migra do e-SAJ para o eproc por ciclos, e todo alvo é consultado nos dois
+sistemas (seção 5). Enquanto as páginas reais do eproc não chegam (fase 0):
+
+- **Base comum** (`adaptadores/base_http.py`): sessão HTTP, limitador, `robots.txt`,
+  guarda do bruto, cache de 24 h e máscara do parâmetro valem para e-SAJ e eproc; cada
+  adaptador escreve só os seus fluxos. Detecção de CAPTCHA em `adaptadores/desafio.py`.
+- **Esqueleto do eproc** (`adaptadores/tjsp_eproc/adaptador.py`): a verificação de
+  saúde abre o formulário público e detecta CAPTCHA; as buscas levantam
+  `LeitorPendente`. Com `EPROC_TJSP_ATIVO=true` ele só é registrado quando o leitor
+  existir (`PRONTO = True`); antes disso o agendador registra um erro e não o liga.
+- **Unidades já no eproc** (`tribunal_unidade`), atualizadas a cada ciclo do cronograma:
+
+```bash
+docker compose run --rm api python -m api.admin adicionar-unidade --tribunal-id 2 \
+  --comarca "São Paulo" --competencia "Fazenda Pública" --vigente-desde 2026-08-03
+docker compose run --rm api python -m api.admin listar-unidades --tribunal-id 2
+docker compose run --rm api python -m api.admin remover-unidade --id 5
+```
+
+  Aparecem em Saúde dos robôs no painel. Tribunal eproc ativo sem nenhuma unidade
+  vigente abre o alarme `sem_unidades`.

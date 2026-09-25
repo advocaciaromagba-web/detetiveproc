@@ -11,12 +11,13 @@ import json
 import os
 import sys
 from collections.abc import Awaitable, Callable, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from agendador.controle import liberar_tribunal
+from agendador.unidades import adicionar_unidade, listar_unidades, remover_unidade
 from api.auth import criar_chave_api, criar_usuario, revogar_chave, revogar_sessoes
 from core.config import obter_settings
 from db.modelos import Cliente, Tribunal
@@ -71,6 +72,18 @@ def _analisador() -> argparse.ArgumentParser:
 
     lib = cmd.add_parser("liberar-tribunal", help="após DesafioHumano/LayoutAlterado/pausa")
     lib.add_argument("--id", type=int, required=True)
+
+    au = cmd.add_parser("adicionar-unidade", help="comarca/competência já migrada ao eproc")
+    au.add_argument("--tribunal-id", type=int, required=True, help="tribunal do sistema eproc")
+    au.add_argument("--comarca", required=True)
+    au.add_argument("--competencia", required=True, help='ex.: "Cível", "Fazenda Pública"')
+    au.add_argument("--vigente-desde", type=date.fromisoformat, required=True, help="AAAA-MM-DD")
+
+    ru = cmd.add_parser("remover-unidade")
+    ru.add_argument("--id", type=int, required=True)
+
+    lu = cmd.add_parser("listar-unidades")
+    lu.add_argument("--tribunal-id", type=int)
     return raiz
 
 
@@ -156,6 +169,39 @@ async def _criar_sentinela(args: argparse.Namespace, fabrica: Fabrica) -> dict[s
     return {"sentinela_id": sentinela_id}
 
 
+async def _adicionar_unidade(args: argparse.Namespace, fabrica: Fabrica) -> dict[str, Any]:
+    try:
+        unidade_id = await adicionar_unidade(
+            fabrica, args.tribunal_id, args.comarca, args.competencia, args.vigente_desde
+        )
+    except ValueError as erro:
+        raise SystemExit(str(erro)) from None
+    return {"unidade_id": unidade_id}
+
+
+async def _remover_unidade(args: argparse.Namespace, fabrica: Fabrica) -> dict[str, Any]:
+    if not await remover_unidade(fabrica, args.id):
+        raise SystemExit(f"unidade {args.id} não existe")
+    return {"removida": args.id}
+
+
+async def _listar_unidades(args: argparse.Namespace, fabrica: Fabrica) -> dict[str, Any]:
+    async with sessao_sistema(fabrica) as s:
+        unidades = await listar_unidades(s, args.tribunal_id)
+    return {
+        "unidades": [
+            {
+                "id": u.id,
+                "tribunal_id": u.tribunal_id,
+                "comarca": u.comarca,
+                "competencia": u.competencia,
+                "vigente_desde": u.vigente_desde.isoformat(),
+            }
+            for u in unidades
+        ]
+    }
+
+
 COMANDOS: dict[str, Callable[[argparse.Namespace, Fabrica], Awaitable[dict[str, Any]]]] = {
     "criar-cliente": _criar_cliente,
     "criar-usuario": _criar_usuario,
@@ -165,6 +211,9 @@ COMANDOS: dict[str, Callable[[argparse.Namespace, Fabrica], Awaitable[dict[str, 
     "criar-tribunal": _criar_tribunal,
     "liberar-tribunal": _liberar_tribunal,
     "criar-sentinela": _criar_sentinela,
+    "adicionar-unidade": _adicionar_unidade,
+    "remover-unidade": _remover_unidade,
+    "listar-unidades": _listar_unidades,
 }
 
 
