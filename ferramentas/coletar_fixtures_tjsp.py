@@ -46,6 +46,7 @@ from pathlib import Path
 from typing import Protocol
 
 BASE_ESAJ = "https://esaj.tjsp.jus.br"
+VERSAO = "2 (25/09/2026)"
 # Consultas públicas do eproc do TJSP (a antiga eproc1g redireciona para a unificada).
 _EPROC = "https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao="
 URLS_EPROC = (
@@ -425,6 +426,7 @@ def executar(args: argparse.Namespace, abrir: Abridor | None = None) -> Path:
 
     coletor = Coletor(pasta, abrir, AGENTE.format(contato=contato), args.intervalo, args.limite)
 
+    print(f"Coleta de páginas do TJSP - versão {VERSAO}")
     print("e-SAJ (1º grau)…")
     try:
         coletor.salvar(f"{BASE_ESAJ}/cpopg/open.do", "esaj_formulario.html", "formulario")
@@ -457,6 +459,7 @@ def executar(args: argparse.Namespace, abrir: Abridor | None = None) -> Path:
 
     manifesto = {
         "gerado_em": datetime.now().isoformat(timespec="seconds"),
+        "versao_script": VERSAO,
         "agente": coletor.agente,
         "intervalo_segundos": coletor.intervalo,
         "requisicoes": coletor.requisicoes,

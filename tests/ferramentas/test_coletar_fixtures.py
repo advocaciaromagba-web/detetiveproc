@@ -150,6 +150,7 @@ def test_fluxo_completo(tmp_path: Path) -> None:
     assert any("CAPTCHA" in a for a in m["avisos"])
     # uma requisição a cada 5 s (a primeira não espera)
     assert esperas == [5.0] * (len(simulado.pedidos) - 1)
+    assert m["versao_script"] == cf.VERSAO
     agentes = {p.get_header("User-agent") for p in simulado.pedidos}
     assert agentes == {"MonitorProcessual-Fase0/1.0 (coleta de paginas para testes "
                        "automatizados; contato: ti@x.com)"}  # fmt: skip
