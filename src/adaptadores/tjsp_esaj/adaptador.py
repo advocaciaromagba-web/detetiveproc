@@ -1,7 +1,7 @@
 """Adaptador do e-SAJ/TJSP, 1º grau (seção 5, "Fluxo do adaptador e-SAJ").
 
 Busca por documento ou nome -> lista paginada -> números CNJ; ``obter_processo`` busca
-pelo número e lê a capa. Cada página é guardada (MinIO + ``coleta_bruta``) antes do
+pelo número e lê a capa. Cada página é guardada (armazenamento S3 + ``coleta_bruta``) antes do
 parsing, e uma consulta concluída nas últimas 24 h é reaproveitada sem ir ao tribunal.
 
 Os endereços seguem a consulta pública ``/cpopg``; conferir com as páginas reais da

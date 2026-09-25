@@ -36,7 +36,7 @@ docker compose run --rm api python -m api.admin criar-usuario --email ana@x.com.
 | Painel | `0.0.0.0:3100` (única porta publicada) |
 | API | só na rede interna do compose (`http://api:8000`) |
 | PostgreSQL / Redis | `127.0.0.1:5432` / `127.0.0.1:6379` (desenvolvimento local) |
-| MinIO (API / console) | `127.0.0.1:9000` / <http://127.0.0.1:9001> |
+| SeaweedFS (S3 do HTML bruto) | `127.0.0.1:8333` |
 | OpenSearch | <http://127.0.0.1:9200> |
 
 Integrações externas (chave de API) devem chegar à API por um proxy reverso com TLS
@@ -44,7 +44,7 @@ Integrações externas (chave de API) devem chegar à API por um proxy reverso c
 por HTTPS (em `localhost` o navegador aceita sem HTTPS).
 
 Para desenvolver sem Docker nos serviços Python, suba só a infraestrutura:
-`docker compose up -d postgres redis minio opensearch`.
+`docker compose up -d postgres redis seaweedfs opensearch`.
 
 O OpenSearch exige `vm.max_map_count` ≥ 262144 no host Linux:
 `sudo sysctl -w vm.max_map_count=262144`.
@@ -302,9 +302,17 @@ como `TJSP/esaj`. Busca por CPF/CNPJ ou nome em `/cpopg/search.do`, segue a pagi
   falha de conexão → `TribunalIndisponivel`; CAPTCHA → `DesafioHumano`; outros 4xx e
   página inesperada → `LayoutAlterado`. Nenhum detalhe ou log leva a URL com o valor
   consultado (o log do httpx é filtrado).
-- **Bruto e cache** (`adaptadores/bruto.py`): cada página vai para o MinIO
+- **Bruto e cache** (`adaptadores/bruto.py`): cada página vai para o S3 (SeaweedFS)
   (`tjsp/esaj/AAAA/MM/DD/<lote>/NNN.html`, UTF-8) e para `coleta_bruta` antes do
   parsing, com a URL mascarada e o parâmetro só como HMAC. Uma consulta concluída nas
   últimas `COLETOR_CACHE_HORAS` é reaproveitada inteira, sem ir ao tribunal; consulta
   interrompida por erro não vira cache. As sentinelas consultam sempre o site
   (`adaptadores.bruto.sem_cache`).
+
+### Armazenamento do HTML bruto: SeaweedFS no lugar do MinIO
+
+O MinIO deixou de publicar imagens gratuitas (`minio/minio` saiu do Docker Hub). O
+compose usa o SeaweedFS (`chrislusf/seaweedfs`, versão fixada), que fala o mesmo
+protocolo S3; o código continua usando o cliente S3 `minio` (`ArmazemS3`). Variáveis:
+`S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` (obrigatória: sem ela o S3 ficaria
+aberto) e `S3_BUCKET_BRUTO`. O bucket é criado na primeira gravação.

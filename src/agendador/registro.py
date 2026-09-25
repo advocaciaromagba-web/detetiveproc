@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from adaptadores.bruto import Armazem, ArmazemMinio, GuardaBruto, RepositorioColetaBanco
+from adaptadores.bruto import Armazem, ArmazemS3, GuardaBruto, RepositorioColetaBanco
 from adaptadores.http import Robots
 from adaptadores.tjsp_esaj.adaptador import AdaptadorEsajTJSP, ConfigEsaj
 from core.adaptador import AdaptadorTribunal
@@ -57,7 +57,7 @@ class RegistroAdaptadores:
 def fabrica_esaj_tjsp(
     fabrica: async_sessionmaker[AsyncSession], settings: Settings, armazem: Armazem
 ) -> FabricaAdaptador:
-    """e-SAJ/TJSP 1º grau com guarda do bruto no MinIO e cache por consulta."""
+    """e-SAJ/TJSP 1º grau com guarda do bruto no armazenamento S3 e cache por consulta."""
     guarda = GuardaBruto(
         armazem,
         RepositorioColetaBanco(fabrica, "TJSP", "esaj", grau=1),
@@ -90,6 +90,6 @@ def registro_padrao(
 ) -> RegistroAdaptadores:
     """Adaptadores de produção. O eproc do TJSP entra na tarefa 7."""
     registro = RegistroAdaptadores(redis)
-    armazem = armazem if armazem is not None else ArmazemMinio.de_settings(settings)
+    armazem = armazem if armazem is not None else ArmazemS3.de_settings(settings)
     registro.registrar("TJSP", "esaj", fabrica_esaj_tjsp(fabrica, settings, armazem))
     return registro

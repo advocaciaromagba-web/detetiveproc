@@ -35,4 +35,4 @@ class ProcessoDTO:
     partes: list[ParteDTO]
     url_origem: str
     coletado_em: datetime
-    bruto_ref: str  # chave do HTML/PDF no MinIO
+    bruto_ref: str  # chave do HTML/PDF no armazenamento S3

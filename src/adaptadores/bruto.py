@@ -1,6 +1,6 @@
 """Guarda do HTML bruto e cache de 24 h por consulta (seção 5).
 
-Cada página baixada do tribunal é gravada no MinIO ANTES do parsing, com um registro em
+Cada página baixada do tribunal é gravada no armazenamento S3 ANTES do parsing, com um registro em
 ``coleta_bruta``. As páginas de uma consulta formam um lote; o lote só vale como cache
 depois de concluído (``completa``), e é reaproveitado inteiro ou não é usado: a
 paginação do tribunal depende da sessão de quem fez a busca, então não se mistura
@@ -61,7 +61,7 @@ class Armazem(Protocol):
 
 
 class ArmazemMemoria:
-    """Para testes e execução local sem MinIO."""
+    """Para testes e execução local sem armazenamento S3."""
 
     def __init__(self) -> None:
         self.objetos: dict[str, tuple[bytes, str]] = {}
@@ -73,8 +73,9 @@ class ArmazemMemoria:
         return self.objetos[chave][0]
 
 
-class ArmazemMinio:
-    """MinIO pelo cliente oficial (síncrono), em thread para não travar o event loop."""
+class ArmazemS3:
+    """Armazenamento compatível com S3 (SeaweedFS no compose), pelo cliente ``minio``
+    (cliente S3 genérico, síncrono), em thread para não travar o event loop."""
 
     def __init__(self, cliente: Minio, bucket: str) -> None:
         self._cliente = cliente
@@ -82,14 +83,14 @@ class ArmazemMinio:
         self._bucket_pronto = False
 
     @classmethod
-    def de_settings(cls, settings: Settings) -> "ArmazemMinio":
+    def de_settings(cls, settings: Settings) -> "ArmazemS3":
         cliente = Minio(
-            settings.minio_endpoint,
-            access_key=settings.minio_root_user,
-            secret_key=settings.minio_root_password.get_secret_value(),
-            secure=settings.minio_tls,
+            settings.s3_endpoint,
+            access_key=settings.s3_access_key,
+            secret_key=settings.s3_secret_key.get_secret_value(),
+            secure=settings.s3_tls,
         )
-        return cls(cliente, settings.minio_bucket_bruto)
+        return cls(cliente, settings.s3_bucket_bruto)
 
     def _garantir_bucket(self) -> None:
         if self._bucket_pronto:

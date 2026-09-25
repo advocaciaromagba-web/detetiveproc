@@ -203,7 +203,7 @@ class Movimento(Base):
 
 
 class ColetaBruta(Base):
-    """Uma página baixada do tribunal; o HTML fica no MinIO (``objeto_storage``).
+    """Uma página baixada do tribunal; o HTML fica no armazenamento S3 (``objeto_storage``).
 
     As páginas de uma mesma consulta (busca + paginação, ou busca + capa) formam um
     ``lote``. ``completa`` marca o lote que terminou sem erro: só ele serve de cache.

@@ -40,7 +40,7 @@ flowchart LR
     F[Fontes<br/>e-SAJ · DataJud · DJEN] --> C[Coleta<br/>agendador + workers]
     C --> Q[(Fila<br/>Redis)]
     Q --> P[Processamento<br/>ETL + IA]
-    P --> A[(Armazenamento<br/>Postgres · OpenSearch · MinIO)]
+    P --> A[(Armazenamento<br/>Postgres · OpenSearch · SeaweedFS)]
     A --> R[Motor de regras<br/>watchlist + padrões]
     R --> E[Entrega<br/>e-mail · WhatsApp · API]
 ```
@@ -53,9 +53,11 @@ O fluxo lê da esquerda para a direita; a fila entre coleta e processamento perm
 | Coleta | Agendar consultas, executar adaptadores, respeitar limites por tribunal, salvar bruto | Temporal (ou APScheduler no MVP), Playwright, httpx |
 | Fila | Desacoplar coleta e processamento, permitir retry | Redis Streams (MVP) ou RabbitMQ |
 | Processamento | Parsing, normalização CNJ, resolução de entidades, dedup, filtro de sigilo, classificação por IA | Python, selectolax, pdfplumber, Claude API |
-| Armazenamento | Modelo relacional, busca full-text, arquivos brutos | PostgreSQL 16, OpenSearch 2.x, MinIO |
+| Armazenamento | Modelo relacional, busca full-text, arquivos brutos | PostgreSQL 16, OpenSearch 2.x, SeaweedFS (S3) |
 | Regras | Casar processos novos com alvos e padrões, calcular urgência | Python (serviço próprio) |
 | Entrega | Alertas, painel, API, webhooks | FastAPI, Next.js, SMTP, API WhatsApp Business |
+
+> Alteração (set/2026): o MinIO foi substituído pelo SeaweedFS, que usa o mesmo protocolo S3, porque o MinIO deixou de publicar imagens gratuitas.
 
 ## 3. Modelo de dados (PostgreSQL)
 
@@ -73,7 +75,7 @@ O modelo gira em torno de três entidades: processo, pessoa e alvo monitorado. O
 | `regra` | id, cliente\_id, nome, classes (int\[\]), assuntos (int\[\]), termos (text\[\]), comarcas (text\[\]), polo, valor\_min, ativo | Monitoramento por padrão |
 | `ocorrencia` | id, processo\_id, alvo\_id ou regra\_id, confianca (confirmada, a\_verificar), score\_urgencia, detectado\_em, status (novo, visto, descartado) | Resultado do casamento |
 | `alerta` | id, ocorrencia\_id, canal, destino, enviado\_em, status\_envio, erro | Log de entrega |
-| `coleta_bruta` | id, tribunal\_id, tipo\_consulta, parametro\_hash, url, http\_status, objeto\_storage, coletado\_em | Guarda o HTML/PDF no MinIO para reprocessar |
+| `coleta_bruta` | id, tribunal\_id, tipo\_consulta, parametro\_hash, url, http\_status, objeto\_storage, coletado\_em | Guarda o HTML/PDF no armazenamento S3 (SeaweedFS) para reprocessar |
 | `execucao_robo` | id, tribunal\_id, iniciado\_em, finalizado\_em, consultas, sucesso, erros, processos\_novos | Base do health-check |
 | `cliente` | id, nome, cnpj, plano, contatos (jsonb) | Multi-tenant desde o início |
 | `auditoria` | id, usuario\_id, acao, entidade, entidade\_id, em, detalhes (jsonb) | Exigência LGPD |
@@ -110,7 +112,7 @@ class ProcessoDTO:
     partes: list[ParteDTO]
     url_origem: str
     coletado_em: datetime
-    bruto_ref: str             # chave do HTML/PDF no MinIO
+    bruto_ref: str             # chave do HTML/PDF no armazenamento S3
 
 class AdaptadorTribunal(ABC):
     sigla: str                 # "TJSP"
@@ -165,7 +167,7 @@ Consequência para o monitoramento de distribuição: todo alvo deve ser consult
 2. Submeter o formulário com o parâmetro; paginar a lista de resultados.
 3. Extrair de cada linha: número CNJ, classe, assunto, foro, vara, data de recebimento/distribuição.
 4. Para cada número novo, abrir a página do processo e extrair partes, polos, advogados e valor da causa.
-5. Salvar o HTML de cada página no MinIO antes de fazer o parsing.
+5. Salvar o HTML de cada página no armazenamento S3 (SeaweedFS) antes de fazer o parsing.
 
 **Fluxo do adaptador eproc**: mesma sequência, com seletores próprios. Na fase 0, confirmar quais filtros a consulta pública do eproc do TJSP oferece (número, nome, documento) e registrar no repositório.
 
@@ -284,10 +286,10 @@ O MVP roda inteiro em uma VPS com Docker Compose, hospedada no Brasil; a separa�
 | `postgres` | PostgreSQL 16 + pg\_trgm | 2 vCPU, 4 GB, SSD |
 | `opensearch` | OpenSearch 2.x, nó único | 2 vCPU, 4 GB |
 | `redis` | Redis 7 (filas e cache) | 512 MB |
-| `minio` | MinIO (bruto HTML/PDF) | Disco conforme volume |
+| `seaweedfs` | SeaweedFS, API S3 (bruto HTML/PDF) | Disco conforme volume |
 | `painel` | Next.js | 0,5 vCPU, 512 MB |
 
-Uma VPS de 8 vCPU e 16–32 GB atende o MVP. Backup diário do Postgres e do MinIO para armazenamento externo, com retenção de 30 dias e teste de restauração mensal.
+Uma VPS de 8 vCPU e 16–32 GB atende o MVP. Backup diário do Postgres e do SeaweedFS para armazenamento externo, com retenção de 30 dias e teste de restauração mensal.
 
 **Saúde dos robôs** (o ponto que mais derruba sistemas desse tipo):
 
@@ -306,7 +308,7 @@ O sistema trata dados pessoais públicos, mas públicos não significa livres: c
 | --- | --- |
 | LGPD — base legal | Legítimo interesse ou execução de contrato com o cliente monitorado; registrar a finalidade de cada alvo e regra no cadastro |
 | LGPD — necessidade | Coletar só os campos do modelo; não guardar endereço, filiação ou dados que a capa trouxer além disso |
-| LGPD — segurança | Criptografia em repouso (disco e MinIO), TLS em trânsito, RLS por cliente, logs sem documento em claro |
+| LGPD — segurança | Criptografia em repouso (disco e SeaweedFS), TLS em trânsito, RLS por cliente, logs sem documento em claro |
 | LGPD — direitos do titular | Canal de atendimento e rotina de exclusão/anonimização de pessoa que não seja alvo de nenhum cliente |
 | LGPD — retenção | Bruto HTML/PDF por 12 meses; dados normalizados enquanto houver alvo ou regra ativa ligada |
 | Segredo de justiça | Nunca armazenar partes nem conteúdo; só o número, e só se aparecer em fonte pública |
@@ -383,7 +385,7 @@ monitor-processual/
 3. Modelo de dados e migração inicial (seção 3), com RLS.
 4. Parser e-SAJ contra fixtures: lista de resultados e capa do processo.
 5. Normalizador, resolução de entidades e dedup, com testes.
-6. Adaptador e-SAJ real (Playwright/httpx), com salvamento do bruto no MinIO.
+6. Adaptador e-SAJ real (Playwright/httpx), com salvamento do bruto no armazenamento S3 (SeaweedFS).
 7. Repetir 4 e 6 para o eproc.
 8. Agendador da varredura por alvo e orquestrador com tratamento das exceções.
 9. Motor de regras, score e alerta por e-mail.

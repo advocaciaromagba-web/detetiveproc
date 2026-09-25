@@ -13,11 +13,12 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://monitor:monitor@localhost:5432/monitor"
     redis_url: str = "redis://localhost:6379/0"
     opensearch_url: str = "http://localhost:9200"
-    minio_endpoint: str = "localhost:9000"
-    minio_root_user: str = "monitor"
-    minio_root_password: SecretStr = SecretStr("")
-    minio_bucket_bruto: str = "bruto"
-    minio_tls: bool = False  # True quando o MinIO estiver fora da rede interna
+    # Armazenamento de objetos S3 (SeaweedFS no compose) para o HTML bruto.
+    s3_endpoint: str = "localhost:8333"
+    s3_access_key: str = "monitor"
+    s3_secret_key: SecretStr = SecretStr("")
+    s3_bucket_bruto: str = "bruto"
+    s3_tls: bool = False  # True quando o armazenamento estiver fora da rede interna
     hash_documento_chave: SecretStr | None = None
 
     smtp_host: str = "localhost"

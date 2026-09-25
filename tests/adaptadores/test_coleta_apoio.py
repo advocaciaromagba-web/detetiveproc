@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from adaptadores.bruto import (
     ArmazemMemoria,
-    ArmazemMinio,
+    ArmazemS3,
     GuardaBruto,
     RepositorioColetaBanco,
     RepositorioColetaMemoria,
@@ -106,7 +106,7 @@ async def test_guarda_sem_validade_nao_usa_cache() -> None:
     assert await guarda.recente("nome", "h") is None
 
 
-class MinioFalso:
+class S3Falso:
     def __init__(self) -> None:
         self.buckets: set[str] = set()
         self.objetos: dict[tuple[str, str], tuple[bytes, str]] = {}
@@ -140,9 +140,9 @@ class MinioFalso:
         return Resposta()
 
 
-async def test_armazem_minio_cria_o_bucket_uma_vez() -> None:
-    falso = MinioFalso()
-    armazem = ArmazemMinio(cast(Minio, falso), "bruto")
+async def test_armazem_s3_cria_o_bucket_uma_vez() -> None:
+    falso = S3Falso()
+    armazem = ArmazemS3(cast(Minio, falso), "bruto")
 
     await armazem.gravar("a/1.html", b"um", "text/html")
     await armazem.gravar("a/2.html", b"dois", "text/html")
@@ -152,14 +152,14 @@ async def test_armazem_minio_cria_o_bucket_uma_vez() -> None:
     assert await armazem.ler("a/2.html") == b"dois"
 
 
-def test_armazem_minio_de_settings() -> None:
+def test_armazem_s3_de_settings() -> None:
     settings = Settings(
         _env_file=None,  # type: ignore[call-arg]
-        minio_endpoint="minio:9000",
-        minio_root_password=SecretStr("segredo"),
-        minio_bucket_bruto="outro",
+        s3_endpoint="seaweedfs:8333",
+        s3_secret_key=SecretStr("segredo"),
+        s3_bucket_bruto="outro",
     )
-    armazem = ArmazemMinio.de_settings(settings)
+    armazem = ArmazemS3.de_settings(settings)
     assert armazem._bucket == "outro"
 
 

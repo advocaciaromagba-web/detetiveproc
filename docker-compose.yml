@@ -1,6 +1,6 @@
 name: monitor-processual
 
-# Só o painel é publicado para fora. Postgres, Redis, MinIO, OpenSearch, Prometheus e
+# Só o painel é publicado para fora. Postgres, Redis, SeaweedFS (S3), OpenSearch, Prometheus e
 # Grafana ficam presos a 127.0.0.1 (acesso local/túnel SSH); a API só é alcançável pela
 # rede interna do compose. Integrações externas devem chegar à API por um proxy
 # reverso com TLS (Caddy/Nginx) configurado na implantação.
@@ -14,10 +14,10 @@ x-backend: &backend
     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@postgres:5432/${POSTGRES_DB:-monitor}
     REDIS_URL: redis://redis:6379/0
     OPENSEARCH_URL: http://opensearch:9200
-    MINIO_ENDPOINT: minio:9000
-    MINIO_ROOT_USER: ${MINIO_ROOT_USER:-monitor}
-    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
-    MINIO_BUCKET_BRUTO: ${MINIO_BUCKET_BRUTO:-bruto}
+    S3_ENDPOINT: seaweedfs:8333
+    S3_ACCESS_KEY: ${S3_ACCESS_KEY:-monitor}
+    S3_SECRET_KEY: ${S3_SECRET_KEY:?defina S3_SECRET_KEY no .env}
+    S3_BUCKET_BRUTO: ${S3_BUCKET_BRUTO:-bruto}
     COLETOR_CONTATO: ${COLETOR_CONTATO:-}
     COLETOR_MAX_PAGINAS: ${COLETOR_MAX_PAGINAS:-20}
     COLETOR_CACHE_HORAS: ${COLETOR_CACHE_HORAS:-24}
@@ -65,23 +65,26 @@ services:
       timeout: 5s
       retries: 5
 
-  minio:
-    image: minio/minio:latest
+  # Armazenamento S3 do HTML bruto. O MinIO deixou de publicar imagens gratuitas; o
+  # SeaweedFS fala o mesmo protocolo S3. Credencial por AWS_ACCESS_KEY_ID/SECRET: sem ela
+  # o S3 ficaria aberto, por isso a senha é obrigatória.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47
     restart: unless-stopped
-    command: ["server", "/data", "--console-address", ":9001"]
+    command: ["server", "-s3"]
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-monitor}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-monitor}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?defina S3_SECRET_KEY no .env}
     ports:
-      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
-      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
     volumes:
-      - minio_data:/data
+      - seaweedfs_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8333/healthz"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 12
+      start_period: 20s
 
   opensearch:
     image: opensearchproject/opensearch:2
@@ -152,7 +155,7 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-      minio:
+      seaweedfs:
         condition: service_healthy
 
   painel:
@@ -203,7 +206,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  seaweedfs_data:
   opensearch_data:
   prometheus_data:
   grafana_data:
