@@ -272,3 +272,17 @@ formulário, listas (por CNPJ de grandes litigantes, por nome e sem resultado), 
 a consulta pública do eproc; uma página a cada 5 s, respeitando o `robots.txt`; para em
 CAPTCHA, HTTP 403/429; troca CPF/CNPJ por fictícios e gera um `.zip` com `manifesto.json`.
 Os nomes das partes são anonimizados depois, ao entrar em `tests/fixtures/`.
+
+## Parser do e-SAJ/TJSP (tarefa 4) — PROVISÓRIO
+
+`adaptadores/tjsp_esaj/parser.py` (selectolax, funções puras, sem requisição):
+`classificar(html)` identifica lista, capa, sem resultado, sigilo, CAPTCHA ou página
+desconhecida; `extrair_lista` devolve itens (número CNJ, link da capa, classe, assunto,
+data e foro, parte e polo nas buscas por nome/documento), total e próxima página;
+`extrair_capa` devolve o `ProcessoDTO` (partes de "todas as partes", advogados, valor,
+comarca derivada do foro). CAPTCHA levanta `DesafioHumano`, segredo de justiça
+`ProcessoSigiloso` e seletores ausentes `LayoutAlterado`.
+
+Foi escrito contra páginas **sintéticas** (`tests/fixtures/tjsp_esaj/sinteticos`),
+porque as reais da fase 0 ainda não chegaram. Quando chegarem, os seletores e os
+rótulos são conferidos contra elas e os testes passam a usá-las.
