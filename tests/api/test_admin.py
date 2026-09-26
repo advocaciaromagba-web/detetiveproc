@@ -41,7 +41,7 @@ async def test_fluxo_de_implantacao(fabrica, relogio, monkeypatch) -> None:
         "--cliente-id",
         str(cid),
     )
-    assert usuario["totp_uri"].startswith("otpauth://totp/Monitor%20Processual:nova%40x.com")
+    assert usuario["totp_uri"].startswith("otpauth://totp/Detetiveproc:nova%40x.com")
     segredo = pyotp.parse_uri(usuario["totp_uri"]).secret
     sessao = await entrar(
         fabrica, "nova@x.com", SENHA, pyotp.TOTP(segredo).at(relogio.agora), relogio.agora

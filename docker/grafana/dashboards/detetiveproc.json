@@ -1,8 +1,8 @@
 {
-  "uid": "monitor-processual",
-  "title": "Monitor Processual — saúde dos robôs",
+  "uid": "detetiveproc",
+  "title": "Detetiveproc — saúde dos robôs",
   "tags": [
-    "monitor-processual"
+    "detetiveproc"
   ],
   "timezone": "America/Sao_Paulo",
   "schemaVersion": 39,

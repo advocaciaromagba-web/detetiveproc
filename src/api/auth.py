@@ -33,7 +33,7 @@ MAX_FALHAS = 5
 DURACAO_BLOQUEIO = timedelta(minutes=15)
 SENHA_MINIMA = 12
 PREFIXO_CHAVE = "mp_"
-EMISSOR_TOTP = "Monitor Processual"
+EMISSOR_TOTP = "Detetiveproc"
 
 _hasher = PasswordHasher()
 # Hash de uma senha aleatória: verificar contra ele custa o mesmo que um usuário real.

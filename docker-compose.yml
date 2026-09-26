@@ -1,4 +1,4 @@
-name: monitor-processual
+name: detetiveproc
 
 # Só o painel é publicado para fora. Postgres, Redis, SeaweedFS (S3), OpenSearch, Prometheus e
 # Grafana ficam presos a 127.0.0.1 (acesso local/túnel SSH); a API só é alcançável pela
@@ -8,7 +8,7 @@ name: monitor-processual
 x-backend: &backend
   build:
     context: .
-  image: monitor-processual/backend:local
+  image: detetiveproc/backend:local
   restart: unless-stopped
   environment:
     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@postgres:5432/${POSTGRES_DB:-monitor}
@@ -28,7 +28,7 @@ x-backend: &backend
     SMTP_USUARIO: ${SMTP_USUARIO:-}
     SMTP_SENHA: ${SMTP_SENHA:-}
     SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
-    SMTP_REMETENTE: ${SMTP_REMETENTE:-Monitor Processual <alertas@localhost>}
+    SMTP_REMETENTE: ${SMTP_REMETENTE:-Detetiveproc <alertas@localhost>}
     EMAIL_OPERACAO: ${EMAIL_OPERACAO:-}
     LOG_FORMATO: ${LOG_FORMATO:-json}
     LOG_NIVEL: ${LOG_NIVEL:-INFO}
@@ -162,7 +162,7 @@ services:
   painel:
     build:
       context: ./painel
-    image: monitor-processual/painel:local
+    image: detetiveproc/painel:local
     restart: unless-stopped
     environment:
       MONITOR_API_URL: http://api:8000
@@ -194,7 +194,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_SENHA:?defina GRAFANA_SENHA no .env}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/monitor-processual.json
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/detetiveproc.json
     volumes:
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro

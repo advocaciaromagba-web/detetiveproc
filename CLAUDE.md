@@ -1,4 +1,4 @@
-# Monitor Processual
+# Detetiveproc
 - Leia docs/ESPECIFICACAO.md antes de qualquer tarefa.
 - Python 3.12, tipagem estrita (mypy), ruff, pytest.
 - Testes de adaptador usam SOMENTE fixtures em tests/fixtures; nunca chamar tribunal em teste.

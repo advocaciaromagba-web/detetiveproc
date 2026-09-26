@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Coleta de páginas da consulta pública do TJSP para os testes do Monitor Processual.
+"""Coleta de páginas da consulta pública do TJSP para os testes do Detetiveproc.
 
 Fase 0 da especificação: salvar páginas reais (lista, capa, sem resultado, sigilo,
 erro) para que os parsers sejam escritos e testados sem acessar o tribunal.

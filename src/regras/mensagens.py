@@ -110,8 +110,8 @@ def _html(dados: DadosAlerta) -> str:
 
 
 def montar_email_alerta(dados: DadosAlerta, destinatario: str) -> Email:
-    texto = "Novo processo detectado pelo Monitor Processual.\n\n" + _texto(dados)
-    html = f"<p>Novo processo detectado pelo Monitor Processual.</p>{_html(dados)}"
+    texto = "Novo processo detectado pelo Detetiveproc.\n\n" + _texto(dados)
+    html = f"<p>Novo processo detectado pelo Detetiveproc.</p>{_html(dados)}"
     return Email(destinatario, assunto_alerta(dados), texto, html)
 
 
@@ -122,6 +122,6 @@ def montar_email_resumo(itens: list[DadosAlerta], destinatario: str, dia: date) 
     return Email(
         destinatario,
         assunto,
-        "Resumo diário do Monitor Processual.\n\n" + "\n\n".join(textos),
-        "<p>Resumo diário do Monitor Processual.</p>" + "".join(htmls),
+        "Resumo diário do Detetiveproc.\n\n" + "\n\n".join(textos),
+        "<p>Resumo diário do Detetiveproc.</p>" + "".join(htmls),
     )

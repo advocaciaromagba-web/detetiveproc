@@ -9,7 +9,7 @@ export default async function Login({
   return (
     <main className="login">
       <div className="cartao">
-        <h1>Monitor Processual</h1>
+        <h1>Detetiveproc</h1>
         {expirada && <p className="aviso">Sua sessão expirou. Entre novamente.</p>}
         <FormLogin />
       </div>

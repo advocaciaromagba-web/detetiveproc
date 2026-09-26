@@ -5,7 +5,7 @@ advogados, juiz), que o e-SAJ publica em campos conhecidos. Cada nome vira um fi
 estável ("Parte Fictícia 03", "Advogado Fictício 01"...), igual em todas as páginas do
 lote, e o resultado é conferido: se sobrar qualquer nome original, nada é gravado.
 
-Uso (na pasta monitor-processual):
+Uso (na pasta do projeto):
 
     uv run python ferramentas/anonimizar_fixtures.py coleta.zip pasta_saida
 

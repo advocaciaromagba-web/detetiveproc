@@ -1,4 +1,4 @@
-# Monitor Processual
+# Detetiveproc
 
 Detecta a distribuição de novos processos contra CPFs e CNPJs monitorados. A
 especificação completa está em [`docs/ESPECIFICACAO.md`](docs/ESPECIFICACAO.md) e
@@ -14,7 +14,7 @@ Este diretório é independente do restante do repositório (a aplicação Next.
 ## Subir tudo com Docker
 
 ```bash
-cd monitor-processual
+cd detetiveproc
 cp .env.example .env    # troque as senhas; HASH_DOCUMENTO_CHAVE: python -c "import secrets; print(secrets.token_hex(32))"
 docker compose up -d --build
 docker compose ps       # aguarde "healthy" em api e painel; migracoes termina com "Exited (0)"
@@ -256,7 +256,7 @@ Campos possíveis: `classe`, `comarca`, `vara`, `data_distribuicao` (AAAA-MM-DD)
 
 **Métricas** — o agendador expõe `/metrics` na porta 9100, só na rede interna. O
 Prometheus (<http://127.0.0.1:9090>) coleta, e o Grafana (<http://127.0.0.1:3000>,
-usuário/senha do `.env`) abre direto no painel *Monitor Processual — saúde dos robôs*:
+usuário/senha do `.env`) abre direto no painel *Detetiveproc — saúde dos robôs*:
 consultas/min, latência p95, erros por exceção, processos novos/dia, alertas enviados,
 sentinelas, alarmes e tribunais bloqueados/pausados. Em servidor remoto, acesse por
 túnel SSH (`ssh -L 3000:127.0.0.1:3000 servidor`).

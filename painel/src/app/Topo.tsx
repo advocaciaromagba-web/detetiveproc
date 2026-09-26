@@ -9,7 +9,7 @@ export function Topo({ eu }: { eu: Eu }) {
     <header className="topo">
       <nav aria-label="Principal">
         <Link className="marca" href="/">
-          Monitor Processual
+          Detetiveproc
         </Link>
         {eu.papel === "cliente" ? (
           <>

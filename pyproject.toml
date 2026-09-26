@@ -1,5 +1,5 @@
 [project]
-name = "monitor-processual"
+name = "detetiveproc"
 version = "0.1.0"
 description = "Monitoramento de distribuição processual contra CPFs e CNPJs monitorados"
 readme = "README.md"

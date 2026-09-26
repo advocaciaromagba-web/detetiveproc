@@ -33,7 +33,7 @@ def test_nomes_documentados_existem() -> None:
 
 
 def test_dashboard_referencia_so_metricas_conhecidas() -> None:
-    painel = json.loads((RAIZ / "docker/grafana/dashboards/monitor-processual.json").read_text())
+    painel = json.loads((RAIZ / "docker/grafana/dashboards/detetiveproc.json").read_text())
     exprs = [t["expr"] for p in painel["panels"] for t in p.get("targets", [])]
     assert len(exprs) >= 7
     conhecidas = set(NOMES) | {f"{n}_bucket" for n in NOMES} | {f"{n}_count" for n in NOMES}

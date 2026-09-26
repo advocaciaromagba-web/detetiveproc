@@ -1,4 +1,4 @@
-name: monitor-processual
+name: detetiveproc
 
 on:
   push:
@@ -151,10 +151,10 @@ jobs:
           # Painel do Grafana provisionado.
           senha="$(grep '^GRAFANA_SENHA=' .env | cut -d= -f2-)"
           for i in $(seq 1 30); do
-            curl -fsS -u "admin:$senha" http://127.0.0.1:3000/api/dashboards/uid/monitor-processual > /dev/null && break
+            curl -fsS -u "admin:$senha" http://127.0.0.1:3000/api/dashboards/uid/detetiveproc > /dev/null && break
             sleep 2
           done
-          curl -fsS -u "admin:$senha" http://127.0.0.1:3000/api/dashboards/uid/monitor-processual | grep -q "saúde dos robôs"
+          curl -fsS -u "admin:$senha" http://127.0.0.1:3000/api/dashboards/uid/detetiveproc | grep -q "saúde dos robôs"
           # Métricas só na rede interna.
           if curl -fsS -o /dev/null --max-time 3 http://127.0.0.1:9100/metrics; then
             echo "métricas do agendador expostas no host"

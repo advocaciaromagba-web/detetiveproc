@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Monitor Processual",
+  title: "Detetiveproc",
   description: "Ocorrências de distribuição processual",
   robots: { index: false, follow: false },
 };

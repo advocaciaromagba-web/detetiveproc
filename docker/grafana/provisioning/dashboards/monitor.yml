@@ -1,7 +1,7 @@
 apiVersion: 1
 providers:
-  - name: monitor-processual
-    folder: Monitor Processual
+  - name: detetiveproc
+    folder: Detetiveproc
     type: file
     disableDeletion: true
     allowUiUpdates: false
