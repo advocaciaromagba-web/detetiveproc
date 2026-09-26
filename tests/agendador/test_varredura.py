@@ -10,6 +10,7 @@ from agendador.varredura import (
     Consulta,
     dentro_da_janela,
     espera_apos_falha,
+    proxima_execucao,
     vencida,
 )
 from db.modelos import Varredura
@@ -64,6 +65,21 @@ def test_critica_a_cada_4_horas() -> None:
     v = varredura(ultima_execucao_em=brt(8), proxima_execucao_em=brt(12))
     assert not vencida(v, CRITICA, brt(11, 59), CFG)
     assert vencida(v, CRITICA, brt(12), CFG)
+
+
+def test_padrao_executado_perto_do_fim_nao_perde_a_proxima_noite() -> None:
+    agora = brt(5, 59)
+    seguinte = proxima_execucao(PADRAO, agora, CFG)
+    assert seguinte == brt(21)
+    v = varredura(ultima_execucao_em=agora, proxima_execucao_em=seguinte)
+    assert not vencida(v, PADRAO, brt(20, 59), CFG)
+    assert vencida(v, PADRAO, brt(21), CFG)
+
+
+def test_padrao_executado_a_noite_volta_na_abertura_do_dia_seguinte() -> None:
+    agora = brt(22)
+    assert proxima_execucao(PADRAO, agora, CFG) == brt(21) + timedelta(days=1)
+    assert proxima_execucao(CRITICA, agora, CFG) == agora + timedelta(hours=4)
 
 
 def test_alvo_que_virou_critico_nao_espera_24h() -> None:
