@@ -63,6 +63,21 @@ def intervalo(consulta: Consulta, config: ConfigVarredura) -> timedelta:
     return config.intervalo_critica if consulta.critica else config.intervalo_padrao
 
 
+def proxima_execucao(consulta: Consulta, agora: datetime, config: ConfigVarredura) -> datetime:
+    """Agenda a próxima consulta padrão para a abertura da janela seguinte.
+
+    Somar 24 h a uma execução perto do fechamento da janela pode fazer a
+    consulta perder a noite seguinte e esperar quase 39 h.
+    """
+    por_intervalo = agora + intervalo(consulta, config)
+    if consulta.critica:
+        return por_intervalo
+    local = agora.astimezone(config.fuso)
+    dia = local.date() + timedelta(days=local.time() >= config.janela_inicio)
+    abertura = datetime.combine(dia, config.janela_inicio, tzinfo=config.fuso)
+    return min(por_intervalo, abertura.astimezone(agora.tzinfo))
+
+
 def vencida(
     varredura: Varredura, consulta: Consulta, agora: datetime, config: ConfigVarredura
 ) -> bool:

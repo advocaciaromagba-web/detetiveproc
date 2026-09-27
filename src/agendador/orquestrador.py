@@ -34,7 +34,7 @@ from agendador.varredura import (
     Consulta,
     consultas_ativas,
     espera_apos_falha,
-    intervalo,
+    proxima_execucao,
     sincronizar,
     vencidas,
 )
@@ -335,7 +335,7 @@ class Orquestrador:
                 .values(
                     linha_base_em=func.coalesce(Varredura.linha_base_em, agora),
                     ultima_execucao_em=agora,
-                    proxima_execucao_em=agora + intervalo(consulta, self.config),
+                    proxima_execucao_em=proxima_execucao(consulta, agora, self.config),
                     falhas_seguidas=0,
                     ultimo_erro=None,
                 )
