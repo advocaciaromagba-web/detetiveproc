@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     eproc_tjsp_ativo: bool = False
     eproc_tjsp_url: str = "https://eproc-consulta.tjsp.jus.br/consulta_1g"
 
+    # Fuso do escritório: exibição e cálculo de prazos/audiências (dados guardados em UTC).
+    fuso_escritorio: str = "America/Sao_Paulo"
+    # Publicações do DJEN/Comunica (API pública do PJe). Descoberta sem acesso ao tribunal.
+    djen_url: str = "https://comunicaapi.pje.jus.br"
+    djen_itens_por_pagina: int = 100
+    djen_max_paginas: int = 50
+
     log_formato: Literal["json", "texto"] = "json"
     log_nivel: str = "INFO"
     metricas_porta: int = 9100  # servidor Prometheus do agendador (rede interna)

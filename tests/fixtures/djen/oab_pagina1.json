@@ -1,0 +1,35 @@
+{
+  "status": "success",
+  "count": 3,
+  "items": [
+    {
+      "id": 1001,
+      "data_disponibilizacao": "2026-09-24",
+      "siglaTribunal": "TJSP",
+      "tipoComunicacao": "Intimação",
+      "nomeOrgao": "1ª Vara Cível de Campinas",
+      "numero_processo": "1000123-35.2024.8.26.0100",
+      "texto": "Fica a parte intimada para, no prazo de 15 dias, apresentar contestação.",
+      "meiocompleto": "Diário de Justiça Eletrônico Nacional",
+      "link": "https://comunica.pje.jus.br/consulta/1001",
+      "destinatarios": [{"nome": "ACME COMÉRCIO LTDA", "polo": "P"}],
+      "destinatarioadvogados": [
+        {"advogado": {"nome": "Fulano de Tal", "numero_oab": "123456", "uf_oab": "SP"}}
+      ]
+    },
+    {
+      "id": 1002,
+      "data_disponibilizacao": "2026-09-24",
+      "siglaTribunal": "TJSP",
+      "tipoComunicacao": "Citação",
+      "nomeOrgao": "Vara Única de Paulínia",
+      "numeroprocessocommascara": "0000001-84.2020.8.26.0114",
+      "texto": "Citação. Audiência de conciliação designada para 10/11/2026 às 14:00.",
+      "meiocompleto": "Edital",
+      "destinatarios": [{"nome": "João da Silva", "polo": "A"}],
+      "destinatarioadvogados": [
+        {"advogado": {"nome": "Fulano de Tal", "numero_oab": "123456", "uf_oab": "SP"}}
+      ]
+    }
+  ]
+}

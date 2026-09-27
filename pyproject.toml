@@ -38,7 +38,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/core", "src/adaptadores", "src/db", "src/pipeline", "src/regras", "src/entrega", "src/agendador", "src/api", "src/monitoramento"]
+packages = ["src/core", "src/adaptadores", "src/db", "src/pipeline", "src/regras", "src/entrega", "src/agendador", "src/api", "src/monitoramento", "src/fontes"]
 
 [tool.ruff]
 target-version = "py312"
@@ -68,7 +68,7 @@ max-args = 8
 python_version = "3.12"
 strict = true
 mypy_path = "src"
-packages = ["core", "adaptadores", "db", "pipeline", "regras", "entrega", "agendador", "api", "monitoramento"]
+packages = ["core", "adaptadores", "db", "pipeline", "regras", "entrega", "agendador", "api", "monitoramento", "fontes"]
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
 
