@@ -369,3 +369,22 @@ Páginas novas passam por `ferramentas/anonimizar_fixtures.py` antes de entrar e
 `tests/fixtures/*/reais` (a ferramenta recusa gravar se sobrar nome original). Processo
 que não pode ser identificado (segredo de justiça): `--processo NUMERO` troca número,
 código interno, foro e vara por fictícios.
+
+## Fontes de publicações e fuso do escritório (cobertura do eproc)
+
+O eproc do TJSP exige verificação humana na consulta pública, então a cobertura vem de
+fontes que não passam pelo site (seção 5). A primeira é o **DJEN/Comunica** (API pública
+de publicações do PJe):
+
+- `fontes/djen.py` consulta as comunicações por **OAB** do escritório ou por **nome** da
+  parte, num período e opcionalmente por tribunal, e devolve `PublicacaoDTO` (número CNJ,
+  órgão, tipo, texto, partes e advogados). Toda requisição passa pelo limitador; a
+  resposta bruta é guardada no S3 antes do parsing, com o valor consultado só em hash.
+- Novo alvo por **OAB** (`core/oab.py`, forma canônica "SP123456"). O tipo de alvo `oab`
+  no banco, a persistência das publicações e o agendamento entram nos próximos PRs.
+- **Provisório**: escrito contra respostas sintéticas (`tests/fixtures/djen`), porque
+  este ambiente não alcança a API; confirmar os nomes dos campos com dados reais.
+
+**Fuso** (`core/tempo.py`): tudo é guardado em UTC; a exibição e o cálculo de prazos e
+audiências usam `FUSO_ESCRITORIO` (padrão `America/Sao_Paulo`, Brasília). Prazos correm
+em **dias úteis** (CPC art. 219), pulando fins de semana e os feriados informados.

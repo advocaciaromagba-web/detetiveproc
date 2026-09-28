@@ -1,0 +1,22 @@
+{
+  "status": "success",
+  "count": 3,
+  "items": [
+    {
+      "id": 1003,
+      "data_disponibilizacao": "2026-09-25",
+      "siglaTribunal": "TJSP",
+      "tipoComunicacao": "Despacho",
+      "numero_processo": "sem-numero-cnj",
+      "texto": "Publicação sem número CNJ válido continua sendo registrada.",
+      "destinatarios": [],
+      "destinatarioadvogados": []
+    },
+    {
+      "id": 1002,
+      "texto": "Duplicada na paginação; deve ser deduplicada por id_externo.",
+      "destinatarios": [],
+      "destinatarioadvogados": []
+    }
+  ]
+}
