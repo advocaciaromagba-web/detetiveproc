@@ -37,6 +37,8 @@ TABELAS_ESPERADAS = {
     "sentinela",
     "execucao_sentinela",
     "alarme",
+    "publicacao",
+    "publicacao_alvo",
 }
 POSTERIORES_A_0001 = {
     "varredura",
@@ -47,6 +49,8 @@ POSTERIORES_A_0001 = {
     "sentinela",
     "execucao_sentinela",
     "alarme",
+    "publicacao",
+    "publicacao_alvo",
 }
 
 

@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from core.documentos import normalizar_documento, tipo_documento
 from core.nomes import normalizar_nome
+from core.oab import OABInvalida, normalizar_oab
 from pipeline.normalizador import canonizar_comarca
 
 Polo = Literal["ativo", "passivo", "terceiro"]
@@ -55,7 +56,7 @@ def _nomes(valores: list[str]) -> list[str]:
 
 
 class AlvoEntrada(BaseModel):
-    tipo: Literal["documento", "nome"]
+    tipo: Literal["documento", "nome", "oab"]
     valor: str = Field(min_length=1, max_length=200)
     variacoes: list[str] = Field(default_factory=list, max_length=30)
     prioridade: Literal["critica", "padrao"] = "padrao"
@@ -83,6 +84,11 @@ class AlvoEntrada(BaseModel):
             if tipo_documento(documento) is None:
                 raise ValueError("CPF/CNPJ inválido")
             self.valor = documento
+        elif self.tipo == "oab":
+            try:
+                self.valor = normalizar_oab(self.valor)
+            except OABInvalida as erro:
+                raise ValueError("OAB inválida") from erro
         else:
             nome = normalizar_nome(self.valor)
             if not nome:
