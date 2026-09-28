@@ -2,9 +2,17 @@
 
 Sep 23, 2026 · @Roma
 
+> **Escopo atualizado (ver `VISAO.md`).** A direção do produto passou a ser **cobertura
+> nacional, em todas as áreas do direito**, via bases do CNJ (**DJEN** e **DataJud**), e não
+> mais um MVP restrito ao TJSP. O documento `VISAO.md` é o norte do produto e **prevalece**
+> onde houver conflito de escopo com esta especificação. Os detalhes técnicos abaixo
+> (modelo de dados, coleta, regras, alertas) seguem válidos como base de engenharia; o que
+> mudou é a **abrangência** (nacional) e a **fonte primária** (bases nacionais do CNJ, não a
+> raspagem tribunal a tribunal, que vira detalhe sob demanda).
+
 ## 1. Visão geral e escopo
 
-O sistema detecta a distribuição de novos processos contra CPFs e CNPJs monitorados antes da citação e entrega alerta em até 24 horas. Também monitora padrões (classe, assunto, termos, comarca) para identificar ações de interesse. O MVP cobre só o TJSP (e-SAJ) e expande para TRT-15 e TRF-3 na fase 2. Os demais tribunais ficam com API paga como fallback.
+O sistema detecta novos processos contra as pessoas e empresas monitoradas o mais cedo que a fonte pública nacional permite (em geral antes da citação) e entrega alerta. Também monitora padrões (classe, assunto, termos, comarca, valor) para identificar ações de interesse — a base do produto de prospecção. A cobertura é **nacional**, apoiada no **DJEN/Comunica** (publicações, com partes e OAB) e no **DataJud** (metadados nacionais: classe, assunto, valor da causa). A raspagem de e-SAJ/eproc por tribunal é secundária, para buscar o inteiro teor de um processo específico.
 
 **Objetivos do MVP**
 
