@@ -39,11 +39,12 @@ async def test_rls_e_papeis_criados(engine) -> None:
             "ocorrencia",
             "alerta",
             "auditoria",
+            "publicacao_alvo",
         }
         forcado = await c.execute(
             text("SELECT relname FROM pg_class WHERE relforcerowsecurity AND relkind = 'r'")
         )
-        assert len(list(forcado)) == 6
+        assert len(list(forcado)) == 7
         papeis = await c.execute(
             text(
                 "SELECT rolname, rolbypassrls, rolcanlogin FROM pg_roles "

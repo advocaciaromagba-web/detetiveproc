@@ -37,6 +37,7 @@ TABELAS_CLIENTE = ("cliente", "alvo", "regra", "ocorrencia", "alerta", "auditori
 
 _REGEX_CNJ = r"^\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}$"
 _REGEX_DOCUMENTO = r"^([0-9]{11}|[0-9A-Z]{12}[0-9]{2})$"
+_REGEX_OAB = r"^[A-Z]{2}[0-9]{1,6}$"  # forma canônica da inscrição na OAB (UF + número)
 
 
 def _em(texto: str, *valores: str) -> str:
@@ -374,12 +375,13 @@ class Alvo(Base):
         # (id, cliente_id) único permite FK composta: ocorrência só aponta alvo do mesmo cliente.
         UniqueConstraint("id", "cliente_id"),
         UniqueConstraint("cliente_id", "tipo", "valor"),
-        CheckConstraint(_em("tipo", "documento", "nome"), name="tipo"),
+        CheckConstraint(_em("tipo", "documento", "nome", "oab"), name="tipo"),
         CheckConstraint(_em("prioridade", "critica", "padrao"), name="prioridade"),
         CheckConstraint("length(trim(finalidade)) > 0", name="finalidade"),
         CheckConstraint(
             f"tipo <> 'documento' OR valor ~ '{_REGEX_DOCUMENTO}'", name="documento_normalizado"
         ),
+        CheckConstraint(f"tipo <> 'oab' OR valor ~ '{_REGEX_OAB}'", name="oab_normalizado"),
         Index("ix_alvo_tipo_valor", "tipo", "valor"),
     )
 
@@ -448,6 +450,74 @@ class Ocorrencia(Base):
     polo: Mapped[str | None] = mapped_column(String(10))  # polo em que o alvo apareceu
     # Como casou: documento na capa, documento da busca no tribunal, nome ou regra.
     criterio: Mapped[str] = mapped_column(String(16))
+
+
+class Publicacao(Base):
+    """Comunicação processual coletada numa fonte de publicações (DJEN/Comunica).
+
+    Base compartilhada (datalake): única por (fonte, id_externo). O bruto fica no S3
+    (``objeto_storage``); aqui guardamos o texto e os metadados já normalizados. O
+    cruzamento com os alvos do escritório vai em ``PublicacaoAlvo``.
+    """
+
+    __tablename__ = "publicacao"
+    __table_args__ = (
+        UniqueConstraint("fonte", "id_externo"),
+        CheckConstraint(
+            f"numero_cnj IS NULL OR numero_cnj ~ '{_REGEX_CNJ}'", name="numero_cnj_formato"
+        ),
+        Index("ix_publicacao_data_disponibilizacao", "data_disponibilizacao"),
+    )
+
+    id: Mapped[int] = _id()
+    fonte: Mapped[str] = mapped_column(String(10))
+    id_externo: Mapped[str] = mapped_column(Text)
+    tribunal: Mapped[str | None] = mapped_column(String(20))
+    numero_cnj: Mapped[str | None] = mapped_column(String(25), index=True)
+    orgao: Mapped[str | None] = mapped_column(Text)
+    tipo_comunicacao: Mapped[str | None] = mapped_column(Text)
+    meio: Mapped[str | None] = mapped_column(Text)
+    data_disponibilizacao: Mapped[date | None] = mapped_column(Date)
+    texto: Mapped[str] = mapped_column(Text)
+    link: Mapped[str | None] = mapped_column(Text)
+    destinatarios: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
+    advogados: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
+    objeto_storage: Mapped[str] = mapped_column(Text)  # chave do JSON bruto no S3
+    data_coleta: Mapped[datetime] = _agora()
+    criado_em: Mapped[datetime] = _agora()
+    atualizado_em: Mapped[datetime] = _agora()
+
+
+class PublicacaoAlvo(Base):
+    """Liga uma publicação ao alvo do cliente que a encontrou (tabela de cliente, RLS).
+
+    A publicação é compartilhada; o vínculo é privado de cada escritório. ``criterio``
+    diz como casou (OAB, nome ou documento). Uma publicação casa no máximo uma vez por alvo.
+    """
+
+    __tablename__ = "publicacao_alvo"
+    __table_args__ = (
+        UniqueConstraint("id", "cliente_id"),
+        UniqueConstraint("publicacao_id", "alvo_id"),
+        ForeignKeyConstraint(["alvo_id", "cliente_id"], ["alvo.id", "alvo.cliente_id"]),
+        CheckConstraint(_em("criterio", "oab", "nome", "documento"), name="criterio"),
+        CheckConstraint(_em("status", "novo", "visto", "descartado"), name="status"),
+        Index(
+            "ix_publicacao_alvo_cliente_status_detectado", "cliente_id", "status", "detectado_em"
+        ),
+    )
+
+    id: Mapped[int] = _id()
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("cliente.id"))
+    publicacao_id: Mapped[int] = mapped_column(ForeignKey("publicacao.id", ondelete="CASCADE"))
+    alvo_id: Mapped[int] = mapped_column(BigInteger)
+    criterio: Mapped[str] = mapped_column(String(16))
+    detectado_em: Mapped[datetime] = _agora()
+    status: Mapped[str] = mapped_column(String(10), server_default="novo")
 
 
 class Alerta(Base):

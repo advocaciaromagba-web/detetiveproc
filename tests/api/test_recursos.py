@@ -62,6 +62,16 @@ async def test_cadastra_alvo_por_nome(cliente_http, dados) -> None:
     assert r.json()["valor"] == "ACUCAR GUARANI"
 
 
+async def test_cadastra_alvo_por_oab(cliente_http, dados) -> None:
+    r = await cliente_http.post(
+        "/v1/alvos",
+        headers=chave(dados),
+        json={"tipo": "oab", "valor": "123.456/SP", "finalidade": "Carteira do escritório"},
+    )
+    assert r.status_code == 201
+    assert r.json()["valor"] == "SP123456"  # forma canônica
+
+
 @pytest.mark.parametrize(
     ("corpo", "trecho"),
     [
@@ -69,6 +79,7 @@ async def test_cadastra_alvo_por_nome(cliente_http, dados) -> None:
         ({"tipo": "documento", "valor": "529.982.247-25"}, "finalidade"),
         ({"tipo": "documento", "valor": "529.982.247-25", "finalidade": "  x  "}, "finalidade"),
         ({"tipo": "nome", "valor": "...", "finalidade": "finalidade"}, "nome inválido"),
+        ({"tipo": "oab", "valor": "sem uf", "finalidade": "finalidade"}, "OAB inválida"),
         ({"tipo": "email", "valor": "a@b.c", "finalidade": "finalidade"}, "tipo"),
     ],
 )

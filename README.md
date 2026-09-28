@@ -380,10 +380,15 @@ de publicações do PJe):
   parte, num período e opcionalmente por tribunal, e devolve `PublicacaoDTO` (número CNJ,
   órgão, tipo, texto, partes e advogados). Toda requisição passa pelo limitador; a
   resposta bruta é guardada no S3 antes do parsing, com o valor consultado só em hash.
-- Novo alvo por **OAB** (`core/oab.py`, forma canônica "SP123456"). O tipo de alvo `oab`
-  no banco, a persistência das publicações e o agendamento entram nos próximos PRs.
+- Novo alvo por **OAB** (`core/oab.py`, forma canônica "SP123456"). A API aceita `tipo:
+  "oab"` no cadastro de alvo, normalizando o valor; o banco tem o `CHECK` correspondente.
+- **Persistência** (`pipeline/publicacoes.py`): a publicação vai para a tabela
+  compartilhada `publicacao` (upsert por `fonte` + `id_externo`, serializado por advisory
+  lock — dois escritórios que acham o mesmo disparo gravam uma vez só) e o vínculo
+  publicação↔alvo vai para `publicacao_alvo`, tabela de cliente com RLS por `cliente_id`.
 - **Provisório**: escrito contra respostas sintéticas (`tests/fixtures/djen`), porque
-  este ambiente não alcança a API; confirmar os nomes dos campos com dados reais.
+  este ambiente não alcança a API; confirmar os nomes dos campos com dados reais. A
+  análise por IA e o agendamento de tarefas/audiências entram nos próximos PRs.
 
 **Fuso** (`core/tempo.py`): tudo é guardado em UTC; a exibição e o cálculo de prazos e
 audiências usam `FUSO_ESCRITORIO` (padrão `America/Sao_Paulo`, Brasília). Prazos correm
