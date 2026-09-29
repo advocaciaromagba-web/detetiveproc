@@ -41,6 +41,7 @@ from entrega.email import EnviadorMemoria
 from monitoramento.metricas import CONSULTAS, ERROS, PROCESSOS_NOVOS
 from pipeline.dedup import gravar_processo
 from pipeline.normalizador import normalizar_processo
+from pipeline.varredura_djen import ResultadoVarreduraDJEN
 from tests.agendador.apoio import (
     BRT,
     CNPJ,
@@ -530,3 +531,20 @@ async def test_metricas_de_consultas_e_processos_novos(fabrica, base) -> None:
     ok = CONSULTAS.labels(**rotulos, operacao="documento", resultado="ok")._value.get()
     assert ok == antes_ok + 1
     assert ERROS.labels(**rotulos, excecao="TribunalIndisponivel")._value.get() == antes_erro + 1
+
+
+def test_jobs_de_publicacoes_so_quando_configurados(fabrica) -> None:
+    async def djen() -> ResultadoVarreduraDJEN:
+        return ResultadoVarreduraDJEN()
+
+    async def analise() -> int:
+        return 0
+
+    registro = RegistroAdaptadores(fabrica_limitador=lambda _t: LimitadorContador())
+    orquestrador = Orquestrador(fabrica, registro, chave_hash=CHAVE)
+    tarefas = Tarefas(
+        fabrica, orquestrador, EnviadorMemoria(), varredura_djen=djen, analise_publicacoes=analise
+    )
+    jobs = {j.id: j for j in montar_agendador(tarefas, djen_minutos=30).get_jobs()}
+    assert {"varredura_djen", "analise_publicacoes"} <= set(jobs)
+    assert "0:30:00" in str(jobs["varredura_djen"].trigger)

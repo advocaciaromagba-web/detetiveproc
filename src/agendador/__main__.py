@@ -8,6 +8,7 @@ from prometheus_client import start_http_server
 from redis.asyncio import Redis
 
 from agendador.orquestrador import Orquestrador
+from agendador.publicacoes import montar_analise, montar_varredura_djen
 from agendador.registro import registro_padrao
 from agendador.tarefas import Tarefas, montar_agendador, trava_instancia_unica
 from core.config import obter_settings
@@ -41,7 +42,16 @@ async def executar() -> None:
         async with trava_instancia_unica(engine):
             # Métricas só na rede interna (Prometheus do compose); nunca publicar a porta.
             start_http_server(settings.metricas_porta, registry=REGISTRO)
-            agendador = montar_agendador(Tarefas(fabrica, orquestrador, enviador))
+            tarefas = Tarefas(
+                fabrica,
+                orquestrador,
+                enviador,
+                varredura_djen=montar_varredura_djen(fabrica, settings, redis=redis),
+                analise_publicacoes=montar_analise(fabrica, settings),
+            )
+            agendador = montar_agendador(
+                tarefas, settings.fuso_escritorio, djen_minutos=settings.djen_varredura_minutos
+            )
             agendador.start()
             logging.getLogger(__name__).info("agendador iniciado")
             await parar.wait()
