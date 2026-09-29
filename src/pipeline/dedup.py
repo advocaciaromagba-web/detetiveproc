@@ -80,13 +80,13 @@ async def gravar_processo(
     for parte in proc.partes:
         pessoa = await resolver_pessoa(sessao, parte, proc.comarca, processo_id)
         resultado.pessoas.append(pessoa)
-        parte_id, nova = await _gravar_parte(sessao, processo_id, parte, pessoa)
+        parte_id, nova = await gravar_parte(sessao, processo_id, parte, pessoa)
         resultado.partes_novas += int(nova)
         await _gravar_advogados(sessao, parte_id, parte)
     return resultado
 
 
-async def _gravar_parte(
+async def gravar_parte(
     sessao: AsyncSession, processo_id: int, parte: ParteNormalizada, pessoa: PessoaResolvida
 ) -> tuple[int, bool]:
     novo_id = await sessao.scalar(

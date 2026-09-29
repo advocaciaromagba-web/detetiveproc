@@ -229,3 +229,19 @@ async def test_limite_da_fonte_interrompe_o_ciclo(fabrica) -> None:
     r = await _varrer(fabrica, fonte)
     assert r.interrompida  # type: ignore[attr-defined]
     assert len(fonte.consultas) == 1  # não insiste nos outros termos
+
+
+@pytest.mark.integracao
+async def test_publicacao_recente_avisa_e_historico_nao(fabrica) -> None:
+    async with sessao_sistema(fabrica) as s:
+        c = Cliente(nome="Joaquim", contatos={"emails": ["j@x.com.br"]})
+        s.add(c)
+        await s.flush()
+        s.add(Alvo(cliente_id=c.id, tipo="nome", valor="JOAQUIM ELETRICISTA", finalidade="x"))
+    antiga = pub("antiga", HOJE - timedelta(days=40))
+    antiga.numero_cnj = "1000001-35.2024.8.26.0100"
+    nova = pub("nova", HOJE)
+    r = await _varrer(fabrica, FonteFalsa(lambda *_: [antiga, nova]))
+    assert r.processos_novos == 2  # type: ignore[attr-defined]
+    assert r.ocorrencias_novas == 2  # type: ignore[attr-defined]
+    assert r.alertas == 1  # type: ignore[attr-defined]  # só a publicação recente avisa

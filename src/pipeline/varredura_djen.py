@@ -34,6 +34,7 @@ from db.modelos import Alvo, ConsultaDJEN
 from db.sessao import sessao_sistema
 from fontes.base import ErroFonte, LimiteFonte
 from fontes.dto import PublicacaoDTO
+from pipeline.processos_djen import registrar_processo
 from pipeline.publicacoes import gravar_e_vincular
 
 logger = logging.getLogger(__name__)
@@ -58,9 +59,13 @@ class ConfigVarreduraDJEN:
     historico_dias: int = 365
     janela_dias: int = 30
     sobreposicao_dias: int = 1
+    # Só publicação disponibilizada nos últimos N dias gera aviso de processo novo; o
+    # histórico mais antigo entra na lista do cliente sem disparar e-mail/WhatsApp.
+    alerta_dias: int = 3
 
     def __post_init__(self) -> None:
-        if self.historico_dias < 0 or self.janela_dias < 1 or self.sobreposicao_dias < 0:
+        invalida = self.historico_dias < 0 or self.janela_dias < 1
+        if invalida or self.sobreposicao_dias < 0 or self.alerta_dias < 0:
             raise ValueError("configuração de varredura do DJEN inválida")
 
 
@@ -87,6 +92,9 @@ class ResultadoVarreduraDJEN:
     consultados: int = 0
     publicacoes: int = 0
     vinculos_novos: int = 0
+    processos_novos: int = 0
+    ocorrencias_novas: int = 0
+    alertas: int = 0
     erros: int = 0
     interrompida: bool = False
 
@@ -166,13 +174,22 @@ async def _buscar(
     return list(achadas.values())
 
 
+def recente(publicacao: PublicacaoDTO, hoje: date, dias: int) -> bool:
+    """Disponibilizada nos últimos ``dias`` dias (sem data: não é tratada como nova)."""
+    data = publicacao.data_disponibilizacao
+    return data is not None and data >= hoje - timedelta(days=dias)
+
+
 async def _gravar(
     sessao: AsyncSession,
     termo: Termo,
     publicacoes: list[PublicacaoDTO],
     inicios: dict[int, date],
-) -> int:
-    novos = 0
+    resultado: ResultadoVarreduraDJEN,
+    *,
+    hoje: date,
+    alerta_dias: int,
+) -> None:
     for dto in publicacoes:
         nivel = confianca(termo, dto)
         for destino in termo.destinos:
@@ -184,8 +201,12 @@ async def _gravar(
                 sessao, dto, destino.cliente_id, destino.alvo_id, termo.tipo,
                 confianca=nivel, origem=origem,
             )  # fmt: skip
-            novos += int(r.vinculo_novo)
-    return novos
+            resultado.vinculos_novos += int(r.vinculo_novo)
+        registrado = await registrar_processo(sessao, dto, alertar=recente(dto, hoje, alerta_dias))
+        if registrado is not None:
+            resultado.processos_novos += int(registrado.novo)
+            resultado.ocorrencias_novas += registrado.ocorrencias_novas
+            resultado.alertas += registrado.alertas
 
 
 async def _marcar_varrido(sessao: AsyncSession, termo: Termo, ate: date) -> None:
@@ -241,7 +262,9 @@ async def varrer_djen(
             continue
         resultado.consultados += 1
         async with sessao_sistema(fabrica) as s:
-            resultado.vinculos_novos += await _gravar(s, termo, publicacoes, inicios)
+            await _gravar(
+                s, termo, publicacoes, inicios, resultado, hoje=hoje, alerta_dias=config.alerta_dias
+            )
             await _marcar_varrido(s, termo, hoje)
         resultado.publicacoes += len(publicacoes)
     return resultado

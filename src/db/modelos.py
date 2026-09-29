@@ -57,12 +57,16 @@ def _agora() -> Mapped[datetime]:
 
 
 class Tribunal(Base):
-    """Um sistema de um tribunal (ex.: TJSP/esaj e TJSP/eproc são linhas distintas)."""
+    """Um sistema de um tribunal (ex.: TJSP/esaj e TJSP/eproc são linhas distintas).
+
+    ``sistema="djen"``: tribunal conhecido só pelas publicações do DJEN (inativo; não é
+    varrido por robô). Serve de referência para os processos descobertos por lá.
+    """
 
     __tablename__ = "tribunal"
     __table_args__ = (
         UniqueConstraint("sigla", "sistema", "grau"),
-        CheckConstraint(_em("sistema", "esaj", "eproc", "pje"), name="sistema"),
+        CheckConstraint(_em("sistema", "esaj", "eproc", "pje", "djen"), name="sistema"),
         CheckConstraint("grau IN (1, 2)", name="grau"),
         CheckConstraint("limite_req_min > 0", name="limite_req_min"),
         CheckConstraint(

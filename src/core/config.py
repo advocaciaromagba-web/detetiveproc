@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     djen_janela_dias: int = 30  # período máximo por consulta (buscas longas são fatiadas)
 
     # Análise das publicações por IA (Claude). Extrai tipo do ato, prazo e audiência.
+    # Opcional: o produto entrega a lista de processos; o resumo por IA fica desligado.
+    ia_analise_ativa: bool = False
     anthropic_api_key: SecretStr | None = None
     ia_modelo: str = "claude-sonnet-5"
     ia_timeout: float = 60.0
