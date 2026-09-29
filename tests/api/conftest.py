@@ -13,9 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from api.app import criar_app
 from api.auth import criar_chave_api, criar_usuario
+from api.cadastro import ConfigCadastro
 from core.dto import ParteDTO
 from db.modelos import Alvo, Cliente, Tribunal
 from db.sessao import sessao_sistema
+from entrega.email import EnviadorMemoria
+from fontes.cnpj import ConsultaCNPJMemoria, DadosCNPJ
 from pipeline.dedup import gravar_processo
 from pipeline.normalizador import normalizar_processo
 from regras.casamento import avaliar_processo
@@ -66,8 +69,26 @@ def relogio() -> Relogio:
 
 
 @pytest.fixture
-def app(fabrica: async_sessionmaker[AsyncSession], relogio: Relogio) -> FastAPI:
-    return criar_app(fabrica, relogio)
+def enviador() -> EnviadorMemoria:
+    return EnviadorMemoria()
+
+
+@pytest.fixture
+def receita() -> ConsultaCNPJMemoria:
+    return ConsultaCNPJMemoria({CNPJ_A: DadosCNPJ("ACME COMERCIO   LTDA", "ACME", "ATIVA")})
+
+
+@pytest.fixture
+def app(
+    fabrica: async_sessionmaker[AsyncSession],
+    relogio: Relogio,
+    enviador: EnviadorMemoria,
+    receita: ConsultaCNPJMemoria,
+) -> FastAPI:
+    config = ConfigCadastro(painel_url="https://painel.teste", chave_hash=b"teste")
+    return criar_app(
+        fabrica, relogio, enviador=enviador, consulta_cnpj=receita, config_cadastro=config
+    )
 
 
 @pytest.fixture

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from agendador.orquestrador import Orquestrador
 from agendador.varredura import consultas_ativas, remover_orfas
+from api.cadastro import limpar_tentativas
 from cobranca.assinaturas import atualizar_situacoes
 from db.sessao import sessao_sistema
 from entrega.email import EnviadorEmail
@@ -172,7 +173,11 @@ class Tarefas:
         async with sessao_sistema(self.fabrica) as s:
             consultas = await consultas_ativas(s, self.orquestrador.chave_hash)
             removidas = await remover_orfas(s, consultas)
-        logger.info("varreduras órfãs removidas", extra={"quantidade": removidas})
+            cadastro = await limpar_tentativas(s, self.orquestrador.relogio())
+        logger.info(
+            "limpeza diária",
+            extra={"varreduras_orfas": removidas, "cadastro_e_tentativas": cadastro},
+        )
 
 
 def montar_agendador(

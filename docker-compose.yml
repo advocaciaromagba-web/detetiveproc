@@ -30,6 +30,10 @@ x-backend: &backend
     SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
     SMTP_REMETENTE: ${SMTP_REMETENTE:-Detetiveproc <alertas@localhost>}
     EMAIL_OPERACAO: ${EMAIL_OPERACAO:-}
+    # Cadastro público: base dos links enviados por e-mail. A API só é alcançável pela
+    # rede interna (atrás do painel), então o IP do visitante vem em X-Forwarded-For.
+    PAINEL_URL_PUBLICA: ${PAINEL_URL_PUBLICA:-http://localhost:3100}
+    CONFIAR_X_FORWARDED_FOR: "true"
     LOG_FORMATO: ${LOG_FORMATO:-json}
     LOG_NIVEL: ${LOG_NIVEL:-INFO}
 

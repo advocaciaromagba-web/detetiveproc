@@ -9,7 +9,7 @@
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import FastAPI, Request, Response, status
@@ -19,10 +19,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from api.auth import Principal
+from api.cadastro import ConfigCadastro
 from api.rotas import (
     alvos,
     assinaturas,
     auth,
+    cadastro,
     conta,
     ocorrencias,
     precos,
@@ -30,9 +32,11 @@ from api.rotas import (
     regras,
     saude,
 )
-from core.config import obter_settings
+from core.config import Settings, obter_settings
 from db.modelos import Auditoria
 from db.sessao import criar_engine, criar_fabrica, sessao_sistema
+from entrega.email import EnviadorEmail, EnviadorSMTP
+from fontes.cnpj import ConsultaBrasilAPI, ConsultaCNPJ
 from monitoramento.logs import configurar_logs
 
 logger = logging.getLogger(__name__)
@@ -49,6 +53,7 @@ _ENTIDADES = {
     "conta": "cliente",
     "assinaturas": "assinatura",
     "precos": "preco",
+    "cadastro": "cadastro",
 }
 
 
@@ -86,8 +91,23 @@ async def registrar_auditoria(
         logger.exception("falha ao gravar auditoria")
 
 
+def _config_cadastro(settings: Settings) -> ConfigCadastro:
+    chave = settings.hash_documento_chave
+    return ConfigCadastro(
+        painel_url=settings.painel_url_publica,
+        validade=timedelta(hours=settings.cadastro_validade_horas),
+        confiar_x_forwarded_for=settings.confiar_x_forwarded_for,
+        chave_hash=chave.get_secret_value().encode() if chave else ConfigCadastro().chave_hash,
+    )
+
+
 def criar_app(
-    fabrica: async_sessionmaker[AsyncSession] | None = None, relogio: Relogio = _agora
+    fabrica: async_sessionmaker[AsyncSession] | None = None,
+    relogio: Relogio = _agora,
+    *,
+    enviador: EnviadorEmail | None = None,
+    consulta_cnpj: ConsultaCNPJ | None = None,
+    config_cadastro: ConfigCadastro | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
@@ -111,6 +131,13 @@ def criar_app(
         lifespan=ciclo_de_vida,
     )
     app.state.relogio = relogio
+    # Cadastro público: e-mail do link, consulta à Receita e limites (injetáveis nos testes).
+    settings = obter_settings()
+    app.state.config_cadastro = config_cadastro or _config_cadastro(settings)
+    app.state.enviador = enviador or EnviadorSMTP.de_settings(settings)
+    app.state.consulta_cnpj = consulta_cnpj or ConsultaBrasilAPI(
+        settings.brasilapi_url, contato=settings.coletor_contato
+    )
     if fabrica is not None:
         app.state.fabrica = fabrica
 
@@ -145,7 +172,18 @@ def criar_app(
             return JSONResponse({"status": "indisponivel"}, status.HTTP_503_SERVICE_UNAVAILABLE)
         return JSONResponse({"status": "ok"})
 
-    for modulo in (auth, alvos, regras, assinaturas, precos, ocorrencias, processos, saude, conta):
+    for modulo in (
+        auth,
+        cadastro,
+        alvos,
+        regras,
+        assinaturas,
+        precos,
+        ocorrencias,
+        processos,
+        saude,
+        conta,
+    ):
         app.include_router(modulo.rotas)
     return app
 

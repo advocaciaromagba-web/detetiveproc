@@ -5,6 +5,7 @@ core.nomes.normalizar_nome, comarcas na forma canônica), que é como o motor de
 as compara. Mensagens de erro nunca repetem o valor recebido.
 """
 
+import re
 from datetime import date, datetime
 from typing import Annotated, Literal
 
@@ -223,6 +224,76 @@ class AssinaturaSaida(Saida):
     encerrada_em: datetime | None
     alvo: AlvoSaida | None = None
     termo: RegraSaida | None = None
+
+
+# --------------------------------------------------------------------------- cadastro público
+
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class CadastroEntrada(BaseModel):
+    """Formulário público "Criar conta". O nome monitorado de empresa vem da Receita."""
+
+    tipo_pessoa: Literal["pj", "pf"]
+    documento: str = Field(min_length=11, max_length=20)
+    nome: str | None = Field(default=None, max_length=200)  # obrigatório para pessoa física
+    nome_fantasia: str | None = Field(default=None, max_length=200)
+    responsavel: str = Field(min_length=3, max_length=200)
+    email: str = Field(min_length=3, max_length=254)
+    periodicidade: Periodicidade = "mensal"
+    aceite_termos: bool
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, valor: str) -> str:
+        limpo = valor.strip().lower()
+        if not _EMAIL.match(limpo):
+            raise ValueError("e-mail inválido")
+        return limpo
+
+    @field_validator("responsavel", "nome", "nome_fantasia")
+    @classmethod
+    def _texto(cls, valor: str | None) -> str | None:
+        return " ".join(valor.split()) or None if valor is not None else None
+
+    @model_validator(mode="after")
+    def _conferir(self) -> "CadastroEntrada":
+        documento = normalizar_documento(self.documento)
+        esperado = "PJ" if self.tipo_pessoa == "pj" else "PF"
+        if tipo_documento(documento) != esperado:
+            raise ValueError("CNPJ inválido" if self.tipo_pessoa == "pj" else "CPF inválido")
+        self.documento = documento
+        if self.tipo_pessoa == "pf" and not normalizar_nome(self.nome or ""):
+            raise ValueError("informe o nome completo")
+        if not self.aceite_termos:
+            raise ValueError("é preciso aceitar os termos de uso")
+        return self
+
+
+class CNPJSaida(BaseModel):
+    razao_social: str
+    nome_fantasia: str | None
+    situacao: str | None
+
+
+class SenhaCadastroEntrada(BaseModel):
+    token: str = Field(min_length=20, max_length=100)
+    senha: str = Field(min_length=1, max_length=256)
+
+
+class AutenticadorSaida(BaseModel):
+    email: str
+    totp_uri: str
+    totp_qr: str  # data URI (SVG) do QR code
+
+
+class ConclusaoCadastroEntrada(BaseModel):
+    token: str = Field(min_length=20, max_length=100)
+    codigo: str = Field(min_length=6, max_length=6)
+
+
+class MensagemSaida(BaseModel):
+    mensagem: str
 
 
 # --------------------------------------------------------------------------- processos

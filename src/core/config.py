@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     whatsapp_idioma: str = "pt_BR"
     whatsapp_versao_api: str = "v21.0"
 
+    # Cadastro pelo próprio cliente (página pública do painel).
+    painel_url_publica: str = "http://localhost:3100"  # base dos links enviados por e-mail
+    cadastro_validade_horas: int = 48  # validade do link de confirmação
+    # Só True quando a API NÃO for exposta diretamente (atrás do painel/proxy): aí o IP
+    # do visitante vem em X-Forwarded-For e é usado no limite de tentativas.
+    confiar_x_forwarded_for: bool = False
+    # Razão social pelo CNPJ (dados abertos da Receita Federal via BrasilAPI).
+    brasilapi_url: str = "https://brasilapi.com.br"
+
     # Assinaturas: dias após o vencimento em que o item segue monitorado (carência)
     # até ser suspenso por falta de pagamento.
     assinatura_carencia_dias: int = 7

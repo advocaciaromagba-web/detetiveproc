@@ -6,6 +6,7 @@ import {
   linhas,
   mascararDocumento,
   montarAlvo,
+  montarCadastro,
   montarContatos,
   montarRegra,
   periodicidade,
@@ -197,6 +198,47 @@ describe("montarContatos", () => {
     expect(Object.keys(montarContatos({ emails: "sem-arroba", whatsapp: "99-123" }).erros).sort()).toEqual([
       "emails",
       "whatsapp",
+    ]);
+  });
+});
+
+describe("montarCadastro", () => {
+  const pj = {
+    tipo_pessoa: "pj",
+    documento: "11.222.333/0001-81",
+    nome_fantasia: "  Acme  ",
+    responsavel: " Ana   Souza ",
+    email: " Contato@Acme.com ",
+    periodicidade: "anual",
+    aceite_termos: "on",
+  };
+  it("empresa: documento limpo, fantasia opcional, e-mail minúsculo", () => {
+    expect(montarCadastro(pj).corpo).toEqual({
+      tipo_pessoa: "pj",
+      documento: "11222333000181",
+      nome: null,
+      nome_fantasia: "Acme",
+      responsavel: "Ana Souza",
+      email: "contato@acme.com",
+      periodicidade: "anual",
+      aceite_termos: true,
+    });
+  });
+  it("pessoa física exige o nome completo e CPF", () => {
+    const r = montarCadastro({ ...pj, tipo_pessoa: "pf", documento: "529.982.247-25" });
+    expect(r.erros).toEqual({ nome: "Informe o nome completo." });
+    const ok = montarCadastro({ ...pj, tipo_pessoa: "pf", documento: "529.982.247-25", nome: "José" });
+    expect(ok.corpo?.nome).toBe("José");
+    expect(ok.corpo?.nome_fantasia).toBeNull();
+  });
+  it("aponta cada campo", () => {
+    const r = montarCadastro({ tipo_pessoa: "pj", documento: "123", periodicidade: "x" });
+    expect(Object.keys(r.erros).sort()).toEqual([
+      "aceite_termos",
+      "documento",
+      "email",
+      "periodicidade",
+      "responsavel",
     ]);
   });
 });

@@ -1,0 +1,17 @@
+{
+  "uf": "SP",
+  "cep": "01311000",
+  "cnpj": "11222333000181",
+  "porte": "DEMAIS",
+  "bairro": "BELA VISTA",
+  "numero": "1000",
+  "municipio": "SAO PAULO",
+  "logradouro": "PAULISTA",
+  "razao_social": "ACME COMERCIO   LTDA",
+  "nome_fantasia": "ACME",
+  "capital_social": 100000,
+  "natureza_juridica": "Sociedade Empresária Limitada",
+  "data_inicio_atividade": "2010-03-01",
+  "descricao_situacao_cadastral": "ATIVA",
+  "qsa": []
+}
