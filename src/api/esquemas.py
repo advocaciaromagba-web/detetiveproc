@@ -222,6 +222,7 @@ class AssinaturaSaida(Saida):
     criado_em: datetime
     ativada_em: datetime | None
     encerrada_em: datetime | None
+    link_pagamento: str | None = None  # cobrança em aberto (Pix, boleto ou cartão)
     alvo: AlvoSaida | None = None
     termo: RegraSaida | None = None
 

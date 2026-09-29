@@ -45,6 +45,8 @@ TABELAS_ESPERADAS = {
     "assinatura",
     "cadastro",
     "tentativa_publica",
+    "evento_pagamento",
+    "pagamento_aplicado",
 }
 POSTERIORES_A_0001 = {
     "varredura",
@@ -63,6 +65,8 @@ POSTERIORES_A_0001 = {
     "assinatura",
     "cadastro",
     "tentativa_publica",
+    "evento_pagamento",
+    "pagamento_aplicado",
 }
 
 

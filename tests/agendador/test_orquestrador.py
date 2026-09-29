@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from agendador.orquestrador import Orquestrador, liberar_tribunal
+from agendador.publicacoes import montar_cobrancas
 from agendador.registro import RegistroAdaptadores
 from agendador.tarefas import (
     AgendadorJaEmExecucao,
@@ -16,6 +17,8 @@ from agendador.tarefas import (
     trava_instancia_unica,
 )
 from agendador.varredura import ConfigVarredura
+from cobranca.asaas import GatewayMemoria
+from core.config import Settings
 from core.dto import ParteDTO
 from core.excecoes import (
     DesafioHumano,
@@ -558,3 +561,18 @@ def test_jobs_de_publicacoes_so_quando_configurados(fabrica) -> None:
     jobs = {j.id: j for j in montar_agendador(tarefas, djen_minutos=30).get_jobs()}
     assert {"varredura_djen", "analise_publicacoes", "complemento_datajud"} <= set(jobs)
     assert "0:30:00" in str(jobs["varredura_djen"].trigger)
+
+
+def test_cobrancas_so_com_a_chave_do_asaas(fabrica) -> None:
+    assert montar_cobrancas(fabrica, Settings(asaas_api_key=None)) is None
+    sincronizar = montar_cobrancas(fabrica, Settings(), gateway=GatewayMemoria())
+    assert sincronizar is not None
+    registro = RegistroAdaptadores(fabrica_limitador=lambda _t: LimitadorContador())
+    tarefas = Tarefas(
+        fabrica,
+        Orquestrador(fabrica, registro, chave_hash=CHAVE),
+        EnviadorMemoria(),
+        sincronizar_cobrancas=sincronizar,
+    )
+    jobs = {j.id: j for j in montar_agendador(tarefas).get_jobs()}
+    assert "0:05:00" in str(jobs["cobrancas"].trigger)

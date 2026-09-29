@@ -35,8 +35,9 @@ from api.esquemas import (
     PrecoSaida,
     SenhaCadastroEntrada,
 )
+from cobranca.pagamentos import pos_contratacao
 from core.documentos import normalizar_documento, tipo_documento
-from db.modelos import Preco
+from db.modelos import Assinatura, Preco
 from db.sessao import sessao_sistema
 from entrega.email import EnviadorEmail
 from fontes.cnpj import CNPJNaoEncontrado, ConsultaCNPJ, DadosCNPJ, ReceitaIndisponivel
@@ -198,4 +199,12 @@ async def concluir(
             status.HTTP_409_CONFLICT, "contratação indisponível no momento"
         ) from erro
     request.state.entidade_id = str(cliente_id)
+    # Conta criada: emite a 1ª cobrança do nome contratado (falha fica para o job).
+    async with sessao_sistema(fabrica) as s:
+        ids = list(
+            (
+                await s.scalars(select(Assinatura.id).where(Assinatura.cliente_id == cliente_id))
+            ).all()
+        )
+    await pos_contratacao(fabrica, request.app.state.gateway, ids, obter_agora(request))
     return MensagemSaida(mensagem="Conta criada. Entre com seu e-mail, senha e código.")

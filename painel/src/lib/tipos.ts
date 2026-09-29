@@ -173,6 +173,8 @@ export interface Assinatura {
   criado_em: string;
   ativada_em: string | null;
   encerrada_em: string | null;
+  /** Cobrança em aberto no Asaas (Pix, boleto ou cartão). */
+  link_pagamento: string | null;
   alvo: Alvo | null;
   termo: Regra | null;
 }

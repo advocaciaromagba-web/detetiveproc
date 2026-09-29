@@ -11,6 +11,7 @@ from agendador.orquestrador import Orquestrador
 from agendador.publicacoes import (
     criar_fonte_datajud,
     montar_analise,
+    montar_cobrancas,
     montar_complemento,
     montar_despacho_whatsapp,
     montar_varredura_djen,
@@ -60,6 +61,7 @@ async def executar() -> None:
                 complemento_datajud=montar_complemento(fabrica, datajud),
                 despacho_whatsapp=montar_despacho_whatsapp(fabrica, settings),
                 carencia_assinatura_dias=settings.assinatura_carencia_dias,
+                sincronizar_cobrancas=montar_cobrancas(fabrica, settings),
             )
             agendador = montar_agendador(
                 tarefas, settings.fuso_escritorio, djen_minutos=settings.djen_varredura_minutos

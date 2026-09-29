@@ -70,8 +70,8 @@ export function ConfirmarCadastro() {
     return (
       <div className="sucesso" role="status">
         <p style={{ marginTop: 0 }}>
-          <strong>Conta criada!</strong> O monitoramento do seu nome começa assim que o pagamento
-          for confirmado.
+          <strong>Conta criada!</strong> Entre no painel e, em Monitorados, use o botão Pagar (Pix,
+          boleto ou cartão). O monitoramento começa assim que o pagamento for confirmado.
         </p>
         <p style={{ marginBottom: 0 }}>
           <Link href="/login">Entrar no painel</Link>

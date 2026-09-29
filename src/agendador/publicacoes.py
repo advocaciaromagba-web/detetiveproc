@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from adaptadores.bruto import Armazem, ArmazemS3
 from adaptadores.ia import IANaoConfigurada, criar_analisador
+from cobranca.asaas import AsaasAPI, GatewayPagamento
+from cobranca.pagamentos import ResultadoSincronizacao, sincronizar_cobrancas
 from core.config import Settings
 from core.rate_limiter import ConfigLimite, criar_limitador
 from core.tempo import agora_utc, data_no_escritorio
@@ -146,5 +148,21 @@ def montar_despacho_whatsapp(
             idioma=settings.whatsapp_idioma,
             agora=agora_utc(),
         )
+
+    return executar
+
+
+def montar_cobrancas(
+    fabrica: Fabrica, settings: Settings, gateway: GatewayPagamento | None = None
+) -> Callable[[], Awaitable[ResultadoSincronizacao]] | None:
+    """Sincronização com o Asaas; None (cobrança desligada) sem a chave da API."""
+    gateway = gateway or AsaasAPI.de_settings(settings)
+    if gateway is None:
+        logger.info("Asaas não configurado: assinaturas só são liberadas pelo operador")
+        return None
+    canal = gateway
+
+    async def executar() -> ResultadoSincronizacao:
+        return await sincronizar_cobrancas(fabrica, canal, agora_utc())
 
     return executar

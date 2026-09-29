@@ -27,11 +27,13 @@ from api.rotas import (
     cadastro,
     conta,
     ocorrencias,
+    pagamentos,
     precos,
     processos,
     regras,
     saude,
 )
+from cobranca.asaas import AsaasAPI, GatewayPagamento
 from core.config import Settings, obter_settings
 from db.modelos import Auditoria
 from db.sessao import criar_engine, criar_fabrica, sessao_sistema
@@ -54,6 +56,7 @@ _ENTIDADES = {
     "assinaturas": "assinatura",
     "precos": "preco",
     "cadastro": "cadastro",
+    "pagamentos": "pagamento",
 }
 
 
@@ -108,6 +111,8 @@ def criar_app(
     enviador: EnviadorEmail | None = None,
     consulta_cnpj: ConsultaCNPJ | None = None,
     config_cadastro: ConfigCadastro | None = None,
+    gateway: GatewayPagamento | None = None,
+    asaas_webhook_token: str | None = None,
 ) -> FastAPI:
     @asynccontextmanager
     async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
@@ -137,6 +142,12 @@ def criar_app(
     app.state.enviador = enviador or EnviadorSMTP.de_settings(settings)
     app.state.consulta_cnpj = consulta_cnpj or ConsultaBrasilAPI(
         settings.brasilapi_url, contato=settings.coletor_contato
+    )
+    # Cobrança (Asaas): None = desligada (sem chave); o webhook exige o token configurado.
+    app.state.gateway = gateway if gateway is not None else AsaasAPI.de_settings(settings)
+    token = settings.asaas_webhook_token
+    app.state.asaas_webhook_token = asaas_webhook_token or (
+        token.get_secret_value() if token else None
     )
     if fabrica is not None:
         app.state.fabrica = fabrica
@@ -175,6 +186,7 @@ def criar_app(
     for modulo in (
         auth,
         cadastro,
+        pagamentos,
         alvos,
         regras,
         assinaturas,

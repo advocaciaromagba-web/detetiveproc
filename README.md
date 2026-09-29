@@ -190,6 +190,7 @@ uv run uvicorn api.app:app --port 8000   # documentação interativa em /docs
 | `POST /v1/assinaturas` · `GET /v1/assinaturas?produto=&situacao=` · `GET /v1/assinaturas/{id}` | Contratar e listar nomes (`produto: "nome"`) e termos (`"termo"`), mensal ou anual |
 | `POST /v1/assinaturas/{id}/cancelar` | Não renova (paga) ou encerra já (aguardando pagamento) |
 | `POST /v1/assinaturas/{id}/ativar` | Só operador: libera um período pago fora da plataforma ou dá cortesia |
+| `POST /v1/pagamentos/asaas` | **Webhook do Asaas** (token no cabeçalho `asaas-access-token`); exposto pelo painel em `/api/pagamentos/asaas` |
 | `GET /v1/alvos` · `GET /v1/alvos/{id}` · `GET /v1/regras` · `GET /v1/regras/{id}` | Nomes e termos (leitura: entram e saem pelas assinaturas) |
 | `GET /v1/ocorrencias?status=&confianca=&q=&desde=&score_min=&limite=&antes_id=` | Processos do cliente, com autores/réus, assunto e grau; `q` busca por número ou nome da parte |
 | `GET/PATCH /v1/ocorrencias/{id}` | Detalhe; marcar `visto`, `descartado` ou `novo`; `{"confianca": "confirmada"}` confirma um possível homônimo |
@@ -252,6 +253,24 @@ anual, com o preço da tabela travado na contratação (`cobranca/assinaturas.py
 - **Não renovar**: monitora até o fim do período pago e então encerra (`cancelada`).
 - O agendador confere os vencimentos de hora em hora (job `assinaturas`).
 - A migração 0014 dá **cortesia** (sem vencimento) a tudo que já era monitorado.
+
+### Cobrança (Asaas)
+
+Com `ASAAS_API_KEY` configurada (`cobranca/asaas.py`, `cobranca/pagamentos.py`):
+
+1. Contratar (painel ou cadastro) cria o cliente (CPF/CNPJ do titular) e a assinatura
+   recorrente no Asaas (mensal ou anual, `billingType: UNDEFINED`). O painel mostra o
+   botão **Pagar**, que abre a cobrança: o cliente escolhe Pix, boleto ou cartão.
+2. O **webhook** (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`) ativa ou renova a assinatura
+   — uma única vez por pagamento, mesmo com eventos repetidos. Cobrança nova ou vencida
+   (`PAYMENT_CREATED`/`PAYMENT_OVERDUE`) atualiza o link. Estornos só geram alerta no log.
+3. "Não renovar" e cancelamentos cancelam a assinatura no Asaas (sem cobranças futuras).
+4. O job `cobrancas` (a cada 5 min) reemite o que falhou, busca links que faltam e
+   repete cancelamentos pendentes.
+
+No Asaas: gere a chave da API e cadastre o webhook apontando para
+`https://SEU-PAINEL/api/pagamentos/asaas` com um token (`ASAAS_WEBHOOK_TOKEN`), nos
+eventos de cobrança. Libere `api.asaas.com` (ou `api-sandbox.asaas.com`) na rede.
 
 ## Painel (Next.js)
 

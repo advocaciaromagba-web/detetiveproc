@@ -14,6 +14,7 @@ from agendador.orquestrador import Orquestrador
 from agendador.varredura import consultas_ativas, remover_orfas
 from api.cadastro import limpar_tentativas
 from cobranca.assinaturas import atualizar_situacoes
+from cobranca.pagamentos import ResultadoSincronizacao
 from db.sessao import sessao_sistema
 from entrega.email import EnviadorEmail
 from monitoramento.alarmes import avaliar_alarmes, avaliar_volume
@@ -63,6 +64,8 @@ class Tarefas:
     # Aviso de processo novo por WhatsApp (None enquanto o app da Meta não estiver ligado).
     despacho_whatsapp: Callable[[], Awaitable[ResultadoEnvio]] | None = None
     carencia_assinatura_dias: int = 7
+    # Cobrança pelo Asaas (None enquanto a chave não estiver configurada).
+    sincronizar_cobrancas: Callable[[], Awaitable[ResultadoSincronizacao]] | None = None
 
     async def varredura(self) -> None:
         resultados = await self.orquestrador.executar_ciclo()
@@ -169,6 +172,17 @@ class Tarefas:
                 },
             )
 
+    async def cobrancas(self) -> None:
+        """Emite cobranças que falharam, busca links que faltam e propaga cancelamentos."""
+        if self.sincronizar_cobrancas is None:
+            return
+        r = await self.sincronizar_cobrancas()
+        if r.emitidas or r.canceladas or r.erros:
+            logger.info(
+                "cobranças sincronizadas",
+                extra={"emitidas": r.emitidas, "canceladas": r.canceladas, "erros": r.erros},
+            )
+
     async def limpeza(self) -> None:
         async with sessao_sistema(self.fabrica) as s:
             consultas = await consultas_ativas(s, self.orquestrador.chave_hash)
@@ -191,6 +205,8 @@ def montar_agendador(
     agendador.add_job(tarefas.resumo_diario, "cron", hour=7, id="resumo_diario", **padrao)
     agendador.add_job(tarefas.limpeza, "cron", hour=3, minute=30, id="limpeza", **padrao)
     agendador.add_job(tarefas.assinaturas, "interval", hours=1, id="assinaturas", **padrao)
+    if tarefas.sincronizar_cobrancas is not None:
+        agendador.add_job(tarefas.cobrancas, "interval", minutes=5, id="cobrancas", **padrao)
     agendador.add_job(tarefas.sentinelas, "interval", hours=1, id="sentinelas", **padrao)
     agendador.add_job(tarefas.alarmes, "interval", minutes=5, id="alarmes", **padrao)
     agendador.add_job(tarefas.volume_diario, "cron", hour=8, id="volume_diario", **padrao)

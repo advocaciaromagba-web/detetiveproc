@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { formatarPreco, resumoAssinatura } from "@/lib/formatos";
+import { formatarPreco, linkSeguro, resumoAssinatura } from "@/lib/formatos";
 import type { Assinatura, Preco } from "@/lib/tipos";
 
 import { Campo } from "./Campo";
@@ -53,3 +53,14 @@ export function PlanoAssinatura({ assinatura }: { assinatura: Assinatura }): Rea
 }
 
 export const ABERTAS = new Set(["pendente", "ativa", "atrasada"]);
+
+/** Botão "Pagar" (abre a cobrança do Asaas em outra aba), quando há cobrança em aberto. */
+export function LinkPagamento({ assinatura }: { assinatura: Assinatura }) {
+  const link = linkSeguro(assinatura.link_pagamento);
+  if (!link || !["pendente", "atrasada", "suspensa"].includes(assinatura.status)) return null;
+  return (
+    <a className="botao-primario botao-link" href={link} target="_blank" rel="noopener noreferrer">
+      Pagar
+    </a>
+  );
+}

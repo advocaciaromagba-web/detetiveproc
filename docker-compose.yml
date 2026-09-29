@@ -34,6 +34,10 @@ x-backend: &backend
     # rede interna (atrás do painel), então o IP do visitante vem em X-Forwarded-For.
     PAINEL_URL_PUBLICA: ${PAINEL_URL_PUBLICA:-http://localhost:3100}
     CONFIAR_X_FORWARDED_FOR: "true"
+    # Cobrança (Asaas). Sem a chave, a cobrança fica desligada (liberação pelo operador).
+    ASAAS_URL: ${ASAAS_URL:-https://api.asaas.com/v3}
+    ASAAS_API_KEY: ${ASAAS_API_KEY:-}
+    ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:-}
     LOG_FORMATO: ${LOG_FORMATO:-json}
     LOG_NIVEL: ${LOG_NIVEL:-INFO}
 

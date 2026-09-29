@@ -285,6 +285,7 @@ async def _criar_conta(s: AsyncSession, cadastro: Cadastro, passo: int, agora: d
     cliente = Cliente(
         nome=cadastro.nome,
         cnpj=cadastro.documento if cadastro.tipo_pessoa == "pj" else None,
+        documento=cadastro.documento,  # titular: vai para a cobrança
         contatos={"emails": [cadastro.email]},
     )
     s.add(cliente)

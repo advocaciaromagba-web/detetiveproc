@@ -76,7 +76,7 @@ async def test_consulta_cnpj_preenche_o_formulario(cliente_http, dados, receita)
 
 
 async def test_fluxo_completo_de_empresa(
-    cliente_http, dados, precos, enviador, relogio, fabrica
+    cliente_http, dados, precos, enviador, relogio, fabrica, gateway
 ) -> None:
     r = await cliente_http.post(URL, json=PJ)
     assert r.status_code == 202, r.text
@@ -122,6 +122,9 @@ async def test_fluxo_completo_de_empresa(
         cadastro = await s.scalar(select(Cadastro))
         assert cadastro is not None
         assert (cadastro.senha_hash, cadastro.totp_segredo) == (None, None)  # não duplica
+    # A 1ª cobrança já foi emitida no Asaas, em nome do titular.
+    assert [c["documento"] for c in gateway.clientes.values()] == [CNPJ_A]
+    assert [a["valor_centavos"] for a in gateway.assinaturas.values()] == [4990]
 
     # Entra com o autenticador configurado (o código seguinte, não o já usado).
     relogio.avancar(seconds=30)

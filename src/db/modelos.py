@@ -369,6 +369,9 @@ class Cliente(Base):
     cnpj: Mapped[str | None] = mapped_column(String(14))
     plano: Mapped[str] = mapped_column(String(30), server_default="padrao")
     contatos: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    # Titular da conta (CPF/CNPJ) e seu cadastro no intermediador de pagamento.
+    documento: Mapped[str | None] = mapped_column(String(14))
+    gateway_cliente_id: Mapped[str | None] = mapped_column(String(40))
     # Pesos do score, limite de valor e limiares (regras.config.ConfigAlertas).
     config_alertas: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb")
@@ -504,6 +507,10 @@ class Assinatura(Base):
     criado_em: Mapped[datetime] = _agora()
     ativada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     encerrada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Assinatura no intermediador (Asaas) e o link da cobrança em aberto (Pix/boleto/cartão).
+    gateway_id: Mapped[str | None] = mapped_column(String(40), unique=True)
+    link_pagamento: Mapped[str | None] = mapped_column(Text)
+    gateway_cancelado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Ocorrencia(Base):
@@ -846,3 +853,30 @@ class TentativaPublica(Base):
     acao: Mapped[str] = mapped_column(String(20))
     chave_hash: Mapped[str] = mapped_column(String(64))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+# --------------------------------------------------------------------------- pagamentos
+
+
+class EventoPagamento(Base):
+    """Webhooks do intermediador, guardados uma vez (o mesmo evento pode chegar de novo)."""
+
+    __tablename__ = "evento_pagamento"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # id do evento no Asaas
+    tipo: Mapped[str] = mapped_column(String(40))
+    pagamento_id: Mapped[str | None] = mapped_column(String(40))
+    gateway_assinatura_id: Mapped[str | None] = mapped_column(String(40))
+    recebido_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resultado: Mapped[str] = mapped_column(String(20))
+
+
+class PagamentoAplicado(Base):
+    """Cada pagamento confirmado renova a assinatura UMA vez (o Asaas avisa
+    "confirmado" e depois "recebido" para o mesmo cartão)."""
+
+    __tablename__ = "pagamento_aplicado"
+
+    pagamento_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    assinatura_id: Mapped[int] = mapped_column(ForeignKey("assinatura.id"))
+    aplicado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))

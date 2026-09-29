@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from api.app import criar_app
 from api.auth import criar_chave_api, criar_usuario
 from api.cadastro import ConfigCadastro
+from cobranca.asaas import GatewayMemoria
 from core.dto import ParteDTO
 from db.modelos import Alvo, Cliente, Tribunal
 from db.sessao import sessao_sistema
@@ -79,15 +80,30 @@ def receita() -> ConsultaCNPJMemoria:
 
 
 @pytest.fixture
+def gateway() -> GatewayMemoria:
+    return GatewayMemoria()
+
+
+TOKEN_WEBHOOK = "segredo-do-webhook"
+
+
+@pytest.fixture
 def app(
     fabrica: async_sessionmaker[AsyncSession],
     relogio: Relogio,
     enviador: EnviadorMemoria,
     receita: ConsultaCNPJMemoria,
+    gateway: GatewayMemoria,
 ) -> FastAPI:
     config = ConfigCadastro(painel_url="https://painel.teste", chave_hash=b"teste")
     return criar_app(
-        fabrica, relogio, enviador=enviador, consulta_cnpj=receita, config_cadastro=config
+        fabrica,
+        relogio,
+        enviador=enviador,
+        consulta_cnpj=receita,
+        config_cadastro=config,
+        gateway=gateway,
+        asaas_webhook_token=TOKEN_WEBHOOK,
     )
 
 
