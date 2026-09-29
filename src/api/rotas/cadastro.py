@@ -143,6 +143,7 @@ async def iniciar(entrada: CadastroEntrada, request: Request, fabrica: Fabrica) 
         responsavel=entrada.responsavel,
         email=entrada.email,
         periodicidade=entrada.periodicidade,
+        termos_versao=entrada.termos_versao,
     )
     enviador: EnviadorEmail = request.app.state.enviador
     try:

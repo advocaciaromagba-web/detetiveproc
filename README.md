@@ -235,6 +235,13 @@ Página pública `/cadastro` do painel (`api/cadastro.py`):
    cria cliente, usuário e o nome monitorado (CPF/CNPJ + nomes) com a assinatura
    **aguardando pagamento**.
 
+**Termos de uso e política de privacidade**: páginas públicas `/termos` e `/privacidade`
+(minutas em `painel/src/app/termos` e `painel/src/app/privacidade`; dados da empresa em
+`painel/src/lib/legal.ts`). O cadastro só aceita a versão vigente (`TERMOS_VERSAO`, igual
+em `painel/src/lib/legal.ts` e `src/core/legal.py` — um teste confere) e grava em
+`cliente.termos_versao`/`termos_aceitos_em` qual foi aceita e quando. Ao mudar o texto,
+troque a versão nos dois arquivos.
+
 Limites por hora (só o HMAC do IP/e-mail é guardado): 10 cadastros por IP, 3 por
 e-mail, 30 consultas de CNPJ por IP e 5 códigos errados por cadastro a cada 15 min. O
 IP vem de `X-Forwarded-For` só com `CONFIAR_X_FORWARDED_FOR=true` (API atrás do painel,

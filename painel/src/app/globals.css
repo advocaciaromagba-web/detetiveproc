@@ -144,3 +144,9 @@ tr.descartado td { opacity: 0.55; }
 .login legend { font-size: 0.85rem; color: var(--texto-suave); margin-bottom: 4px; }
 label.opcao { flex-direction: row; align-items: center; gap: 8px; color: var(--texto); font-size: 0.95rem; }
 a.botao-link { display: inline-block; padding: 6px 12px; border-radius: 6px; text-decoration: none; }
+
+/* Termos de uso e política de privacidade */
+.documento-legal { max-width: 820px; margin: 32px auto; padding: 0 16px; }
+.documento-legal article { line-height: 1.6; }
+.documento-legal h2 { font-size: 1.1rem; margin-top: 28px; }
+.documento-legal li { margin-bottom: 6px; }

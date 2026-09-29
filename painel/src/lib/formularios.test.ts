@@ -211,6 +211,7 @@ describe("montarCadastro", () => {
     email: " Contato@Acme.com ",
     periodicidade: "anual",
     aceite_termos: "on",
+    termos_versao: "2026-09-30",
   };
   it("empresa: documento limpo, fantasia opcional, e-mail minúsculo", () => {
     expect(montarCadastro(pj).corpo).toEqual({
@@ -222,6 +223,7 @@ describe("montarCadastro", () => {
       email: "contato@acme.com",
       periodicidade: "anual",
       aceite_termos: true,
+      termos_versao: "2026-09-30",
     });
   });
   it("pessoa física exige o nome completo e CPF", () => {

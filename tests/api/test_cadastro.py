@@ -9,6 +9,7 @@ from starlette.requests import Request
 
 from api.cadastro import ConfigCadastro
 from api.rotas.cadastro import ip_do_visitante
+from core.legal import TERMOS_VERSAO
 from db.modelos import Alvo, Assinatura, Cadastro, Cliente, Preco, Usuario
 from db.sessao import sessao_sistema
 from tests.api.conftest import CNPJ_A
@@ -25,6 +26,7 @@ PJ = {
     "email": " Contato@Acme.com.BR ",
     "periodicidade": "mensal",
     "aceite_termos": True,
+    "termos_versao": TERMOS_VERSAO,
 }
 SENHA = "uma-senha-bem-longa-123"
 
@@ -105,6 +107,7 @@ async def test_fluxo_completo_de_empresa(
     async with sessao_sistema(fabrica) as s:
         cliente = await s.scalar(select(Cliente).where(Cliente.cnpj == CNPJ_A))
         assert cliente is not None
+        assert (cliente.termos_versao, cliente.termos_aceitos_em) == (TERMOS_VERSAO, relogio.agora)
         assert (cliente.nome, cliente.contatos) == (
             "ACME COMERCIO   LTDA", {"emails": ["contato@acme.com.br"]},
         )  # fmt: skip
@@ -162,6 +165,7 @@ async def test_pessoa_fisica(cliente_http, dados, precos, enviador, fabrica) -> 
         ({"documento": CPF}, "CNPJ inválido"),  # CPF no campo de empresa
         ({"email": "sem-arroba"}, "e-mail inválido"),
         ({"aceite_termos": False}, "termos"),
+        ({"termos_versao": "2020-01-01"}, "termos de uso foram atualizados"),
         ({"periodicidade": "semanal"}, "periodicidade"),
     ],
 )

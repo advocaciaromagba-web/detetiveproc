@@ -17,6 +17,10 @@ export default async function Login({
         <p className="suave" style={{ marginBottom: 0 }}>
           Ainda não tem conta? <Link href="/cadastro">Criar conta</Link>
         </p>
+        <p className="suave" style={{ marginBottom: 0, fontSize: "0.8rem" }}>
+          <Link href="/termos">Termos de uso</Link> ·{" "}
+          <Link href="/privacidade">Política de privacidade</Link>
+        </p>
       </div>
     </main>
   );
