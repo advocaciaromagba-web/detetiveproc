@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ABERTAS, PlanoAssinatura, SeloAssinatura } from "@/componentes/Assinatura";
+import { ABERTAS, LinkPagamento, PlanoAssinatura, SeloAssinatura } from "@/componentes/Assinatura";
 import { api, exigirCliente } from "@/lib/api";
 import { formatarDataHora } from "@/lib/formatos";
 import { mascararDocumento } from "@/lib/formularios";
@@ -49,8 +49,8 @@ export default async function Monitorados({
         </p>
         {contratado && (
           <p className="sucesso" role="status">
-            Contratado. O monitoramento começa assim que o pagamento for confirmado; a primeira
-            busca traz os processos do último ano.
+            Contratado. Use o botão Pagar (Pix, boleto ou cartão): o monitoramento começa assim
+            que o pagamento for confirmado, e a primeira busca traz os processos do último ano.
           </p>
         )}
         <section className="cartao">
@@ -123,7 +123,8 @@ export default async function Monitorados({
                         <SeloAssinatura assinatura={a} />
                       </td>
                       <td>{formatarDataHora(a.criado_em)}</td>
-                      <td>
+                      <td className="acoes">
+                        <LinkPagamento assinatura={a} />
                         {podeCancelar ? (
                           <form action={cancelarAssinatura}>
                             <input type="hidden" name="id" value={a.id} />

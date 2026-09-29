@@ -143,3 +143,4 @@ tr.descartado td { opacity: 0.55; }
 .login fieldset { border: 0; padding: 0; margin: 0; display: flex; gap: 16px; flex-wrap: wrap; }
 .login legend { font-size: 0.85rem; color: var(--texto-suave); margin-bottom: 4px; }
 label.opcao { flex-direction: row; align-items: center; gap: 8px; color: var(--texto); font-size: 0.95rem; }
+a.botao-link { display: inline-block; padding: 6px 12px; border-radius: 6px; text-decoration: none; }

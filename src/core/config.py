@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     whatsapp_idioma: str = "pt_BR"
     whatsapp_versao_api: str = "v21.0"
 
+    # Cobrança pelo Asaas (Pix, boleto e cartão; assinaturas mensais/anuais). Desligada
+    # sem a chave. Testes: ASAAS_URL=https://api-sandbox.asaas.com/v3 e chave do sandbox.
+    asaas_url: str = "https://api.asaas.com/v3"
+    asaas_api_key: SecretStr | None = None
+    # Token que o Asaas envia no cabeçalho asaas-access-token do webhook (definido ao
+    # cadastrar o webhook no painel do Asaas). Sem ele, o webhook fica desligado.
+    asaas_webhook_token: SecretStr | None = None
+
     # Cadastro pelo próprio cliente (página pública do painel).
     painel_url_publica: str = "http://localhost:3100"  # base dos links enviados por e-mail
     cadastro_validade_horas: int = 48  # validade do link de confirmação

@@ -5,6 +5,7 @@ confirmado, ou a liberação do operador, a ativa. Nomes e termos só entram e s
 monitoramento por aqui (``cobranca.assinaturas``).
 """
 
+import logging
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -23,6 +24,7 @@ from api.esquemas import (
     Produto,
     RegraSaida,
 )
+from cobranca.asaas import ErroGateway, GatewayPagamento
 from cobranca.assinaturas import (
     AssinaturaEmAberto,
     PrecoIndefinido,
@@ -31,12 +33,26 @@ from cobranca.assinaturas import (
     cancelar,
     contratar,
 )
+from cobranca.pagamentos import cancelar_no_gateway, pos_contratacao
 from db.modelos import STATUS_ASSINATURA_ABERTA, Alvo, Assinatura, Regra
 
 rotas = APIRouter(prefix="/v1/assinaturas", tags=["assinaturas"])
 Situacao = Literal["abertas", "encerradas", "todas"]
 
 NAO_ENCONTRADA = HTTPException(status.HTTP_404_NOT_FOUND, "assinatura não encontrada")
+logger = logging.getLogger(__name__)
+
+
+def _gateway(ctx: Ctx) -> GatewayPagamento | None:
+    gateway: GatewayPagamento | None = ctx.request.app.state.gateway
+    return gateway
+
+
+async def _obter(sessao: AsyncSession, assinatura_id: int) -> Assinatura:
+    assinatura = await sessao.get(Assinatura, assinatura_id, populate_existing=True)
+    if assinatura is None:
+        raise NAO_ENCONTRADA
+    return assinatura
 
 
 async def _saidas(sessao: AsyncSession, assinaturas: list[Assinatura]) -> list[AssinaturaSaida]:
@@ -93,7 +109,11 @@ async def contratar_item(contrato: Contrato, ctx: Ctx) -> AssinaturaSaida:
                 status.HTTP_409_CONFLICT, "este item já tem uma assinatura em aberto"
             ) from erro
         ctx.registrar_entidade(assinatura.id)
-        (saida,) = await _saidas(s, [assinatura])
+        assinatura_id = assinatura.id
+    # Depois do commit: cria a cobrança no Asaas (se falhar, o job tenta de novo).
+    await pos_contratacao(ctx.fabrica, _gateway(ctx), [assinatura_id], ctx.agora)
+    async with ctx.cliente() as s:
+        (saida,) = await _saidas(s, [await _obter(s, assinatura_id)])
     return saida
 
 
@@ -139,7 +159,14 @@ async def cancelar_assinatura(assinatura_id: int, ctx: Ctx) -> AssinaturaSaida:
         if assinatura is None:
             raise NAO_ENCONTRADA
         await cancelar(s, assinatura, ctx.agora)
-        (saida,) = await _saidas(s, [assinatura])
+    gateway = _gateway(ctx)
+    if gateway is not None:
+        try:
+            await cancelar_no_gateway(ctx.fabrica, gateway, assinatura_id, ctx.agora)
+        except ErroGateway as erro:  # o job tenta de novo
+            logger.warning("cancelamento no Asaas adiado", extra={"motivo": str(erro)})
+    async with ctx.cliente() as s:
+        (saida,) = await _saidas(s, [await _obter(s, assinatura_id)])
     return saida
 
 

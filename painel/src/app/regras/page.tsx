@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ABERTAS, PlanoAssinatura, SeloAssinatura } from "@/componentes/Assinatura";
+import { ABERTAS, LinkPagamento, PlanoAssinatura, SeloAssinatura } from "@/componentes/Assinatura";
 import { api, exigirCliente } from "@/lib/api";
 import { formatarDataHora, formatarReais, ROTULO_POLO } from "@/lib/formatos";
 import type { Assinatura, Pagina, Preco, Regra } from "@/lib/tipos";
@@ -59,7 +59,7 @@ export default async function Termos({
         </p>
         {contratado && (
           <p className="sucesso" role="status">
-            Termo contratado. Ele passa a valer assim que o pagamento for confirmado.
+            Termo contratado. Use o botão Pagar: ele passa a valer assim que o pagamento for confirmado.
           </p>
         )}
         <section className="cartao">
@@ -112,7 +112,8 @@ export default async function Termos({
                         <SeloAssinatura assinatura={a} />
                       </td>
                       <td>{formatarDataHora(a.criado_em)}</td>
-                      <td>
+                      <td className="acoes">
+                        <LinkPagamento assinatura={a} />
                         {podeCancelar ? (
                           <form action={cancelarAssinatura}>
                             <input type="hidden" name="id" value={a.id} />
