@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     djen_janela_dias: int = 30  # período máximo por consulta (buscas longas são fatiadas)
 
     # Análise das publicações por IA (Claude). Extrai tipo do ato, prazo e audiência.
+    # DataJud (CNJ): classe, assunto, data de ajuizamento e grau pelo número do processo.
+    # A chave é PÚBLICA (a mesma para todos, divulgada pelo CNJ); troque se o CNJ mudar.
+    datajud_url: str = "https://api-publica.datajud.cnj.jus.br"
+    datajud_api_key: SecretStr = SecretStr(
+        "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
+    )
+    datajud_req_min: float = 30.0
+
     # Opcional: o produto entrega a lista de processos; o resumo por IA fica desligado.
     ia_analise_ativa: bool = False
     anthropic_api_key: SecretStr | None = None

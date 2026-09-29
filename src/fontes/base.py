@@ -6,7 +6,7 @@ seção 3). O parâmetro consultado (OAB, nome) nunca vai para log nem para a ch
 objeto em claro — só o seu hash.
 """
 
-import json
+import json as _json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -72,6 +72,8 @@ class OpcoesCliente:
     agente: str
     prefixo: str  # pasta do bruto no S3 (ex.: "djen")
     timeout: float = 30.0
+    # Cabeçalhos fixos (ex.: chave de API). Nunca vão para log nem para o bruto.
+    cabecalhos: tuple[tuple[str, str], ...] = ()
 
 
 class ClienteFonte:
@@ -97,7 +99,11 @@ class ClienteFonte:
         self.prefixo = opcoes.prefixo.strip("/")
         self._relogio = relogio
         self._cliente = httpx.AsyncClient(
-            headers={"User-Agent": opcoes.agente, "Accept": "application/json"},
+            headers={
+                "User-Agent": opcoes.agente,
+                "Accept": "application/json",
+                **dict(opcoes.cabecalhos),
+            },
             timeout=opcoes.timeout,
             transport=transporte,
         )
@@ -127,15 +133,33 @@ class ClienteFonte:
     async def obter(
         self, caminho: str, params: dict[str, str], *, parametro_hash: str, pagina: int
     ) -> tuple[RespostaBruta, object]:
-        """Faz a requisição (após o limitador), guarda o bruto e devolve o JSON lido.
+        """GET (após o limitador); guarda o bruto e devolve o JSON lido.
 
         ``parametro_hash`` é o hash do valor consultado; entra na chave do objeto para
-        agrupar a coleta sem expor OAB/nome.
+        agrupar a coleta sem expor OAB/nome/número.
         """
+        return await self._requisitar("GET", caminho, parametro_hash, pagina, params=params)
+
+    async def postar(
+        self, caminho: str, corpo: dict[str, object], *, parametro_hash: str, pagina: int
+    ) -> tuple[RespostaBruta, object]:
+        """POST com corpo JSON (ex.: busca Elasticsearch do DataJud); mesmo tratamento."""
+        return await self._requisitar("POST", caminho, parametro_hash, pagina, json=corpo)
+
+    async def _requisitar(
+        self,
+        metodo: str,
+        caminho: str,
+        parametro_hash: str,
+        pagina: int,
+        *,
+        params: dict[str, str] | None = None,
+        json: dict[str, object] | None = None,
+    ) -> tuple[RespostaBruta, object]:
         await self.limitador.adquirir()
         url = urljoin(self.base + "/", caminho.lstrip("/"))
         try:
-            resposta = await self._cliente.get(url, params=params)
+            resposta = await self._cliente.request(metodo, url, params=params, json=json)
         except httpx.TimeoutException as erro:
             raise FonteIndisponivel(self.fonte, "tempo esgotado") from erro
         except httpx.TransportError as erro:
@@ -152,8 +176,8 @@ class ClienteFonte:
             url.split("?")[0], resposta.status_code, resposta.content, chave, agora
         )
         try:
-            dados: object = json.loads(resposta.content)
-        except json.JSONDecodeError as erro:
+            dados: object = _json.loads(resposta.content)
+        except _json.JSONDecodeError as erro:
             raise RespostaInvalida(self.fonte, "corpo não é JSON válido") from erro
         return bruta, dados
 

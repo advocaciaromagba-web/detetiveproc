@@ -12,8 +12,15 @@ from core.config import Settings
 from core.rate_limiter import ConfigLimite, criar_limitador
 from core.tempo import agora_utc, data_no_escritorio
 from db.sessao import sessao_sistema
+from fontes.base import ErroFonte
+from fontes.datajud import ConfigDataJud, FonteDataJud
 from fontes.djen import ConfigDJEN, FonteDJEN
 from pipeline.analise import analisar_pendentes
+from pipeline.complemento_datajud import (
+    ResultadoComplemento,
+    completar_pendentes,
+    completar_processo,
+)
 from pipeline.varredura_djen import ConfigVarreduraDJEN, ResultadoVarreduraDJEN, varrer_djen
 
 if TYPE_CHECKING:
@@ -24,16 +31,52 @@ logger = logging.getLogger(__name__)
 Fabrica = async_sessionmaker[AsyncSession]
 
 
+def _chave_hash(settings: Settings) -> str | None:
+    chave = settings.hash_documento_chave
+    return chave.get_secret_value() if chave is not None else None
+
+
+def criar_fonte_datajud(
+    settings: Settings, *, redis: "Redis | None" = None, armazem: Armazem | None = None
+) -> FonteDataJud:
+    """Fonte do DataJud com o limitador "DATAJUD" (compartilhado via Redis)."""
+    return FonteDataJud(
+        criar_limitador("DATAJUD", ConfigLimite(settings.datajud_req_min), redis),
+        armazem if armazem is not None else ArmazemS3.de_settings(settings),
+        config=ConfigDataJud(
+            url_base=settings.datajud_url,
+            chave_api=settings.datajud_api_key.get_secret_value(),
+            contato=settings.coletor_contato,
+        ),
+        chave_hash=_chave_hash(settings),
+    )
+
+
+def montar_complemento(
+    fabrica: Fabrica, fonte: FonteDataJud
+) -> Callable[[], Awaitable[ResultadoComplemento]]:
+    """Job de repescagem: completa pelo DataJud os processos que ficaram sem classe."""
+
+    async def executar() -> ResultadoComplemento:
+        return await completar_pendentes(fabrica, fonte, agora=agora_utc())
+
+    return executar
+
+
 def montar_varredura_djen(
     fabrica: Fabrica,
     settings: Settings,
     *,
     redis: "Redis | None" = None,
     armazem: Armazem | None = None,
+    datajud: FonteDataJud | None = None,
 ) -> Callable[[], Awaitable[ResultadoVarreduraDJEN]]:
-    """Job da varredura nacional. Toda requisição passa pelo limitador "DJEN"."""
-    chave = settings.hash_documento_chave
-    chave_hash = chave.get_secret_value() if chave is not None else None
+    """Job da varredura nacional. Toda requisição passa pelo limitador "DJEN".
+
+    Com ``datajud``, o processo novo que vai gerar aviso é completado na hora (classe,
+    assunto); falha do DataJud não derruba a varredura — a repescagem tenta depois.
+    """
+    chave_hash = _chave_hash(settings)
     fonte = FonteDJEN(
         criar_limitador("DJEN", ConfigLimite(settings.djen_req_min), redis),
         armazem if armazem is not None else ArmazemS3.de_settings(settings),
@@ -49,9 +92,19 @@ def montar_varredura_djen(
         historico_dias=settings.djen_historico_dias, janela_dias=settings.djen_janela_dias
     )
 
+    async def completar(sessao: AsyncSession, processo_id: int) -> None:
+        if datajud is None:
+            return
+        try:
+            await completar_processo(sessao, datajud, processo_id, agora=agora_utc())
+        except ErroFonte:
+            logger.warning("DataJud indisponível; processo fica para a repescagem", exc_info=True)
+
     async def executar() -> ResultadoVarreduraDJEN:
         hoje = data_no_escritorio(agora_utc(), settings.fuso_escritorio)
-        return await varrer_djen(fabrica, fonte, hoje=hoje, chave_hash=chave_hash, config=config)
+        return await varrer_djen(
+            fabrica, fonte, hoje=hoje, chave_hash=chave_hash, config=config, complemento=completar
+        )
 
     return executar
 

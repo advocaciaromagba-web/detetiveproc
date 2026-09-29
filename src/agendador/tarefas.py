@@ -16,6 +16,7 @@ from db.sessao import sessao_sistema
 from entrega.email import EnviadorEmail
 from monitoramento.alarmes import avaliar_alarmes, avaliar_volume
 from monitoramento.sentinelas import executar_sentinelas
+from pipeline.complemento_datajud import ResultadoComplemento
 from pipeline.varredura_djen import ResultadoVarreduraDJEN
 from regras.alertas import despachar_alertas, enviar_resumos_diarios
 
@@ -56,6 +57,7 @@ class Tarefas:
     # Opcionais: só viram jobs quando configurados (DJEN e chave da IA).
     varredura_djen: Callable[[], Awaitable[ResultadoVarreduraDJEN]] | None = None
     analise_publicacoes: Callable[[], Awaitable[int]] | None = None
+    complemento_datajud: Callable[[], Awaitable[ResultadoComplemento]] | None = None
 
     async def varredura(self) -> None:
         resultados = await self.orquestrador.executar_ciclo()
@@ -89,6 +91,22 @@ class Tarefas:
                 "interrompida": r.interrompida,
             },
         )
+
+    async def complemento(self) -> None:
+        if self.complemento_datajud is None:
+            return
+        r = await self.complemento_datajud()
+        if r.consultados or r.erros:
+            logger.info(
+                "processos completados pelo DataJud",
+                extra={
+                    "consultados": r.consultados,
+                    "completados": r.completados,
+                    "sem_resultado": r.sem_resultado,
+                    "erros": r.erros,
+                    "interrompido": r.interrompido,
+                },
+            )
 
     async def analise(self) -> None:
         if self.analise_publicacoes is None:
@@ -146,6 +164,10 @@ def montar_agendador(
     if tarefas.varredura_djen is not None:
         agendador.add_job(
             tarefas.djen, "interval", minutes=djen_minutos, id="varredura_djen", **padrao
+        )
+    if tarefas.complemento_datajud is not None:
+        agendador.add_job(
+            tarefas.complemento, "interval", minutes=15, id="complemento_datajud", **padrao
         )
     if tarefas.analise_publicacoes is not None:
         agendador.add_job(
