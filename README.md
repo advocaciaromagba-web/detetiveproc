@@ -184,8 +184,11 @@ uv run uvicorn api.app:app --port 8000   # documentação interativa em /docs
 | Rota | Função |
 | --- | --- |
 | `POST /v1/auth/login` · `POST /v1/auth/logout` · `GET /v1/auth/eu` | Sessão do painel |
-| `POST /v1/alvos` · `GET /v1/alvos` · `GET/DELETE /v1/alvos/{id}` | Alvos (DELETE desativa) |
-| `POST /v1/regras` · `GET /v1/regras` · `GET/DELETE /v1/regras/{id}` | Regras por padrão |
+| `GET /v1/precos` · `PUT /v1/precos/{produto}/{periodicidade}` | Tabela de preços (PUT só operador) |
+| `POST /v1/assinaturas` · `GET /v1/assinaturas?produto=&situacao=` · `GET /v1/assinaturas/{id}` | Contratar e listar nomes (`produto: "nome"`) e termos (`"termo"`), mensal ou anual |
+| `POST /v1/assinaturas/{id}/cancelar` | Não renova (paga) ou encerra já (aguardando pagamento) |
+| `POST /v1/assinaturas/{id}/ativar` | Só operador: libera um período pago fora da plataforma ou dá cortesia |
+| `GET /v1/alvos` · `GET /v1/alvos/{id}` · `GET /v1/regras` · `GET /v1/regras/{id}` | Nomes e termos (leitura: entram e saem pelas assinaturas) |
 | `GET /v1/ocorrencias?status=&confianca=&q=&desde=&score_min=&limite=&antes_id=` | Processos do cliente, com autores/réus, assunto e grau; `q` busca por número ou nome da parte |
 | `GET/PATCH /v1/ocorrencias/{id}` | Detalhe; marcar `visto`, `descartado` ou `novo`; `{"confianca": "confirmada"}` confirma um possível homônimo |
 | `GET/PUT /v1/conta/contatos` | E-mails e WhatsApp que recebem o aviso de processo novo |
@@ -209,7 +212,24 @@ uv run python -m api.admin criar-usuario --email op@monitor --nome Operação --
 uv run python -m api.admin criar-chave --cliente-id 1 --descricao "ERP"   # chave exibida uma vez
 uv run python -m api.admin revogar-chave --id 1
 uv run python -m api.admin liberar-tribunal --id 2   # após CAPTCHA/layout, depois de resolver
+uv run python -m api.admin definir-preco --produto nome --periodicidade mensal --centavos 4990
+uv run python -m api.admin ativar-assinatura --id 7              # pagamento recebido por fora
+uv run python -m api.admin ativar-assinatura --id 8 --cortesia   # sem cobrança e sem vencimento
 ```
+
+### Assinaturas
+
+Cada **nome** (alvo) e cada **termo** (regra) monitorado é uma assinatura, mensal ou
+anual, com o preço da tabela travado na contratação (`cobranca/assinaturas.py`):
+
+- **Aguardando pagamento** (`pendente`) → **ativa** quando o pagamento é confirmado (ou o
+  operador libera). Só então o item entra na varredura (`alvo.ativo`/`regra.ativo`).
+- No vencimento: **atrasada** (continua monitorando durante a carência,
+  `ASSINATURA_CARENCIA_DIAS`, padrão 7) → **suspensa** (para de monitorar). Pagar de novo
+  reativa, com novo período a partir da data do pagamento.
+- **Não renovar**: monitora até o fim do período pago e então encerra (`cancelada`).
+- O agendador confere os vencimentos de hora em hora (job `assinaturas`).
+- A migração 0014 dá **cortesia** (sem vencimento) a tudo que já era monitorado.
 
 ## Painel (Next.js)
 
@@ -225,9 +245,9 @@ npm run lint && npm run typecheck && npm test && npm run build
   descoberta; busca por número ou nome da parte; filtros por situação, identificação e
   data; "É meu"/"Não é meu" para possíveis homônimos; marcar como visto, descartar,
   reabrir); detalhe (capa, partes, advogados, link da consulta pública); **Monitorados**
-  (nome, CPF/CNPJ + razão social ou OAB, com finalidade obrigatória; CPF/CNPJ mascarado
-  na lista; desativar/reativar); regras; **Avisos** (e-mails e WhatsApp que recebem o
-  processo novo) e, para operadores, saúde dos robôs.
+  e **Termos** (contratar um nome ou um termo escolhendo o plano mensal ou anual com o
+  preço; situação da assinatura; "Não renovar"); **Avisos** (e-mails e WhatsApp que
+  recebem o processo novo); para operadores, **saúde dos robôs** e **Preços**.
 - O Diário de Justiça (DJEN) não busca por CPF/CNPJ: um monitorado por documento é
   procurado pelos nomes informados em "Nomes buscados no Diário" (obrigatório no painel).
 - O painel só fala com a API, pelo servidor do Next. O token fica em cookie

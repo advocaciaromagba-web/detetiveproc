@@ -8,9 +8,11 @@ import {
   formatarDataHora,
   formatarReais,
   linkSeguro,
+  formatarPreco,
   formatarWhatsapp,
   listarNomes,
   queryOcorrencias,
+  resumoAssinatura,
   rotuloGrau,
 } from "./formatos";
 
@@ -120,5 +122,20 @@ describe("rótulos de alarme", () => {
       "taxa_erro",
       "volume_baixo",
     ]);
+  });
+});
+
+describe("assinaturas", () => {
+  const base = { status: "ativa", cortesia: false, vigente_ate: "2026-03-15T12:00:00Z", cancelar_no_fim: false };
+  it("preço com período", () => {
+    expect(formatarPreco(4990, "mensal")).toBe("R$ 49,90/mês");
+    expect(formatarPreco(49900, "anual")).toBe("R$ 499,00/ano");
+  });
+  it("situação em uma frase", () => {
+    expect(resumoAssinatura(base)).toBe("Ativa, renova em 15/03/2026");
+    expect(resumoAssinatura({ ...base, cancelar_no_fim: true })).toBe("Ativa até 15/03/2026 (não renova)");
+    expect(resumoAssinatura({ ...base, cortesia: true, vigente_ate: null })).toBe("Ativa (cortesia)");
+    expect(resumoAssinatura({ ...base, status: "atrasada" })).toBe("Pagamento atrasado desde 15/03/2026");
+    expect(resumoAssinatura({ ...base, status: "pendente", vigente_ate: null })).toBe("Aguardando pagamento");
   });
 });

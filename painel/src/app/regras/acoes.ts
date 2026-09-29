@@ -3,35 +3,32 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { api, ErroApi } from "@/lib/api";
-import { errosDaApi, montarRegra } from "@/lib/formularios";
-import type { Regra } from "@/lib/tipos";
+import { api } from "@/lib/api";
+import { errosDaContratacao, valoresDe } from "@/lib/contratacao";
+import { montarRegra, periodicidade, type EstadoFormulario } from "@/lib/formularios";
+import type { Assinatura } from "@/lib/tipos";
 
-import type { EstadoFormulario } from "../alvos/acoes";
-
-export async function criarRegra(
+/** Contrata o monitoramento de um termo: fica aguardando pagamento até ser liberado. */
+export async function contratarTermo(
   anterior: EstadoFormulario,
   dados: FormData,
 ): Promise<EstadoFormulario> {
-  const valores = Object.fromEntries([...dados.entries()].map(([k, v]) => [k, String(v)]));
+  const valores = valoresDe(dados);
   const tentativa = anterior.tentativa + 1;
   const { corpo, erros } = montarRegra(valores);
-  if (!corpo) return { erros, valores, tentativa };
+  const plano = periodicidade(valores.periodicidade);
+  if (!plano) erros.periodicidade = "Escolha o plano.";
+  if (!corpo || !plano) return { erros, valores, tentativa };
   try {
-    await api<Regra>("/v1/regras", { method: "POST", body: corpo });
+    await api<Assinatura>("/v1/assinaturas", {
+      method: "POST",
+      body: { produto: "termo", periodicidade: plano, termo: corpo },
+    });
   } catch (erro) {
-    if (erro instanceof ErroApi && erro.status === 422) {
-      return { erros: errosDaApi(erro.corpo), valores, tentativa };
-    }
+    const mapeados = errosDaContratacao(erro);
+    if (mapeados) return { erros: mapeados, valores, tentativa };
     throw erro;
   }
   revalidatePath("/regras");
-  redirect("/regras?salva=1");
-}
-
-export async function desativarRegra(dados: FormData): Promise<void> {
-  const id = Number(dados.get("id"));
-  if (!Number.isInteger(id) || id <= 0) return;
-  await api(`/v1/regras/${id}`, { method: "DELETE" });
-  revalidatePath("/regras");
+  redirect("/regras?contratado=1");
 }

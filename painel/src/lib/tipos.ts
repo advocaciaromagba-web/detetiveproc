@@ -148,3 +148,31 @@ export interface Contatos {
   emails: string[];
   whatsapp: string[];
 }
+
+export type Produto = "nome" | "termo";
+export type Periodicidade = "mensal" | "anual";
+export type StatusAssinatura = "pendente" | "ativa" | "atrasada" | "suspensa" | "cancelada";
+
+export interface Preco {
+  produto: Produto;
+  periodicidade: Periodicidade;
+  valor_centavos: number;
+  atualizado_em: string;
+}
+
+/** Um nome (alvo) ou um termo (regra) contratado, mensal ou anual. */
+export interface Assinatura {
+  id: number;
+  produto: Produto;
+  periodicidade: Periodicidade;
+  valor_centavos: number;
+  status: StatusAssinatura;
+  cortesia: boolean;
+  vigente_ate: string | null;
+  cancelar_no_fim: boolean;
+  criado_em: string;
+  ativada_em: string | null;
+  encerrada_em: string | null;
+  alvo: Alvo | null;
+  termo: Regra | null;
+}

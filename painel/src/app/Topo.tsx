@@ -15,11 +15,14 @@ export function Topo({ eu }: { eu: Eu }) {
           <>
             <Link href="/ocorrencias">Processos</Link>
             <Link href="/alvos">Monitorados</Link>
-            <Link href="/regras">Regras</Link>
+            <Link href="/regras">Termos</Link>
             <Link href="/contatos">Avisos</Link>
           </>
         ) : (
-          <Link href="/saude">Saúde dos robôs</Link>
+          <>
+            <Link href="/saude">Saúde dos robôs</Link>
+            <Link href="/precos">Preços</Link>
+          </>
         )}
       </nav>
       <nav aria-label="Conta">

@@ -1,6 +1,7 @@
 """Administração por linha de comando: ``python -m api.admin <comando>``.
 
 Usuários e chaves de API só são criados aqui (sem cadastro aberto no painel).
+Preços e liberação manual de assinaturas também têm comando próprio.
 Senhas são lidas sem eco (getpass) ou da variável MONITOR_SENHA (automação).
 """
 
@@ -19,8 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from agendador.controle import liberar_tribunal
 from agendador.unidades import adicionar_unidade, listar_unidades, remover_unidade
 from api.auth import criar_chave_api, criar_usuario, revogar_chave, revogar_sessoes
+from cobranca.assinaturas import AssinaturaEmAberto, TransicaoInvalida, ativar
 from core.config import obter_settings
-from db.modelos import Cliente, Tribunal
+from db.modelos import Assinatura, Cliente, Preco, Tribunal
 from db.sessao import criar_engine, criar_fabrica, sessao_sistema
 from entrega.whatsapp import normalizar_whatsapp
 from monitoramento.sentinelas import CAMPOS_SENTINELA, criar_sentinela
@@ -91,6 +93,15 @@ def _analisador() -> argparse.ArgumentParser:
 
     lu = cmd.add_parser("listar-unidades")
     lu.add_argument("--tribunal-id", type=int)
+
+    dp = cmd.add_parser("definir-preco", help="preço de novas contratações")
+    dp.add_argument("--produto", choices=["nome", "termo"], required=True)
+    dp.add_argument("--periodicidade", choices=["mensal", "anual"], required=True)
+    dp.add_argument("--centavos", type=int, required=True, help="ex.: 9990 para R$ 99,90")
+
+    at = cmd.add_parser("ativar-assinatura", help="libera um período pago fora da plataforma")
+    at.add_argument("--id", type=int, required=True)
+    at.add_argument("--cortesia", action="store_true", help="sem cobrança e sem vencimento")
     return raiz
 
 
@@ -215,6 +226,32 @@ async def _listar_unidades(args: argparse.Namespace, fabrica: Fabrica) -> dict[s
     }
 
 
+async def _definir_preco(args: argparse.Namespace, fabrica: Fabrica) -> dict[str, Any]:
+    if args.centavos < 0:
+        raise SystemExit("o preço não pode ser negativo")
+    async with sessao_sistema(fabrica) as s:
+        preco = await s.get(Preco, (args.produto, args.periodicidade))
+        if preco is None:
+            preco = Preco(produto=args.produto, periodicidade=args.periodicidade)
+            s.add(preco)
+        preco.valor_centavos = args.centavos
+        preco.atualizado_em = datetime.now(UTC)
+    return {"produto": args.produto, "periodicidade": args.periodicidade, "centavos": args.centavos}
+
+
+async def _ativar_assinatura(args: argparse.Namespace, fabrica: Fabrica) -> dict[str, Any]:
+    async with sessao_sistema(fabrica) as s:
+        assinatura = await s.get(Assinatura, args.id, with_for_update=True)
+        if assinatura is None:
+            raise SystemExit(f"assinatura {args.id} não existe")
+        try:
+            await ativar(s, assinatura, datetime.now(UTC), cortesia=args.cortesia)
+        except (TransicaoInvalida, AssinaturaEmAberto) as erro:
+            raise SystemExit(str(erro)) from None
+        vigente = assinatura.vigente_ate.isoformat() if assinatura.vigente_ate else None
+    return {"assinatura_id": args.id, "status": assinatura.status, "vigente_ate": vigente}
+
+
 COMANDOS: dict[str, Callable[[argparse.Namespace, Fabrica], Awaitable[dict[str, Any]]]] = {
     "criar-cliente": _criar_cliente,
     "criar-usuario": _criar_usuario,
@@ -227,6 +264,8 @@ COMANDOS: dict[str, Callable[[argparse.Namespace, Fabrica], Awaitable[dict[str, 
     "adicionar-unidade": _adicionar_unidade,
     "remover-unidade": _remover_unidade,
     "listar-unidades": _listar_unidades,
+    "definir-preco": _definir_preco,
+    "ativar-assinatura": _ativar_assinatura,
 }
 
 

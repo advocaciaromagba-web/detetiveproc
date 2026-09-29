@@ -2,14 +2,17 @@
 
 import { useActionState } from "react";
 
+import { CampoPeriodicidade } from "@/componentes/Assinatura";
 import { Campo } from "@/componentes/Campo";
+import type { EstadoFormulario } from "@/lib/formularios";
+import type { Preco } from "@/lib/tipos";
 
-import { cadastrarAlvo, type EstadoFormulario } from "./acoes";
+import { contratarNome } from "./acoes";
 
 const inicial: EstadoFormulario = { erros: {}, valores: { tipo: "nome", prioridade: "padrao" }, tentativa: 0 };
 
-export function FormAlvo() {
-  const [estado, acao, enviando] = useActionState(cadastrarAlvo, inicial);
+export function FormAlvo({ precos }: { precos: Preco[] }) {
+  const [estado, acao, enviando] = useActionState(contratarNome, inicial);
   const { erros, valores } = estado;
   return (
     // key: remonta o formulário com os valores devolvidos (o React 19 limpa o form após a ação)
@@ -52,6 +55,7 @@ export function FormAlvo() {
       >
         {(p) => <input {...p} defaultValue={valores.finalidade} required />}
       </Campo>
+      <CampoPeriodicidade precos={precos} erro={erros.periodicidade} valor={valores.periodicidade} />
       {erros._geral && (
         <p className="erro largo" role="alert">
           {erros._geral}
@@ -59,7 +63,7 @@ export function FormAlvo() {
       )}
       <div className="largo">
         <button className="botao-primario" type="submit" disabled={enviando}>
-          {enviando ? "Salvando…" : "Monitorar"}
+          {enviando ? "Contratando…" : "Contratar monitoramento"}
         </button>
       </div>
     </form>

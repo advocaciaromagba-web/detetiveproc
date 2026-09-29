@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     whatsapp_idioma: str = "pt_BR"
     whatsapp_versao_api: str = "v21.0"
 
+    # Assinaturas: dias após o vencimento em que o item segue monitorado (carência)
+    # até ser suspenso por falta de pagamento.
+    assinatura_carencia_dias: int = 7
+
     # Coleta nos tribunais (seção 5). O contato técnico vai no User-Agent do robô.
     coletor_contato: str = ""
     coletor_timeout: float = 30.0

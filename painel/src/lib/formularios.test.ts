@@ -8,6 +8,7 @@ import {
   montarAlvo,
   montarContatos,
   montarRegra,
+  periodicidade,
   reaisParaCentavos,
 } from "./formularios";
 
@@ -153,6 +154,27 @@ describe("errosDaApi", () => {
     expect(
       errosDaApi({ detail: [{ loc: ["body"], msg: "Value error, a regra precisa de ao menos um filtro" }] }),
     ).toEqual({ _geral: "a regra precisa de ao menos um filtro" });
+  });
+
+  it("erros da contratação apontam o campo do nome ou do termo", () => {
+    expect(
+      errosDaApi({
+        detail: [
+          { loc: ["body", "nome", "alvo"], msg: "Value error, CPF/CNPJ inválido" },
+          { loc: ["body", "nome", "alvo", "finalidade"], msg: "curta" },
+          { loc: ["body", "termo", "termo", "nome"], msg: "obrigatório" },
+        ],
+      }),
+    ).toEqual({ valor: "CPF/CNPJ inválido", finalidade: "curta", nome: "obrigatório" });
+  });
+});
+
+describe("periodicidade", () => {
+  it("só mensal ou anual", () => {
+    expect(periodicidade("mensal")).toBe("mensal");
+    expect(periodicidade("anual")).toBe("anual");
+    expect(periodicidade("semanal")).toBeNull();
+    expect(periodicidade(undefined)).toBeNull();
   });
 });
 

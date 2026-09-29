@@ -1,17 +1,18 @@
 import Link from "next/link";
 
+import { ABERTAS, PlanoAssinatura, SeloAssinatura } from "@/componentes/Assinatura";
 import { api, exigirCliente } from "@/lib/api";
 import { formatarDataHora, formatarReais, ROTULO_POLO } from "@/lib/formatos";
-import type { Pagina, Regra } from "@/lib/tipos";
+import type { Assinatura, Pagina, Preco, Regra } from "@/lib/tipos";
 
+import { cancelarAssinatura } from "../acoesAssinatura";
 import { Topo } from "../Topo";
-import { desativarRegra } from "./acoes";
 import { FormRegra } from "./FormRegra";
 
 const SITUACOES = [
-  { valor: "ativas", rotulo: "Ativas" },
-  { valor: "inativas", rotulo: "Inativas" },
-  { valor: "todas", rotulo: "Todas" },
+  { valor: "abertas", rotulo: "Contratados" },
+  { valor: "encerradas", rotulo: "Encerrados" },
+  { valor: "todas", rotulo: "Todos" },
 ] as const;
 
 function Filtros({ r }: { r: Regra }) {
@@ -33,29 +34,41 @@ function Filtros({ r }: { r: Regra }) {
   );
 }
 
-export default async function Regras({
+export default async function Termos({
   searchParams,
 }: {
-  searchParams: Promise<{ situacao?: string; salva?: string }>;
+  searchParams: Promise<{ situacao?: string; contratado?: string }>;
 }) {
   const eu = await exigirCliente();
-  const { situacao: bruta, salva } = await searchParams;
-  const situacao = SITUACOES.some((s) => s.valor === bruta) ? bruta! : "ativas";
-  const pagina = await api<Pagina<Regra>>(`/v1/regras?situacao=${situacao}&limite=200`);
+  const { situacao: bruta, contratado } = await searchParams;
+  const situacao = SITUACOES.some((s) => s.valor === bruta) ? bruta! : "abertas";
+  const [pagina, precos] = await Promise.all([
+    api<Pagina<Assinatura>>(`/v1/assinaturas?produto=termo&situacao=${situacao}&limite=200`),
+    api<Preco[]>("/v1/precos"),
+  ]);
+  const precosTermo = precos.filter((p) => p.produto === "termo");
 
   return (
     <>
       <Topo eu={eu} />
       <main>
-        <h1>Regras de monitoramento</h1>
-        {salva && (
+        <h1>Termos monitorados</h1>
+        <p className="suave">
+          Cada termo é uma assinatura (mensal ou anual): processos novos de qualquer parte que
+          casem com ele aparecem em Processos.
+        </p>
+        {contratado && (
           <p className="sucesso" role="status">
-            Regra criada. Ela vale para os processos avaliados a partir de agora.
+            Termo contratado. Ele passa a valer assim que o pagamento for confirmado.
           </p>
         )}
         <section className="cartao">
-          <h2 style={{ marginTop: 0 }}>Nova regra</h2>
-          <FormRegra />
+          <h2 style={{ marginTop: 0 }}>Contratar novo termo</h2>
+          {precosTermo.length ? (
+            <FormRegra precos={precosTermo} />
+          ) : (
+            <p className="aviso">Contratação indisponível no momento. Tente mais tarde.</p>
+          )}
         </section>
 
         <nav className="abas" aria-label="Situação">
@@ -71,40 +84,49 @@ export default async function Regras({
         </nav>
 
         {pagina.itens.length === 0 ? (
-          <p className="cartao">Nenhuma regra nesta lista.</p>
+          <p className="cartao">Nenhum termo nesta lista.</p>
         ) : (
           <div className="tabela-rolagem cartao" style={{ padding: 0 }}>
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Regra</th>
+                  <th scope="col">Termo</th>
                   <th scope="col">Filtros</th>
-                  <th scope="col">Finalidade</th>
-                  <th scope="col">Criada</th>
+                  <th scope="col">Plano</th>
+                  <th scope="col">Situação</th>
+                  <th scope="col">Contratado em</th>
                   <th scope="col">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {pagina.itens.map((r) => (
-                  <tr key={r.id} className={r.ativo ? undefined : "descartado"}>
-                    <td>{r.nome}</td>
-                    <td>
-                      <Filtros r={r} />
-                    </td>
-                    <td>{r.finalidade}</td>
-                    <td>{formatarDataHora(r.criado_em)}</td>
-                    <td>
-                      {r.ativo ? (
-                        <form action={desativarRegra}>
-                          <input type="hidden" name="id" value={r.id} />
-                          <button type="submit">Desativar</button>
-                        </form>
-                      ) : (
-                        <span className="suave">Inativa</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {pagina.itens.map((a) => {
+                  const podeCancelar = ABERTAS.has(a.status) && !a.cancelar_no_fim;
+                  return (
+                    <tr key={a.id} className={ABERTAS.has(a.status) ? undefined : "descartado"}>
+                      <td>{a.termo?.nome ?? "—"}</td>
+                      <td>{a.termo && <Filtros r={a.termo} />}</td>
+                      <td>
+                        <PlanoAssinatura assinatura={a} />
+                      </td>
+                      <td>
+                        <SeloAssinatura assinatura={a} />
+                      </td>
+                      <td>{formatarDataHora(a.criado_em)}</td>
+                      <td>
+                        {podeCancelar ? (
+                          <form action={cancelarAssinatura}>
+                            <input type="hidden" name="id" value={a.id} />
+                            <button type="submit">
+                              {a.status === "pendente" ? "Cancelar" : "Não renovar"}
+                            </button>
+                          </form>
+                        ) : (
+                          <span className="suave">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
