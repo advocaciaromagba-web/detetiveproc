@@ -1,7 +1,7 @@
 import { faixaUrgencia, ROTULO_CONFIANCA } from "@/lib/formatos";
 import type { Confianca, StatusOcorrencia } from "@/lib/tipos";
 
-import { marcarStatus } from "./acoes";
+import { confirmarHomonimo, marcarStatus } from "./acoes";
 
 export function SeloUrgencia({ score }: { score: number }) {
   const faixa = faixaUrgencia(score);
@@ -26,10 +26,27 @@ export function SeloConfianca({ confianca }: { confianca: Confianca }) {
 }
 
 const ACOES: { status: StatusOcorrencia; rotulo: string }[] = [
-  { status: "visto", rotulo: "Marcar como vista" },
+  { status: "visto", rotulo: "Marcar como visto" },
   { status: "descartado", rotulo: "Descartar" },
   { status: "novo", rotulo: "Reabrir" },
 ];
+
+/** Homônimo em aberto: "É meu" confirma; "Não é meu" descarta. */
+export function AcoesHomonimo({ id }: { id: number }) {
+  return (
+    <div className="acoes">
+      <form action={confirmarHomonimo}>
+        <input type="hidden" name="id" value={id} />
+        <button type="submit">É meu</button>
+      </form>
+      <form action={marcarStatus}>
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="status" value="descartado" />
+        <button type="submit">Não é meu</button>
+      </form>
+    </div>
+  );
+}
 
 export function AcoesOcorrencia({ id, status }: { id: number; status: StatusOcorrencia }) {
   return (

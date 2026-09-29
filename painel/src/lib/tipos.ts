@@ -17,6 +17,13 @@ export interface ProcessoResumo {
   data_distribuicao: string | null;
   valor_causa_centavos: number | null;
   segredo: boolean;
+  /** Assunto principal (DataJud/capa). */
+  assunto: string | null;
+  /** "G1", "G2", "JE"... (DataJud). */
+  grau: string | null;
+  /** Até 3 nomes do polo ativo / passivo (vazio em segredo de justiça). */
+  autores: string[];
+  reus: string[];
 }
 
 export interface Advogado {
@@ -113,7 +120,7 @@ export interface UnidadeSaude {
 
 export interface Alvo {
   id: number;
-  tipo: "documento" | "nome";
+  tipo: "documento" | "nome" | "oab";
   valor: string;
   variacoes: string[];
   prioridade: "critica" | "padrao";
@@ -134,4 +141,10 @@ export interface Regra {
   valor_min_centavos: number | null;
   ativo: boolean;
   criado_em: string;
+}
+
+/** Para onde vão os avisos de processo novo (WhatsApp só com DDI+DDD, só dígitos). */
+export interface Contatos {
+  emails: string[];
+  whatsapp: string[];
 }

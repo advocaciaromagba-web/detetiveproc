@@ -19,7 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from api.auth import Principal
-from api.rotas import alvos, auth, ocorrencias, processos, regras, saude
+from api.rotas import alvos, auth, conta, ocorrencias, processos, regras, saude
 from core.config import obter_settings
 from db.modelos import Auditoria
 from db.sessao import criar_engine, criar_fabrica, sessao_sistema
@@ -36,6 +36,7 @@ _ENTIDADES = {
     "processos": "processo",
     "saude": "saude",
     "auth": "auth",
+    "conta": "cliente",
 }
 
 
@@ -132,7 +133,7 @@ def criar_app(
             return JSONResponse({"status": "indisponivel"}, status.HTTP_503_SERVICE_UNAVAILABLE)
         return JSONResponse({"status": "ok"})
 
-    for modulo in (auth, alvos, regras, ocorrencias, processos, saude):
+    for modulo in (auth, alvos, regras, ocorrencias, processos, saude, conta):
         app.include_router(modulo.rotas)
     return app
 

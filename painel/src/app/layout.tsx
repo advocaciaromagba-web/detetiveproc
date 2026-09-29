@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Detetiveproc",
-  description: "Ocorrências de distribuição processual",
+  description: "Processos novos em nome das empresas e pessoas monitoradas",
   robots: { index: false, follow: false },
 };
 

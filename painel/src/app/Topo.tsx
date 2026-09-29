@@ -13,9 +13,10 @@ export function Topo({ eu }: { eu: Eu }) {
         </Link>
         {eu.papel === "cliente" ? (
           <>
-            <Link href="/ocorrencias">Ocorrências</Link>
-            <Link href="/alvos">Alvos</Link>
+            <Link href="/ocorrencias">Processos</Link>
+            <Link href="/alvos">Monitorados</Link>
             <Link href="/regras">Regras</Link>
+            <Link href="/contatos">Avisos</Link>
           </>
         ) : (
           <Link href="/saude">Saúde dos robôs</Link>

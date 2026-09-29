@@ -1,5 +1,8 @@
 """Leituras compartilhadas entre rotas (sempre dentro de uma sessão sob RLS)."""
 
+from collections import defaultdict
+from collections.abc import Iterable
+
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +36,35 @@ def motivo(alvo: Alvo | None, regra_nome: str | None) -> str:
     return f"Regra: {regra_nome}" if regra_nome else "Monitoramento"
 
 
-def resumo_processo(processo: Processo, sigla: str) -> ProcessoResumo:
+# Quantas partes de cada polo aparecem na lista (o detalhe mostra todas).
+PARTES_NA_LISTA = 3
+PartesPorPolo = dict[str, list[str]]
+
+
+async def partes_por_processo(
+    sessao: AsyncSession, processos: Iterable[Processo]
+) -> dict[int, PartesPorPolo]:
+    """Nomes das partes por polo, de vários processos numa consulta só (sem sigilosos)."""
+    ids = [p.id for p in processos if not p.segredo]
+    saida: dict[int, PartesPorPolo] = defaultdict(lambda: defaultdict(list))
+    if not ids:
+        return saida
+    linhas = await sessao.execute(
+        select(Parte.processo_id, Parte.polo, Pessoa.nome)
+        .join(Pessoa, Pessoa.id == Parte.pessoa_id)
+        .where(Parte.processo_id.in_(ids))
+        .order_by(Parte.id)
+    )
+    for processo_id, polo, nome in linhas:
+        saida[processo_id][polo].append(nome)
+    return saida
+
+
+def resumo_processo(
+    processo: Processo, sigla: str, partes: PartesPorPolo | None = None
+) -> ProcessoResumo:
+    partes = partes or {}
+    assuntos = processo.assuntos or []
     return ProcessoResumo(
         numero_cnj=processo.numero_cnj,
         tribunal=sigla,
@@ -43,11 +74,17 @@ def resumo_processo(processo: Processo, sigla: str) -> ProcessoResumo:
         data_distribuicao=processo.data_distribuicao,
         valor_causa_centavos=processo.valor_causa_centavos,
         segredo=processo.segredo,
+        assunto=str(assuntos[0].get("nome") or "") or None if assuntos else None,
+        grau=processo.grau,
+        autores=partes.get("ativo", [])[:PARTES_NA_LISTA],
+        reus=partes.get("passivo", [])[:PARTES_NA_LISTA],
     )
 
 
 async def detalhe_processo(sessao: AsyncSession, processo: Processo, sigla: str) -> ProcessoDetalhe:
-    resumo = resumo_processo(processo, sigla)
+    resumo = resumo_processo(
+        processo, sigla, (await partes_por_processo(sessao, [processo]))[processo.id]
+    )
     if processo.segredo:
         # Segredo de justiça: só o número (seção 10).
         return ProcessoDetalhe(
@@ -88,7 +125,12 @@ async def detalhe_processo(sessao: AsyncSession, processo: Processo, sigla: str)
 
 
 def resumo_ocorrencia(
-    ocorrencia: Ocorrencia, processo: Processo, sigla: str, alvo: Alvo | None, regra: str | None
+    ocorrencia: Ocorrencia,
+    processo: Processo,
+    sigla: str,
+    alvo: Alvo | None,
+    regra: str | None,
+    partes: PartesPorPolo | None = None,
 ) -> OcorrenciaResumo:
     return OcorrenciaResumo(
         id=ocorrencia.id,
@@ -101,7 +143,7 @@ def resumo_ocorrencia(
         motivo=motivo(alvo, regra),
         alvo_id=ocorrencia.alvo_id,
         regra_id=ocorrencia.regra_id,
-        processo=resumo_processo(processo, sigla),
+        processo=resumo_processo(processo, sigla, partes),
     )
 
 

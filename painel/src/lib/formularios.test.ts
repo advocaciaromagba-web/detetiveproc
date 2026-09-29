@@ -6,6 +6,7 @@ import {
   linhas,
   mascararDocumento,
   montarAlvo,
+  montarContatos,
   montarRegra,
   reaisParaCentavos,
 } from "./formularios";
@@ -55,6 +56,24 @@ describe("linhas e códigos", () => {
   });
 });
 
+describe("montarAlvo: nome, OAB e CPF/CNPJ", () => {
+  const base = { prioridade: "padrao", finalidade: "Contrato 12/2026" };
+  it("OAB", () => {
+    expect(montarAlvo({ ...base, tipo: "oab", valor: "OAB/SP 123.456" }).corpo?.tipo).toBe("oab");
+    expect(montarAlvo({ ...base, tipo: "oab", valor: "123456" }).erros.valor).toContain("UF");
+  });
+  it("CPF/CNPJ exige o nome: o Diário não busca por documento", () => {
+    const r = montarAlvo({ ...base, tipo: "documento", valor: "11.222.333/0001-81" });
+    expect(r.corpo).toBeNull();
+    expect(r.erros.variacoes).toContain("razão social");
+  });
+  it("erro de OAB da API vai para o campo", () => {
+    expect(errosDaApi({ detail: [{ loc: ["body"], msg: "Value error, OAB inválida" }] })).toEqual({
+      valor: "OAB inválida",
+    });
+  });
+});
+
 describe("montarAlvo", () => {
   it("monta o corpo", () => {
     const r = montarAlvo({
@@ -77,7 +96,7 @@ describe("montarAlvo", () => {
   it("aponta erros por campo", () => {
     const r = montarAlvo({ tipo: "documento", valor: "123", finalidade: "" });
     expect(r.corpo).toBeNull();
-    expect(Object.keys(r.erros).sort()).toEqual(["finalidade", "valor"]);
+    expect(Object.keys(r.erros).sort()).toEqual(["finalidade", "valor", "variacoes"]);
     expect(montarAlvo({ tipo: "email", valor: "x", finalidade: "finalidade" }).erros.tipo).toBeTruthy();
   });
 });
@@ -134,5 +153,28 @@ describe("errosDaApi", () => {
     expect(
       errosDaApi({ detail: [{ loc: ["body"], msg: "Value error, a regra precisa de ao menos um filtro" }] }),
     ).toEqual({ _geral: "a regra precisa de ao menos um filtro" });
+  });
+});
+
+describe("montarContatos", () => {
+  it("um por linha, sem repetidos", () => {
+    const r = montarContatos({
+      emails: " Juridico@ACME.com.br \n\njuridico@acme.com.br\nb@x.com",
+      whatsapp: "(11) 99999-8888\n",
+    });
+    expect(r.erros).toEqual({});
+    expect(r.corpo).toEqual({
+      emails: ["juridico@acme.com.br", "b@x.com"],
+      whatsapp: ["(11) 99999-8888"],
+    });
+  });
+  it("listas vazias desligam o canal", () => {
+    expect(montarContatos({}).corpo).toEqual({ emails: [], whatsapp: [] });
+  });
+  it("aponta o campo inválido", () => {
+    expect(Object.keys(montarContatos({ emails: "sem-arroba", whatsapp: "99-123" }).erros).sort()).toEqual([
+      "emails",
+      "whatsapp",
+    ]);
   });
 });
