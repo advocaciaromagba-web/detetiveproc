@@ -390,10 +390,15 @@ de publicações do PJe):
   a cada `DJEN_VARREDURA_MINUTOS`): consulta o DJEN em todos os tribunais pelos nomes,
   variações e OABs ativos de todos os clientes. Cada termo é consultado uma vez por ciclo e
   repartido entre os clientes que o monitoram. No cadastro, faz a **carga inicial** do
-  histórico (`DJEN_HISTORICO_DIAS`, padrão 365); depois, só o período novo. Os vínculos da
-  carga inicial ficam com `origem="carga_inicial"` (não geram aviso imediato). **Homônimos:**
+  histórico (`DJEN_HISTORICO_DIAS`, padrão 365); depois, só o período novo. **Homônimos:**
   só OAB e razão social idêntica entram como "confirmada"; o resto fica "a_verificar".
-- **Análise por IA** (`adaptadores/ia.py`, `pipeline/analise.py`): cada publicação é lida
+- **Publicação vira processo** (`pipeline/processos_djen.py`): o produto entrega a **lista
+  de processos** de cada pessoa/empresa, não o texto das publicações. Cada publicação
+  registra o processo (um por número CNJ, com tribunal, vara e partes) e o motor de
+  casamento cria a **ocorrência** do cliente — é isso que aparece no painel e dispara o
+  aviso. Só publicação recente (`alerta_dias`, padrão 3) avisa; o histórico entra na lista
+  em silêncio. A capa coletada no tribunal, quando existe, prevalece sobre a publicação.
+- **Análise por IA** (opcional, desligada por padrão: `IA_ANALISE_ATIVA`) (`adaptadores/ia.py`, `pipeline/analise.py`): cada publicação é lida
   pela Claude (SDK oficial, saída estruturada) para extrair o **tipo do ato**, o **prazo**
   (quantidade e natureza) e a **audiência** (data/hora/tipo/modalidade/local), além de uma
   providência e um resumo. O resultado vai para a tabela compartilhada `analise_publicacao`

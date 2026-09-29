@@ -57,7 +57,9 @@ def montar_varredura_djen(
 
 
 def montar_analise(fabrica: Fabrica, settings: Settings) -> Callable[[], Awaitable[int]] | None:
-    """Job da análise por IA; None (sem job) quando não há ANTHROPIC_API_KEY."""
+    """Job da análise por IA; None (sem job) se desligada ou sem ANTHROPIC_API_KEY."""
+    if not settings.ia_analise_ativa:
+        return None
     try:
         analisador = criar_analisador(settings)
     except IANaoConfigurada:

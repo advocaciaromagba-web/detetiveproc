@@ -258,6 +258,7 @@ async def avaliar_processo(
     *,
     documentos_consultados: Iterable[str] = (),
     tutela_urgencia: bool = False,
+    alertar: bool = True,
 ) -> list[OcorrenciaAvaliada]:
     """Casa o processo com alvos e regras de todos os clientes e cria os alertas.
 
@@ -266,6 +267,7 @@ async def avaliar_processo(
 
     ``documentos_consultados``: CPFs/CNPJs cuja busca no tribunal devolveu este processo.
     ``tutela_urgencia``: vem da classificação por IA (fase 2).
+    ``alertar=False``: registra as ocorrências sem criar alertas (histórico antigo).
     """
     processo = await sessao.get(Processo, processo_id)
     if processo is None:
@@ -367,7 +369,7 @@ async def avaliar_processo(
 
     # Alertas só para ocorrências novas: promoção de confiança não realerta.
     for ocorrencia in resultado:
-        if ocorrencia.criada:
+        if ocorrencia.criada and alertar:
             cid = ocorrencia.cliente_id
             ocorrencia.alertas_criados = await criar_alertas(
                 sessao,
