@@ -6,7 +6,7 @@ as compara. Mensagens de erro nunca repetem o valor recebido.
 """
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -167,6 +167,62 @@ class RegraSaida(Saida):
     valor_min_centavos: int | None
     ativo: bool
     criado_em: datetime
+
+
+# --------------------------------------------------------------------------- assinaturas
+
+Produto = Literal["nome", "termo"]
+Periodicidade = Literal["mensal", "anual"]
+
+
+class PrecoSaida(Saida):
+    produto: str
+    periodicidade: str
+    valor_centavos: int
+    atualizado_em: datetime
+
+
+class PrecoEntrada(BaseModel):
+    valor_centavos: int = Field(ge=0, le=100_000_000)  # até R$ 1 milhão
+
+
+class ContratoNome(BaseModel):
+    """Monitoramento de um nome (CPF/CNPJ + nome, nome ou OAB)."""
+
+    produto: Literal["nome"]
+    periodicidade: Periodicidade = "mensal"
+    alvo: AlvoEntrada
+
+
+class ContratoTermo(BaseModel):
+    """Monitoramento de um termo (frase, classe ou assunto, com filtros opcionais)."""
+
+    produto: Literal["termo"]
+    periodicidade: Periodicidade = "mensal"
+    termo: RegraEntrada
+
+
+Contrato = Annotated[ContratoNome | ContratoTermo, Field(discriminator="produto")]
+
+
+class AtivacaoEntrada(BaseModel):
+    cortesia: bool = False  # liberação sem cobrança e sem vencimento
+
+
+class AssinaturaSaida(Saida):
+    id: int
+    produto: str
+    periodicidade: str
+    valor_centavos: int
+    status: str
+    cortesia: bool
+    vigente_ate: datetime | None
+    cancelar_no_fim: bool
+    criado_em: datetime
+    ativada_em: datetime | None
+    encerrada_em: datetime | None
+    alvo: AlvoSaida | None = None
+    termo: RegraSaida | None = None
 
 
 # --------------------------------------------------------------------------- processos

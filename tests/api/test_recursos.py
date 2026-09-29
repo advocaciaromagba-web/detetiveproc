@@ -1,4 +1,4 @@
-"""Alvos, regras, ocorrências, processos e saúde, com isolamento entre clientes."""
+"""Nomes e termos (leitura), ocorrências, processos e saúde, com isolamento entre clientes."""
 
 from datetime import date
 
@@ -11,6 +11,7 @@ from db.modelos import (
     ExecucaoSentinela,
     Ocorrencia,
     Processo,
+    Regra,
     Sentinela,
     Tribunal,
     TribunalUnidade,
@@ -32,94 +33,10 @@ def chave(dados, cliente: str = "a") -> dict[str, str]:  # type: ignore[no-untyp
 # --------------------------------------------------------------------------- alvos
 
 
-async def test_cadastra_alvo_de_documento_normalizado(cliente_http, dados) -> None:
-    r = await cliente_http.post(
-        "/v1/alvos",
-        headers=chave(dados),
-        json={
-            "tipo": "documento",
-            "valor": "529.982.247-25",
-            "variacoes": ["José da Silva", "JOSE DA SILVA", "  "],
-            "prioridade": "critica",
-            "finalidade": "Contrato de monitoramento nº 12/2026",
-        },
-    )
-    assert r.status_code == 201, r.text
-    corpo = r.json()
-    assert (corpo["valor"], corpo["variacoes"], corpo["prioridade"]) == (
-        CPF, ["JOSE DA SILVA"], "critica",
-    )  # fmt: skip
-    assert corpo["ativo"] is True
-
-
-async def test_cadastra_alvo_por_nome(cliente_http, dados) -> None:
-    r = await cliente_http.post(
-        "/v1/alvos",
-        headers=chave(dados),
-        json={"tipo": "nome", "valor": "Açúcar Guarani Ltda.", "finalidade": "Due diligence"},
-    )
-    assert r.status_code == 201
-    assert r.json()["valor"] == "ACUCAR GUARANI"
-
-
-async def test_cadastra_alvo_por_oab(cliente_http, dados) -> None:
-    r = await cliente_http.post(
-        "/v1/alvos",
-        headers=chave(dados),
-        json={"tipo": "oab", "valor": "123.456/SP", "finalidade": "Carteira do escritório"},
-    )
-    assert r.status_code == 201
-    assert r.json()["valor"] == "SP123456"  # forma canônica
-
-
-@pytest.mark.parametrize(
-    ("corpo", "trecho"),
-    [
-        ({"tipo": "documento", "valor": "529.982.247-24", "finalidade": "finalidade"}, "CPF/CNPJ"),
-        ({"tipo": "documento", "valor": "529.982.247-25"}, "finalidade"),
-        ({"tipo": "documento", "valor": "529.982.247-25", "finalidade": "  x  "}, "finalidade"),
-        ({"tipo": "nome", "valor": "...", "finalidade": "finalidade"}, "nome inválido"),
-        ({"tipo": "oab", "valor": "sem uf", "finalidade": "finalidade"}, "OAB inválida"),
-        ({"tipo": "email", "valor": "a@b.c", "finalidade": "finalidade"}, "tipo"),
-    ],
-)
-async def test_alvo_invalido_nao_ecoa_o_valor(cliente_http, dados, corpo, trecho) -> None:
-    r = await cliente_http.post("/v1/alvos", headers=chave(dados), json=corpo)
-    assert r.status_code == 422
-    assert trecho in r.text
-    assert "529.982.247" not in r.text
-    assert "52998224724" not in r.text
-
-
-async def test_alvo_duplicado_desativar_e_reativar(cliente_http, dados) -> None:
-    corpo = {"tipo": "documento", "valor": CPF, "finalidade": "finalidade"}
-    criado = (await cliente_http.post("/v1/alvos", headers=chave(dados), json=corpo)).json()
-    r = await cliente_http.post("/v1/alvos", headers=chave(dados), json=corpo)
-    assert r.status_code == 409
-
-    url = f"/v1/alvos/{criado['id']}"
-    assert (await cliente_http.delete(url, headers=chave(dados))).status_code == 204
-    assert (await cliente_http.get(url, headers=chave(dados))).json()["ativo"] is False
-    ativos = (await cliente_http.get("/v1/alvos", headers=chave(dados))).json()["itens"]
-    assert criado["id"] not in [a["id"] for a in ativos]
-    inativos = await cliente_http.get("/v1/alvos?situacao=inativos", headers=chave(dados))
-    assert [a["id"] for a in inativos.json()["itens"]] == [criado["id"]]
-
-    corpo["prioridade"] = "critica"
-    r = await cliente_http.post("/v1/alvos", headers=chave(dados), json=corpo)
-    assert r.status_code == 201
-    assert (r.json()["id"], r.json()["ativo"], r.json()["prioridade"]) == (
-        criado["id"], True, "critica",
-    )  # fmt: skip
-
-
-async def test_paginacao_de_alvos(cliente_http, dados) -> None:
-    for nome in ("ALFA", "BETA", "GAMA"):
-        await cliente_http.post(
-            "/v1/alvos",
-            headers=chave(dados),
-            json={"tipo": "nome", "valor": nome, "finalidade": "teste"},
-        )
+async def test_paginacao_de_alvos(cliente_http, dados, fabrica) -> None:
+    async with sessao_sistema(fabrica) as s:
+        for nome in ("ALFA", "BETA", "GAMA"):
+            s.add(Alvo(cliente_id=dados.cliente_a, tipo="nome", valor=nome, finalidade="teste"))
     p1 = (await cliente_http.get("/v1/alvos?limite=2", headers=chave(dados))).json()
     assert len(p1["itens"]) == 2
     assert p1["proximo"] is not None
@@ -136,7 +53,6 @@ async def test_isolamento_de_alvos(cliente_http, dados, fabrica) -> None:
         alvo_a = await s.scalar(select(Alvo.id).where(Alvo.cliente_id == dados.cliente_a))
     url = f"/v1/alvos/{alvo_a}"
     assert (await cliente_http.get(url, headers=chave(dados, "b"))).status_code == 404
-    assert (await cliente_http.delete(url, headers=chave(dados, "b"))).status_code == 404
     lista_b = (await cliente_http.get("/v1/alvos", headers=chave(dados, "b"))).json()["itens"]
     assert alvo_a not in [a["id"] for a in lista_b]
     assert (await cliente_http.get(url, headers=chave(dados))).json()["ativo"] is True
@@ -145,49 +61,18 @@ async def test_isolamento_de_alvos(cliente_http, dados, fabrica) -> None:
 # --------------------------------------------------------------------------- regras
 
 
-async def test_regras(cliente_http, dados) -> None:
-    r = await cliente_http.post(
-        "/v1/regras",
-        headers=chave(dados),
-        json={
-            "nome": "Execuções em SP",
-            "finalidade": "Prospecção de carteira própria",
-            "classes": [12154, 12154],
-            "comarcas": ["Comarca de São Paulo", "SÃO PAULO", "Campinas"],
-            "termos": ["  duplicata  "],
-            "polo": "passivo",
-            "valor_min_centavos": 1_000_000,
-        },
-    )
-    assert r.status_code == 201, r.text
-    regra = r.json()
-    assert (regra["classes"], regra["comarcas"], regra["termos"]) == (
-        [12154], ["SAO PAULO", "CAMPINAS"], ["duplicata"],
-    )  # fmt: skip
-
-    url = f"/v1/regras/{regra['id']}"
+async def test_isolamento_de_regras(cliente_http, dados, fabrica) -> None:
+    async with sessao_sistema(fabrica) as s:
+        regra = Regra(cliente_id=dados.cliente_a, nome="R", finalidade="teste", classes=[159])
+        s.add(regra)
+        await s.flush()
+        regra_id = regra.id
+    url = f"/v1/regras/{regra_id}"
     assert (await cliente_http.get(url, headers=chave(dados, "b"))).status_code == 404
-    assert (await cliente_http.delete(url, headers=chave(dados, "b"))).status_code == 404
-    assert (await cliente_http.delete(url, headers=chave(dados))).status_code == 204
-    ativas = (await cliente_http.get("/v1/regras", headers=chave(dados))).json()["itens"]
-    assert ativas == []
+    assert (await cliente_http.get(url, headers=chave(dados))).json()["classes"] == [159]
+    assert (await cliente_http.get("/v1/regras", headers=chave(dados, "b"))).json()["itens"] == []
     todas = await cliente_http.get("/v1/regras?situacao=todas", headers=chave(dados))
-    assert [x["ativo"] for x in todas.json()["itens"]] == [False]
-
-
-@pytest.mark.parametrize(
-    "corpo",
-    [
-        {"nome": "Sem filtro", "finalidade": "finalidade"},
-        {"nome": "Só vazios", "finalidade": "finalidade", "termos": ["  "], "comarcas": [""]},
-        {"nome": "Código negativo", "finalidade": "finalidade", "classes": [-1]},
-        {"nome": "Valor negativo", "finalidade": "finalidade", "valor_min_centavos": -5},
-    ],
-)
-async def test_regra_invalida(cliente_http, dados, corpo) -> None:
-    assert (
-        await cliente_http.post("/v1/regras", headers=chave(dados), json=corpo)
-    ).status_code == 422
+    assert [x["id"] for x in todas.json()["itens"]] == [regra_id]
 
 
 # --------------------------------------------------------------------------- ocorrências

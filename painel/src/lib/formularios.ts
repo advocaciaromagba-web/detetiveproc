@@ -4,6 +4,13 @@
 
 export type Erros = Record<string, string>;
 
+/** Estado dos formulários com server action (valores voltam para remontar o form). */
+export interface EstadoFormulario {
+  erros: Erros;
+  valores: Record<string, string>;
+  tentativa: number;
+}
+
 export interface Resultado<T> {
   corpo: T | null;
   erros: Erros;
@@ -157,8 +164,10 @@ export function errosDaApi(corpo: unknown): Erros {
   if (!Array.isArray(detalhe)) return { _geral: "Não foi possível salvar." };
   for (const item of detalhe as { loc?: unknown[]; msg?: string }[]) {
     const msg = (item.msg ?? "").replace(/^Value error, /, "");
-    const loc = (item.loc ?? []).filter((p) => p !== "body");
-    let campo = typeof loc[0] === "string" ? loc[0] : "_geral";
+    // Contratação: loc = ["body", "nome", "alvo", "valor"]; o campo é o último item.
+    const loc = (item.loc ?? []).filter((p): p is string => typeof p === "string");
+    const ultimo = loc[loc.length - 1];
+    let campo = ultimo && !["body", "alvo", "termo"].includes(ultimo) ? ultimo : "_geral";
     if (campo === "_geral" && /CPF|CNPJ|OAB|nome inválido/.test(msg)) campo = "valor";
     if (campo === "valor_min_centavos") campo = "valor_min";
     erros[campo] ??= msg;
@@ -185,4 +194,11 @@ export function montarContatos(dados: Record<string, string | undefined>): Resul
   } else if (whatsapp.length > 10) erros.whatsapp = "No máximo 10 números.";
   if (Object.keys(erros).length) return { corpo: null, erros };
   return { corpo: { emails, whatsapp }, erros };
+}
+
+export type PeriodicidadeEscolhida = "mensal" | "anual";
+
+/** Periodicidade escolhida no formulário de contratação (null se inválida). */
+export function periodicidade(valor: string | undefined): PeriodicidadeEscolhida | null {
+  return valor === "mensal" || valor === "anual" ? valor : null;
 }

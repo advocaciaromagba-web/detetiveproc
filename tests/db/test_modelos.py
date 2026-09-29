@@ -41,6 +41,8 @@ TABELAS_ESPERADAS = {
     "publicacao_alvo",
     "analise_publicacao",
     "consulta_djen",
+    "preco",
+    "assinatura",
 }
 POSTERIORES_A_0001 = {
     "varredura",
@@ -55,6 +57,8 @@ POSTERIORES_A_0001 = {
     "publicacao_alvo",
     "analise_publicacao",
     "consulta_djen",
+    "preco",
+    "assinatura",
 }
 
 

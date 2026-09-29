@@ -69,6 +69,39 @@ export function formatarWhatsapp(numero: string): string {
   return m ? `+55 (${m[1]}) ${m[2]}-${m[3]}` : `+${numero}`;
 }
 
+export const ROTULO_STATUS_ASSINATURA: Record<string, string> = {
+  pendente: "Aguardando pagamento",
+  ativa: "Ativa",
+  atrasada: "Pagamento atrasado",
+  suspensa: "Suspensa",
+  cancelada: "Cancelada",
+};
+
+export const ROTULO_PERIODICIDADE: Record<string, string> = {
+  mensal: "Mensal",
+  anual: "Anual",
+};
+
+/** "R$ 49,90/mês" ou "R$ 499,00/ano". */
+export function formatarPreco(centavos: number, periodicidade: string): string {
+  return `${formatarReais(centavos)}/${periodicidade === "anual" ? "ano" : "mês"}`;
+}
+
+/** Situação da assinatura em uma frase, com a data que importa. */
+export function resumoAssinatura(a: {
+  status: string;
+  cortesia: boolean;
+  vigente_ate: string | null;
+  cancelar_no_fim: boolean;
+}): string {
+  const data = a.vigente_ate ? formatarData(a.vigente_ate) : null;
+  if (a.status === "ativa" && a.cortesia) return "Ativa (cortesia)";
+  if (a.status === "ativa" && a.cancelar_no_fim && data) return `Ativa até ${data} (não renova)`;
+  if (a.status === "ativa" && data) return `Ativa, renova em ${data}`;
+  if (a.status === "atrasada" && data) return `Pagamento atrasado desde ${data}`;
+  return ROTULO_STATUS_ASSINATURA[a.status] ?? a.status;
+}
+
 export const ROTULO_POLO: Record<string, string> = {
   ativo: "Polo ativo",
   passivo: "Polo passivo",

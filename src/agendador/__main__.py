@@ -59,6 +59,7 @@ async def executar() -> None:
                 analise_publicacoes=montar_analise(fabrica, settings),
                 complemento_datajud=montar_complemento(fabrica, datajud),
                 despacho_whatsapp=montar_despacho_whatsapp(fabrica, settings),
+                carencia_assinatura_dias=settings.assinatura_carencia_dias,
             )
             agendador = montar_agendador(
                 tarefas, settings.fuso_escritorio, djen_minutos=settings.djen_varredura_minutos

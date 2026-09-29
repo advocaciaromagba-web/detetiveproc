@@ -508,6 +508,7 @@ def test_jobs_do_agendador(fabrica) -> None:
         "sentinelas",
         "alarmes",
         "volume_diario",
+        "assinaturas",
     }
     assert "hour='8'" in str(jobs["volume_diario"].trigger)
     assert str(jobs["resumo_diario"].trigger).startswith("cron[")

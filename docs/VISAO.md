@@ -21,6 +21,19 @@ Ela vigia continuamente as bases públicas oficiais e entrega dois produtos:
   nacional, para o escritório entender o mercado e identificar oportunidades — dentro dos
   limites da ética profissional e da LGPD (ver seção 5).
 
+### Modelo comercial (assinaturas)
+
+- **Monitoramento de nome:** o contratante se cadastra e assina o monitoramento do nome
+  ligado ao seu CNPJ/CPF; cada nome adicional é outra assinatura. Processo é público:
+  não há restrição legal de quem pode ser monitorado — o limite é comercial (um nome por
+  assinatura).
+- **Monitoramento de termos:** outra assinatura, em que cada termo (uma frase, o nome de
+  uma ação/classe ou um assunto) tem seu preço; traz os processos que casam com ele.
+- Ambas **mensais ou anuais**. O item só é buscado enquanto a assinatura estiver paga
+  (com carência curta após o vencimento).
+- O sistema entrega a **lista de processos novos** (partes, número, onde tramita,
+  assunto) e o aviso imediato; não reproduz a publicação inteira nem controla prazos.
+
 ## 2. Para quem
 
 - **Pessoas físicas e jurídicas** que querem ser avisadas quando processadas (Produto A).
@@ -83,14 +96,14 @@ quem* mas dispara na comunicação. Cruzando os dois chega-se longe, mas:
 - **Fase 0 — Fundação (concluída).** Base multi-inquilino, alvos, regras, e a cadeia do
   DJEN (fonte → persistência → análise por IA).
 - **Fase 1 — Produto A, MVP nacional (prioridade atual).** Monitoramento por nome/CPF/CNPJ/
-  OAB via DJEN nacional; **agenda de prazos e audiências** (dias úteis, fuso do escritório)
-  com **lembretes**; painel do contratante; onboarding (cadastro de alvos e finalidade).
+  OAB via DJEN nacional, com lista de processos e aviso imediato (e-mail e WhatsApp);
+  painel do contratante; **assinaturas** (nome e termos, mensal/anual), **cadastro pelo
+  próprio cliente** e **cobrança** automática.
 - **Fase 2 — Ingestão do DataJud.** Pipeline nacional de metadados; reforça a detecção do
   Produto A (por classe/assunto/valor, além da publicação) e **habilita o Produto B**.
 - **Fase 3 — Produto B, prospecção.** Busca por critérios sobre o DataJud + cruzamento com
   o DJEN para partes; painel de inteligência de mercado; salvaguardas de ética/LGPD.
-- **Fase 4 — Plataforma comercial.** Planos e cobrança, autoatendimento, novas fontes e
-  relatórios.
+- **Fase 4 — Plataforma comercial.** Novas fontes, relatórios e integrações.
 
 ## 8. Limites e riscos conhecidos
 

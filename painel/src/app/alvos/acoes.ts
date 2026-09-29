@@ -3,69 +3,32 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { api, ErroApi } from "@/lib/api";
-import { errosDaApi, montarAlvo, type Erros } from "@/lib/formularios";
-import type { Alvo } from "@/lib/tipos";
+import { api } from "@/lib/api";
+import { errosDaContratacao, valoresDe } from "@/lib/contratacao";
+import { montarAlvo, periodicidade, type EstadoFormulario } from "@/lib/formularios";
+import type { Assinatura } from "@/lib/tipos";
 
-export interface EstadoFormulario {
-  erros: Erros;
-  valores: Record<string, string>;
-  tentativa: number;
-}
-
-function valoresDe(dados: FormData): Record<string, string> {
-  return Object.fromEntries([...dados.entries()].map(([k, v]) => [k, String(v)]));
-}
-
-export async function cadastrarAlvo(
+/** Contrata o monitoramento de um nome: fica aguardando pagamento até ser liberado. */
+export async function contratarNome(
   anterior: EstadoFormulario,
   dados: FormData,
 ): Promise<EstadoFormulario> {
   const valores = valoresDe(dados);
   const tentativa = anterior.tentativa + 1;
   const { corpo, erros } = montarAlvo(valores);
-  if (!corpo) return { erros, valores, tentativa };
+  const plano = periodicidade(valores.periodicidade);
+  if (!plano) erros.periodicidade = "Escolha o plano.";
+  if (!corpo || !plano) return { erros, valores, tentativa };
   try {
-    await api<Alvo>("/v1/alvos", { method: "POST", body: corpo });
+    await api<Assinatura>("/v1/assinaturas", {
+      method: "POST",
+      body: { produto: "nome", periodicidade: plano, alvo: corpo },
+    });
   } catch (erro) {
-    if (erro instanceof ErroApi && erro.status === 409) {
-      return { erros: { valor: "Este alvo já está cadastrado e ativo." }, valores, tentativa };
-    }
-    if (erro instanceof ErroApi && erro.status === 422) {
-      return { erros: errosDaApi(erro.corpo), valores, tentativa };
-    }
+    const mapeados = errosDaContratacao(erro);
+    if (mapeados) return { erros: mapeados, valores, tentativa };
     throw erro;
   }
   revalidatePath("/alvos");
-  redirect("/alvos?salvo=1");
-}
-
-function idDe(dados: FormData): number | null {
-  const id = Number(dados.get("id"));
-  return Number.isInteger(id) && id > 0 ? id : null;
-}
-
-export async function desativarAlvo(dados: FormData): Promise<void> {
-  const id = idDe(dados);
-  if (id === null) return;
-  await api(`/v1/alvos/${id}`, { method: "DELETE" });
-  revalidatePath("/alvos");
-}
-
-/** A API reativa um alvo inativo quando ele é cadastrado de novo com o mesmo valor. */
-export async function reativarAlvo(dados: FormData): Promise<void> {
-  const id = idDe(dados);
-  if (id === null) return;
-  const alvo = await api<Alvo>(`/v1/alvos/${id}`);
-  await api<Alvo>("/v1/alvos", {
-    method: "POST",
-    body: {
-      tipo: alvo.tipo,
-      valor: alvo.valor,
-      variacoes: alvo.variacoes,
-      prioridade: alvo.prioridade,
-      finalidade: alvo.finalidade,
-    },
-  });
-  revalidatePath("/alvos");
+  redirect("/alvos?contratado=1");
 }

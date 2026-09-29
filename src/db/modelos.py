@@ -426,6 +426,86 @@ class Regra(Base):
     criado_em: Mapped[datetime] = _agora()
 
 
+PRODUTOS = ("nome", "termo")
+PERIODICIDADES = ("mensal", "anual")
+# pendente: aguardando o 1º pagamento; atrasada: venceu, ainda na carência (monitora);
+# suspensa: carência esgotada (não monitora); cancelada: encerrada a pedido.
+STATUS_ASSINATURA = ("pendente", "ativa", "atrasada", "suspensa", "cancelada")
+STATUS_ASSINATURA_ABERTA = ("pendente", "ativa", "atrasada")
+
+
+class Preco(Base):
+    """Tabela de preços definida pelo operador (vale para novas contratações)."""
+
+    __tablename__ = "preco"
+    __table_args__ = (
+        CheckConstraint(_em("produto", *PRODUTOS), name="produto"),
+        CheckConstraint(_em("periodicidade", *PERIODICIDADES), name="periodicidade"),
+        CheckConstraint("valor_centavos >= 0", name="valor"),
+    )
+
+    produto: Mapped[str] = mapped_column(String(10), primary_key=True)
+    periodicidade: Mapped[str] = mapped_column(String(10), primary_key=True)
+    valor_centavos: Mapped[int] = mapped_column(BigInteger)
+    atualizado_em: Mapped[datetime] = _agora()
+
+
+class Assinatura(Base):
+    """Uma assinatura por item monitorado: um nome (alvo) ou um termo (regra).
+
+    O item só é buscado enquanto a assinatura está ativa ou atrasada (carência);
+    ``cobranca.assinaturas`` mantém ``alvo.ativo``/``regra.ativo`` em sincronia.
+    """
+
+    __tablename__ = "assinatura"
+    __table_args__ = (
+        ForeignKeyConstraint(["alvo_id", "cliente_id"], ["alvo.id", "alvo.cliente_id"]),
+        ForeignKeyConstraint(["regra_id", "cliente_id"], ["regra.id", "regra.cliente_id"]),
+        CheckConstraint(_em("produto", *PRODUTOS), name="produto"),
+        CheckConstraint(_em("periodicidade", *PERIODICIDADES), name="periodicidade"),
+        CheckConstraint(_em("status", *STATUS_ASSINATURA), name="status"),
+        CheckConstraint("valor_centavos >= 0", name="valor"),
+        CheckConstraint(
+            "(produto = 'nome' AND alvo_id IS NOT NULL AND regra_id IS NULL)"
+            " OR (produto = 'termo' AND regra_id IS NOT NULL AND alvo_id IS NULL)",
+            name="item",
+        ),
+        CheckConstraint(
+            "cortesia OR status IN ('pendente', 'cancelada') OR vigente_ate IS NOT NULL",
+            name="vigencia",
+        ),
+        # No máximo uma assinatura em aberto por item.
+        Index(
+            "uq_assinatura_alvo_aberta",
+            "alvo_id",
+            unique=True,
+            postgresql_where=text(_em("status", *STATUS_ASSINATURA_ABERTA)),
+        ),
+        Index(
+            "uq_assinatura_regra_aberta",
+            "regra_id",
+            unique=True,
+            postgresql_where=text(_em("status", *STATUS_ASSINATURA_ABERTA)),
+        ),
+        Index("ix_assinatura_status_vigente_ate", "status", "vigente_ate"),
+    )
+
+    id: Mapped[int] = _id()
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("cliente.id"), index=True)
+    produto: Mapped[str] = mapped_column(String(10))
+    alvo_id: Mapped[int | None] = mapped_column(BigInteger)
+    regra_id: Mapped[int | None] = mapped_column(BigInteger)
+    periodicidade: Mapped[str] = mapped_column(String(10))
+    valor_centavos: Mapped[int] = mapped_column(BigInteger)  # preço travado na contratação
+    status: Mapped[str] = mapped_column(String(10), server_default="pendente")
+    cortesia: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    vigente_ate: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelar_no_fim: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    criado_em: Mapped[datetime] = _agora()
+    ativada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    encerrada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Ocorrencia(Base):
     __tablename__ = "ocorrencia"
     __table_args__ = (

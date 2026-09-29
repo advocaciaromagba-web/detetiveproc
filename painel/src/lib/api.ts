@@ -87,4 +87,10 @@ export async function exigirCliente(): Promise<Eu> {
   return eu;
 }
 
+export async function exigirOperador(): Promise<Eu> {
+  const eu = await api<Eu>("/v1/auth/eu");
+  if (eu.papel !== "operador") redirect("/ocorrencias");
+  return eu;
+}
+
 export { mensagemDeErro };

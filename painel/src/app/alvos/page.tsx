@@ -1,13 +1,20 @@
 import Link from "next/link";
 
+import { ABERTAS, PlanoAssinatura, SeloAssinatura } from "@/componentes/Assinatura";
 import { api, exigirCliente } from "@/lib/api";
-import { mascararDocumento } from "@/lib/formularios";
 import { formatarDataHora } from "@/lib/formatos";
-import type { Alvo, Pagina } from "@/lib/tipos";
+import { mascararDocumento } from "@/lib/formularios";
+import type { Assinatura, Pagina, Preco } from "@/lib/tipos";
 
+import { cancelarAssinatura } from "../acoesAssinatura";
 import { Topo } from "../Topo";
-import { desativarAlvo, reativarAlvo } from "./acoes";
 import { FormAlvo } from "./FormAlvo";
+
+const SITUACOES = [
+  { valor: "abertas", rotulo: "Contratados" },
+  { valor: "encerradas", rotulo: "Encerrados" },
+  { valor: "todas", rotulo: "Todos" },
+] as const;
 
 const ROTULO_TIPO_ALVO: Record<string, string> = {
   documento: "CPF/CNPJ",
@@ -15,38 +22,44 @@ const ROTULO_TIPO_ALVO: Record<string, string> = {
   oab: "OAB",
 };
 
-const SITUACOES = [
-  { valor: "ativos", rotulo: "Ativos" },
-  { valor: "inativos", rotulo: "Inativos" },
-  { valor: "todos", rotulo: "Todos" },
-] as const;
-
-export default async function Alvos({
+export default async function Monitorados({
   searchParams,
 }: {
-  searchParams: Promise<{ situacao?: string; antes_id?: string; salvo?: string }>;
+  searchParams: Promise<{ situacao?: string; antes_id?: string; contratado?: string }>;
 }) {
   const eu = await exigirCliente();
-  const { situacao: bruta, antes_id, salvo } = await searchParams;
-  const situacao = SITUACOES.some((s) => s.valor === bruta) ? bruta! : "ativos";
-  const query = new URLSearchParams({ situacao, limite: "100" });
+  const { situacao: bruta, antes_id, contratado } = await searchParams;
+  const situacao = SITUACOES.some((s) => s.valor === bruta) ? bruta! : "abertas";
+  const query = new URLSearchParams({ produto: "nome", situacao, limite: "100" });
   if (antes_id && /^\d+$/.test(antes_id)) query.set("antes_id", antes_id);
-  const pagina = await api<Pagina<Alvo>>(`/v1/alvos?${query}`);
+  const [pagina, precos] = await Promise.all([
+    api<Pagina<Assinatura>>(`/v1/assinaturas?${query}`),
+    api<Preco[]>("/v1/precos"),
+  ]);
+  const precosNome = precos.filter((p) => p.produto === "nome");
 
   return (
     <>
       <Topo eu={eu} />
       <main>
         <h1>Nomes monitorados</h1>
-        {salvo && (
+        <p className="suave">
+          Cada nome é uma assinatura (mensal ou anual). Enquanto ela estiver paga, todo processo
+          novo com esse nome no Diário de Justiça aparece em Processos e gera aviso.
+        </p>
+        {contratado && (
           <p className="sucesso" role="status">
-            Salvo. A primeira busca traz os processos do último ano para a lista; só os
-            publicados nos últimos dias geram aviso.
+            Contratado. O monitoramento começa assim que o pagamento for confirmado; a primeira
+            busca traz os processos do último ano.
           </p>
         )}
         <section className="cartao">
           <h2 style={{ marginTop: 0 }}>Monitorar novo nome</h2>
-          <FormAlvo />
+          {precosNome.length ? (
+            <FormAlvo precos={precosNome} />
+          ) : (
+            <p className="aviso">Contratação indisponível no momento. Tente mais tarde.</p>
+          )}
         </section>
 
         <nav className="abas" aria-label="Situação">
@@ -70,52 +83,70 @@ export default async function Alvos({
                 <tr>
                   <th scope="col">Monitorado</th>
                   <th scope="col">Nomes buscados</th>
-                  <th scope="col">Prioridade</th>
-                  <th scope="col">Finalidade</th>
-                  <th scope="col">Cadastro</th>
+                  <th scope="col">Plano</th>
+                  <th scope="col">Situação</th>
+                  <th scope="col">Contratado em</th>
                   <th scope="col">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {pagina.itens.map((a) => (
-                  <tr key={a.id} className={a.ativo ? undefined : "descartado"}>
-                    <td>
-                      {a.tipo === "documento" ? mascararDocumento(a.valor) : a.valor}
-                      <div className="suave">{ROTULO_TIPO_ALVO[a.tipo] ?? a.tipo}</div>
-                    </td>
-                    <td>
-                      {a.variacoes.length ? (
-                        <ul className="lista-curta">
-                          {a.variacoes.map((v) => (
-                            <li key={v}>{v}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className="suave">—</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`selo ${a.prioridade === "critica" ? "selo-alta" : "selo-baixa"}`}>
-                        {a.prioridade === "critica" ? "Crítica" : "Padrão"}
-                      </span>
-                    </td>
-                    <td>{a.finalidade}</td>
-                    <td>{formatarDataHora(a.criado_em)}</td>
-                    <td>
-                      <form action={a.ativo ? desativarAlvo : reativarAlvo}>
-                        <input type="hidden" name="id" value={a.id} />
-                        <button type="submit">{a.ativo ? "Desativar" : "Reativar"}</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
+                {pagina.itens.map((a) => {
+                  const alvo = a.alvo;
+                  const podeCancelar = ABERTAS.has(a.status) && !a.cancelar_no_fim;
+                  return (
+                    <tr key={a.id} className={ABERTAS.has(a.status) ? undefined : "descartado"}>
+                      <td>
+                        {alvo
+                          ? alvo.tipo === "documento"
+                            ? mascararDocumento(alvo.valor)
+                            : alvo.valor
+                          : "—"}
+                        {alvo && (
+                          <div className="suave">{ROTULO_TIPO_ALVO[alvo.tipo] ?? alvo.tipo}</div>
+                        )}
+                      </td>
+                      <td>
+                        {alvo?.variacoes.length ? (
+                          <ul className="lista-curta">
+                            {alvo.variacoes.map((v) => (
+                              <li key={v}>{v}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="suave">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <PlanoAssinatura assinatura={a} />
+                      </td>
+                      <td>
+                        <SeloAssinatura assinatura={a} />
+                      </td>
+                      <td>{formatarDataHora(a.criado_em)}</td>
+                      <td>
+                        {podeCancelar ? (
+                          <form action={cancelarAssinatura}>
+                            <input type="hidden" name="id" value={a.id} />
+                            <button type="submit">
+                              {a.status === "pendente" ? "Cancelar" : "Não renovar"}
+                            </button>
+                          </form>
+                        ) : (
+                          <span className="suave">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
         {pagina.proximo !== null && (
           <div className="paginacao">
-            <Link href={`/alvos?situacao=${situacao}&antes_id=${pagina.proximo}`}>Mais antigos →</Link>
+            <Link href={`/alvos?situacao=${situacao}&antes_id=${pagina.proximo}`}>
+              Mais antigos →
+            </Link>
           </div>
         )}
       </main>

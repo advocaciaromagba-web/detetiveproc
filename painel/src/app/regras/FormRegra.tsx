@@ -2,19 +2,21 @@
 
 import { useActionState } from "react";
 
+import { CampoPeriodicidade } from "@/componentes/Assinatura";
 import { Campo } from "@/componentes/Campo";
+import type { EstadoFormulario } from "@/lib/formularios";
+import type { Preco } from "@/lib/tipos";
 
-import type { EstadoFormulario } from "../alvos/acoes";
-import { criarRegra } from "./acoes";
+import { contratarTermo } from "./acoes";
 
 const inicial: EstadoFormulario = { erros: {}, valores: {}, tentativa: 0 };
 
-export function FormRegra() {
-  const [estado, acao, enviando] = useActionState(criarRegra, inicial);
+export function FormRegra({ precos }: { precos: Preco[] }) {
+  const [estado, acao, enviando] = useActionState(contratarTermo, inicial);
   const { erros, valores } = estado;
   return (
     <form key={estado.tentativa} action={acao} className="formulario" noValidate>
-      <Campo nome="nome" rotulo="Nome da regra" erro={erros.nome}>
+      <Campo nome="nome" rotulo="Nome do termo" erro={erros.nome} dica="Para você identificar, ex.: Execuções fiscais em SP">
         {(p) => <input {...p} defaultValue={valores.nome} required />}
       </Campo>
       <Campo nome="polo" rotulo="Polo de um alvo seu" erro={erros.polo} dica="Opcional: exige um alvo seu neste polo">
@@ -54,6 +56,7 @@ export function FormRegra() {
         Todos os filtros preenchidos precisam casar. Classes e assuntos usam os códigos das Tabelas
         Processuais Unificadas do CNJ.
       </p>
+      <CampoPeriodicidade precos={precos} erro={erros.periodicidade} valor={valores.periodicidade} />
       {erros._geral && (
         <p className="erro largo" role="alert">
           {erros._geral}
@@ -61,7 +64,7 @@ export function FormRegra() {
       )}
       <div className="largo">
         <button className="botao-primario" type="submit" disabled={enviando}>
-          {enviando ? "Salvando…" : "Criar regra"}
+          {enviando ? "Contratando…" : "Contratar termo"}
         </button>
       </div>
     </form>

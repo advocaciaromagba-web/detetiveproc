@@ -40,11 +40,12 @@ async def test_rls_e_papeis_criados(engine) -> None:
             "alerta",
             "auditoria",
             "publicacao_alvo",
+            "assinatura",
         }
         forcado = await c.execute(
             text("SELECT relname FROM pg_class WHERE relforcerowsecurity AND relkind = 'r'")
         )
-        assert len(list(forcado)) == 7
+        assert len(list(forcado)) == 8
         papeis = await c.execute(
             text(
                 "SELECT rolname, rolbypassrls, rolcanlogin FROM pg_roles "
@@ -85,3 +86,48 @@ async def test_api_nao_enxerga_parametros_nem_credenciais(engine) -> None:
             )
         )
         assert list(linhas) == []
+
+
+async def _executar(url: str, *comandos: str) -> list[tuple[object, ...]]:
+    engine = criar_engine(url)
+    async with engine.begin() as c:
+        linhas: list[tuple[object, ...]] = []
+        for sql in comandos:
+            resultado = await c.execute(text(sql))
+            if resultado.returns_rows:
+                linhas = [tuple(r) for r in resultado]
+    await engine.dispose()
+    return linhas
+
+
+def test_0014_mantem_monitorado_o_que_ja_estava_ativo(banco_migrado: str) -> None:
+    """Atualizar o sistema não desliga ninguém: itens ativos ganham cortesia."""
+    cfg = config_alembic()
+    command.downgrade(cfg, "0013")
+    try:
+        asyncio.run(
+            _executar(
+                banco_migrado,
+                "TRUNCATE cliente RESTART IDENTITY CASCADE",
+                "INSERT INTO cliente (nome) VALUES ('C')",
+                "INSERT INTO alvo (cliente_id, tipo, valor, finalidade, ativo) VALUES"
+                " (1, 'nome', 'ACME', 'x', true), (1, 'nome', 'VELHA', 'x', false)",
+                "INSERT INTO regra (cliente_id, nome, finalidade, classes)"
+                " VALUES (1, 'R', 'x', '{159}')",
+            )
+        )
+        command.upgrade(cfg, "0014")
+        linhas = asyncio.run(
+            _executar(
+                banco_migrado,
+                "SELECT produto, alvo_id, regra_id, status, cortesia, vigente_ate"
+                " FROM assinatura ORDER BY id",
+            )
+        )
+        assert linhas == [
+            ("nome", 1, None, "ativa", True, None),
+            ("termo", None, 1, "ativa", True, None),
+        ]
+    finally:
+        command.upgrade(cfg, "head")
+        asyncio.run(_executar(banco_migrado, "TRUNCATE cliente RESTART IDENTITY CASCADE"))

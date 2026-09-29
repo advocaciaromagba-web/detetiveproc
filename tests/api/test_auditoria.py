@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from api.app import criar_app
-from db.modelos import Auditoria
+from db.modelos import Auditoria, Preco
 from db.sessao import criar_engine, criar_fabrica, sessao_sistema
 from tests.api.conftest import entrar
 
@@ -20,16 +20,21 @@ async def linhas(fabrica) -> list[Auditoria]:  # type: ignore[no-untyped-def]
 
 
 async def test_toda_chamada_e_auditada(cliente_http, dados, fabrica) -> None:
+    async with sessao_sistema(fabrica) as s:
+        s.add(Preco(produto="nome", periodicidade="mensal", valor_centavos=4990))
     cab = {"X-API-Key": dados.chave_a}
     await cliente_http.get("/v1/alvos", headers=cab)
+    alvo = {"tipo": "documento", "valor": "529.982.247-25", "finalidade": "finalidade"}
     criado = await cliente_http.post(
-        "/v1/alvos",
-        headers=cab,
-        json={"tipo": "documento", "valor": "529.982.247-25", "finalidade": "finalidade"},
+        "/v1/assinaturas", headers=cab, json={"produto": "nome", "alvo": alvo}
     )
     await cliente_http.get(f"/v1/ocorrencias/{dados.ocorrencia_b}", headers=cab)  # 404
     await cliente_http.get("/v1/alvos")  # 401
-    await cliente_http.post("/v1/alvos", headers=cab, json={"tipo": "documento", "valor": CPF})
+    await cliente_http.post(
+        "/v1/assinaturas",
+        headers=cab,
+        json={"produto": "nome", "alvo": {"tipo": "documento", "valor": CPF}},
+    )
 
     registros = await linhas(fabrica)
     resumo = [
@@ -37,7 +42,7 @@ async def test_toda_chamada_e_auditada(cliente_http, dados, fabrica) -> None:
     ]
     assert resumo == [
         ("GET /v1/alvos", "alvo", None, dados.cliente_a, 200),
-        ("POST /v1/alvos", "alvo", str(criado.json()["id"]), dados.cliente_a, 201),
+        ("POST /v1/assinaturas", "assinatura", str(criado.json()["id"]), dados.cliente_a, 201),
         (
             "GET /v1/ocorrencias/{ocorrencia_id}",
             "ocorrencia",
@@ -46,7 +51,7 @@ async def test_toda_chamada_e_auditada(cliente_http, dados, fabrica) -> None:
             404,
         ),
         ("GET /v1/alvos", "alvo", None, None, 401),
-        ("POST /v1/alvos", "alvo", None, dados.cliente_a, 422),
+        ("POST /v1/assinaturas", "assinatura", None, dados.cliente_a, 422),
     ]
     assert registros[0].detalhes["chave_api_id"] == dados.chave_a_id
     for r in registros:
