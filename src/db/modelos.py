@@ -520,6 +520,64 @@ class PublicacaoAlvo(Base):
     status: Mapped[str] = mapped_column(String(10), server_default="novo")
 
 
+class AnalisePublicacao(Base):
+    """Extração por IA de uma publicação (tabela compartilhada, 1:1 com ``publicacao``).
+
+    A análise depende só do texto da comunicação, igual para todos os escritórios; por
+    isso é base compartilhada, sem RLS. ``prazo_fim`` e ``audiencia_em`` são calculados
+    de forma determinística (dias úteis, fuso do escritório), não pela IA.
+    """
+
+    __tablename__ = "analise_publicacao"
+    __table_args__ = (
+        UniqueConstraint("publicacao_id"),
+        CheckConstraint(
+            _em(
+                "tipo_ato",
+                "intimacao",
+                "citacao",
+                "despacho",
+                "decisao",
+                "sentenca",
+                "acordao",
+                "edital",
+                "outro",
+            ),
+            name="tipo_ato",
+        ),
+        CheckConstraint(_em("urgencia", "baixa", "media", "alta"), name="urgencia"),
+        CheckConstraint(
+            "prazo_natureza IS NULL OR prazo_natureza IN ('uteis', 'corridos')",
+            name="prazo_natureza",
+        ),
+        CheckConstraint(
+            "audiencia_modalidade IS NULL OR "
+            "audiencia_modalidade IN ('presencial', 'virtual', 'hibrida')",
+            name="audiencia_modalidade",
+        ),
+    )
+
+    id: Mapped[int] = _id()
+    publicacao_id: Mapped[int] = mapped_column(ForeignKey("publicacao.id", ondelete="CASCADE"))
+    modelo: Mapped[str] = mapped_column(String(40))  # modelo de IA usado
+    tipo_ato: Mapped[str] = mapped_column(String(12))
+    prazo_dias: Mapped[int | None] = mapped_column(SmallInteger)
+    prazo_natureza: Mapped[str | None] = mapped_column(String(8))
+    prazo_fim: Mapped[date | None] = mapped_column(Date)  # calculado (dias úteis)
+    tem_audiencia: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    audiencia_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # UTC
+    audiencia_tipo: Mapped[str | None] = mapped_column(Text)
+    audiencia_modalidade: Mapped[str | None] = mapped_column(String(12))
+    audiencia_local: Mapped[str | None] = mapped_column(Text)
+    providencia: Mapped[str] = mapped_column(Text)
+    urgencia: Mapped[str] = mapped_column(String(6))
+    resumo: Mapped[str] = mapped_column(Text)
+    bruto_resposta: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, server_default=text("'{}'::jsonb")
+    )
+    analisado_em: Mapped[datetime] = _agora()
+
+
 class Alerta(Base):
     __tablename__ = "alerta"
     __table_args__ = (

@@ -386,9 +386,19 @@ de publicações do PJe):
   compartilhada `publicacao` (upsert por `fonte` + `id_externo`, serializado por advisory
   lock — dois escritórios que acham o mesmo disparo gravam uma vez só) e o vínculo
   publicação↔alvo vai para `publicacao_alvo`, tabela de cliente com RLS por `cliente_id`.
-- **Provisório**: escrito contra respostas sintéticas (`tests/fixtures/djen`), porque
-  este ambiente não alcança a API; confirmar os nomes dos campos com dados reais. A
-  análise por IA e o agendamento de tarefas/audiências entram nos próximos PRs.
+- **Análise por IA** (`adaptadores/ia.py`, `pipeline/analise.py`): cada publicação é lida
+  pela Claude (SDK oficial, saída estruturada) para extrair o **tipo do ato**, o **prazo**
+  (quantidade e natureza) e a **audiência** (data/hora/tipo/modalidade/local), além de uma
+  providência e um resumo. O resultado vai para a tabela compartilhada `analise_publicacao`
+  (1:1 com `publicacao`), sem RLS. A gravação é idempotente e serializada por advisory lock,
+  para dois workers não chamarem a IA à toa. Modelo configurável (`IA_MODELO`, padrão
+  `claude-sonnet-5`); sem `ANTHROPIC_API_KEY` o pipeline segue sem analisar.
+  - O **prazo final e a hora da audiência são calculados no código**, não pela IA: a data
+    do prazo em dias úteis (CPC art. 219 e 224 — publicação no 1º dia útil seguinte à
+    disponibilização, contagem a partir do dia útil seguinte), a audiência no fuso do foro.
+- **Provisório**: o leitor do DJEN foi escrito contra respostas sintéticas
+  (`tests/fixtures/djen`); confirmar os nomes dos campos com dados reais. O agendamento de
+  tarefas/audiências e o painel entram no próximo PR.
 
 **Fuso** (`core/tempo.py`): tudo é guardado em UTC; a exibição e o cálculo de prazos e
 audiências usam `FUSO_ESCRITORIO` (padrão `America/Sao_Paulo`, Brasília). Prazos correm

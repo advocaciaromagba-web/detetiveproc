@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     djen_itens_por_pagina: int = 100
     djen_max_paginas: int = 50
 
+    # Análise das publicações por IA (Claude). Extrai tipo do ato, prazo e audiência.
+    anthropic_api_key: SecretStr | None = None
+    ia_modelo: str = "claude-sonnet-5"
+    ia_timeout: float = 60.0
+    ia_max_tokens: int = 2000
+
     log_formato: Literal["json", "texto"] = "json"
     log_nivel: str = "INFO"
     metricas_porta: int = 9100  # servidor Prometheus do agendador (rede interna)
