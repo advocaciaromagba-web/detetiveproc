@@ -506,6 +506,8 @@ class PublicacaoAlvo(Base):
         ForeignKeyConstraint(["alvo_id", "cliente_id"], ["alvo.id", "alvo.cliente_id"]),
         CheckConstraint(_em("criterio", "oab", "nome", "documento"), name="criterio"),
         CheckConstraint(_em("status", "novo", "visto", "descartado"), name="status"),
+        CheckConstraint(_em("confianca", "confirmada", "a_verificar"), name="confianca"),
+        CheckConstraint(_em("origem", "carga_inicial", "monitoramento"), name="origem"),
         Index(
             "ix_publicacao_alvo_cliente_status_detectado", "cliente_id", "status", "detectado_em"
         ),
@@ -518,6 +520,30 @@ class PublicacaoAlvo(Base):
     criterio: Mapped[str] = mapped_column(String(16))
     detectado_em: Mapped[datetime] = _agora()
     status: Mapped[str] = mapped_column(String(10), server_default="novo")
+    # Busca por nome traz homônimos: o cliente confirma ou descarta o que vier "a_verificar".
+    confianca: Mapped[str] = mapped_column(String(12), server_default="a_verificar")
+    # "carga_inicial": histórico trazido no cadastro do alvo (não gera aviso imediato).
+    origem: Mapped[str] = mapped_column(String(14), server_default="monitoramento")
+
+
+class ConsultaDJEN(Base):
+    """Até que dia cada alvo já foi varrido no DJEN, por termo (tabela de sistema).
+
+    O termo (nome, variação ou OAB) é consultado UMA vez por varredura, mesmo que vários
+    clientes o monitorem; o estado é por alvo para que um cliente novo receba o próprio
+    histórico. Só o hash do termo é guardado, nunca o nome/OAB em claro.
+    """
+
+    __tablename__ = "consulta_djen"
+    __table_args__ = (CheckConstraint(_em("tipo", "nome", "oab"), name="tipo"),)
+
+    alvo_id: Mapped[int] = mapped_column(
+        ForeignKey("alvo.id", ondelete="CASCADE"), primary_key=True
+    )
+    parametro_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tipo: Mapped[str] = mapped_column(String(4))
+    varrido_ate: Mapped[date] = mapped_column(Date)
+    atualizado_em: Mapped[datetime] = _agora()
 
 
 class AnalisePublicacao(Base):

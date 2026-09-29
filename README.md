@@ -386,6 +386,13 @@ de publicações do PJe):
   compartilhada `publicacao` (upsert por `fonte` + `id_externo`, serializado por advisory
   lock — dois escritórios que acham o mesmo disparo gravam uma vez só) e o vínculo
   publicação↔alvo vai para `publicacao_alvo`, tabela de cliente com RLS por `cliente_id`.
+- **Varredura nacional** (`pipeline/varredura_djen.py`, job `varredura_djen` do agendador,
+  a cada `DJEN_VARREDURA_MINUTOS`): consulta o DJEN em todos os tribunais pelos nomes,
+  variações e OABs ativos de todos os clientes. Cada termo é consultado uma vez por ciclo e
+  repartido entre os clientes que o monitoram. No cadastro, faz a **carga inicial** do
+  histórico (`DJEN_HISTORICO_DIAS`, padrão 365); depois, só o período novo. Os vínculos da
+  carga inicial ficam com `origem="carga_inicial"` (não geram aviso imediato). **Homônimos:**
+  só OAB e razão social idêntica entram como "confirmada"; o resto fica "a_verificar".
 - **Análise por IA** (`adaptadores/ia.py`, `pipeline/analise.py`): cada publicação é lida
   pela Claude (SDK oficial, saída estruturada) para extrair o **tipo do ato**, o **prazo**
   (quantidade e natureza) e a **audiência** (data/hora/tipo/modalidade/local), além de uma

@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     djen_url: str = "https://comunicaapi.pje.jus.br"
     djen_itens_por_pagina: int = 100
     djen_max_paginas: int = 50
+    djen_req_min: float = 20.0  # limite de requisições por minuto à API do DJEN
+    djen_varredura_minutos: int = 60  # intervalo da varredura nacional
+    djen_historico_dias: int = 365  # carga inicial ao cadastrar um nome/OAB
+    djen_janela_dias: int = 30  # período máximo por consulta (buscas longas são fatiadas)
 
     # Análise das publicações por IA (Claude). Extrai tipo do ato, prazo e audiência.
     anthropic_api_key: SecretStr | None = None

@@ -1,7 +1,7 @@
 """Tarefas periódicas e montagem do agendador (APScheduler no MVP, seção 9)."""
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import timedelta
@@ -16,6 +16,7 @@ from db.sessao import sessao_sistema
 from entrega.email import EnviadorEmail
 from monitoramento.alarmes import avaliar_alarmes, avaliar_volume
 from monitoramento.sentinelas import executar_sentinelas
+from pipeline.varredura_djen import ResultadoVarreduraDJEN
 from regras.alertas import despachar_alertas, enviar_resumos_diarios
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,9 @@ class Tarefas:
     fabrica: async_sessionmaker[AsyncSession]
     orquestrador: Orquestrador
     enviador: EnviadorEmail
+    # Opcionais: só viram jobs quando configurados (DJEN e chave da IA).
+    varredura_djen: Callable[[], Awaitable[ResultadoVarreduraDJEN]] | None = None
+    analise_publicacoes: Callable[[], Awaitable[int]] | None = None
 
     async def varredura(self) -> None:
         resultados = await self.orquestrador.executar_ciclo()
@@ -66,6 +70,29 @@ class Tarefas:
                     "interrompido": r.interrompido,
                 },
             )
+
+    async def djen(self) -> None:
+        if self.varredura_djen is None:
+            return
+        r = await self.varredura_djen()
+        logger.info(
+            "varredura do DJEN concluída",
+            extra={
+                "termos": r.termos,
+                "consultados": r.consultados,
+                "publicacoes": r.publicacoes,
+                "vinculos_novos": r.vinculos_novos,
+                "erros": r.erros,
+                "interrompida": r.interrompida,
+            },
+        )
+
+    async def analise(self) -> None:
+        if self.analise_publicacoes is None:
+            return
+        analisadas = await self.analise_publicacoes()
+        if analisadas:
+            logger.info("publicações analisadas pela IA", extra={"quantidade": analisadas})
 
     async def despacho(self) -> None:
         r = await despachar_alertas(self.fabrica, self.enviador)
@@ -100,7 +127,9 @@ class Tarefas:
         logger.info("varreduras órfãs removidas", extra={"quantidade": removidas})
 
 
-def montar_agendador(tarefas: Tarefas, fuso: str = "America/Sao_Paulo") -> AsyncIOScheduler:
+def montar_agendador(
+    tarefas: Tarefas, fuso: str = "America/Sao_Paulo", *, djen_minutos: int = 60
+) -> AsyncIOScheduler:
     """Jobs sem sobreposição (max_instances=1) e sem rajada após atraso (coalesce)."""
     agendador = AsyncIOScheduler(timezone=fuso)
     padrao = {"max_instances": 1, "coalesce": True, "misfire_grace_time": 300}
@@ -111,4 +140,12 @@ def montar_agendador(tarefas: Tarefas, fuso: str = "America/Sao_Paulo") -> Async
     agendador.add_job(tarefas.sentinelas, "interval", hours=1, id="sentinelas", **padrao)
     agendador.add_job(tarefas.alarmes, "interval", minutes=5, id="alarmes", **padrao)
     agendador.add_job(tarefas.volume_diario, "cron", hour=8, id="volume_diario", **padrao)
+    if tarefas.varredura_djen is not None:
+        agendador.add_job(
+            tarefas.djen, "interval", minutes=djen_minutos, id="varredura_djen", **padrao
+        )
+    if tarefas.analise_publicacoes is not None:
+        agendador.add_job(
+            tarefas.analise, "interval", minutes=10, id="analise_publicacoes", **padrao
+        )
     return agendador

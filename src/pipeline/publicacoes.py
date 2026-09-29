@@ -81,8 +81,14 @@ async def vincular_alvo(
     cliente_id: int,
     alvo_id: int,
     criterio: Criterio,
+    *,
+    confianca: str = "a_verificar",
+    origem: str = "monitoramento",
 ) -> bool:
-    """Liga a publicação ao alvo do cliente. Devolve True se o vínculo é novo."""
+    """Liga a publicação ao alvo do cliente. Devolve True se o vínculo é novo.
+
+    Um vínculo já existente não é alterado (nem a confiança que o cliente revisou).
+    """
     inserido = await sessao.scalar(
         insert(PublicacaoAlvo)
         .values(
@@ -90,6 +96,8 @@ async def vincular_alvo(
             publicacao_id=publicacao_id,
             alvo_id=alvo_id,
             criterio=criterio,
+            confianca=confianca,
+            origem=origem,
         )
         .on_conflict_do_nothing(constraint="uq_publicacao_alvo_publicacao_id_alvo_id")
         .returning(PublicacaoAlvo.id)
@@ -103,8 +111,13 @@ async def gravar_e_vincular(
     cliente_id: int,
     alvo_id: int,
     criterio: Criterio,
+    *,
+    confianca: str = "a_verificar",
+    origem: str = "monitoramento",
 ) -> ResultadoPublicacao:
     """Grava a publicação e a liga ao alvo que a encontrou, tudo idempotente."""
     publicacao_id, nova = await gravar_publicacao(sessao, dto)
-    vinculo_novo = await vincular_alvo(sessao, publicacao_id, cliente_id, alvo_id, criterio)
+    vinculo_novo = await vincular_alvo(
+        sessao, publicacao_id, cliente_id, alvo_id, criterio, confianca=confianca, origem=origem
+    )
     return ResultadoPublicacao(publicacao_id, nova=nova, vinculo_novo=vinculo_novo)
