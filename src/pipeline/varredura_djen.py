@@ -20,6 +20,7 @@ Deve receber a fábrica de sessões do sistema (BYPASSRLS): lê alvos de todos o
 """
 
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Protocol
@@ -40,6 +41,8 @@ from pipeline.publicacoes import gravar_e_vincular
 logger = logging.getLogger(__name__)
 
 Fabrica = async_sessionmaker[AsyncSession]
+# Completa o processo recém-registrado (classe, assunto...) na mesma transação.
+Complemento = Callable[[AsyncSession, int], Awaitable[None]]
 
 
 class BuscaDJEN(Protocol):
@@ -189,6 +192,7 @@ async def _gravar(
     *,
     hoje: date,
     alerta_dias: int,
+    complemento: Complemento | None,
 ) -> None:
     for dto in publicacoes:
         nivel = confianca(termo, dto)
@@ -202,7 +206,10 @@ async def _gravar(
                 confianca=nivel, origem=origem,
             )  # fmt: skip
             resultado.vinculos_novos += int(r.vinculo_novo)
-        registrado = await registrar_processo(sessao, dto, alertar=recente(dto, hoje, alerta_dias))
+        alertar = recente(dto, hoje, alerta_dias)
+        registrado = await registrar_processo(sessao, dto, alertar=alertar)
+        if registrado is not None and registrado.novo and alertar and complemento is not None:
+            await complemento(sessao, registrado.processo_id)
         if registrado is not None:
             resultado.processos_novos += int(registrado.novo)
             resultado.ocorrencias_novas += registrado.ocorrencias_novas
@@ -233,6 +240,7 @@ async def varrer_djen(
     hoje: date,
     chave_hash: str | bytes | None,
     config: ConfigVarreduraDJEN | None = None,
+    complemento: Complemento | None = None,
 ) -> ResultadoVarreduraDJEN:
     """Um ciclo da varredura. Cada termo é gravado na própria transação: uma falha num
     termo não desfaz os outros, e o "varrido até" só avança quando o termo foi gravado."""
@@ -263,7 +271,14 @@ async def varrer_djen(
         resultado.consultados += 1
         async with sessao_sistema(fabrica) as s:
             await _gravar(
-                s, termo, publicacoes, inicios, resultado, hoje=hoje, alerta_dias=config.alerta_dias
+                s,
+                termo,
+                publicacoes,
+                inicios,
+                resultado,
+                hoje=hoje,
+                alerta_dias=config.alerta_dias,
+                complemento=complemento,
             )
             await _marcar_varrido(s, termo, hoje)
         resultado.publicacoes += len(publicacoes)

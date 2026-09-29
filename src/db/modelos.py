@@ -128,6 +128,9 @@ class Processo(Base):
     segredo: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     status_coleta: Mapped[str] = mapped_column(String(10), server_default="pendente")
     url_origem: Mapped[str | None] = mapped_column(Text)  # link da consulta pública
+    grau: Mapped[str | None] = mapped_column(String(4))  # "G1", "G2", "JE"... (DataJud)
+    # Última consulta ao DataJud (achou ou não); evita reconsultar a cada ciclo.
+    datajud_consultado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     primeira_coleta_em: Mapped[datetime] = _agora()
     atualizado_em: Mapped[datetime] = _agora()
 

@@ -39,6 +39,7 @@ from db.modelos import (
 from db.sessao import sessao_sistema
 from entrega.email import EnviadorMemoria
 from monitoramento.metricas import CONSULTAS, ERROS, PROCESSOS_NOVOS
+from pipeline.complemento_datajud import ResultadoComplemento
 from pipeline.dedup import gravar_processo
 from pipeline.normalizador import normalizar_processo
 from pipeline.varredura_djen import ResultadoVarreduraDJEN
@@ -540,11 +541,19 @@ def test_jobs_de_publicacoes_so_quando_configurados(fabrica) -> None:
     async def analise() -> int:
         return 0
 
+    async def complemento() -> ResultadoComplemento:
+        return ResultadoComplemento()
+
     registro = RegistroAdaptadores(fabrica_limitador=lambda _t: LimitadorContador())
     orquestrador = Orquestrador(fabrica, registro, chave_hash=CHAVE)
     tarefas = Tarefas(
-        fabrica, orquestrador, EnviadorMemoria(), varredura_djen=djen, analise_publicacoes=analise
+        fabrica,
+        orquestrador,
+        EnviadorMemoria(),
+        varredura_djen=djen,
+        analise_publicacoes=analise,
+        complemento_datajud=complemento,
     )
     jobs = {j.id: j for j in montar_agendador(tarefas, djen_minutos=30).get_jobs()}
-    assert {"varredura_djen", "analise_publicacoes"} <= set(jobs)
+    assert {"varredura_djen", "analise_publicacoes", "complemento_datajud"} <= set(jobs)
     assert "0:30:00" in str(jobs["varredura_djen"].trigger)

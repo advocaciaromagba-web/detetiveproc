@@ -245,3 +245,27 @@ async def test_publicacao_recente_avisa_e_historico_nao(fabrica) -> None:
     assert r.processos_novos == 2  # type: ignore[attr-defined]
     assert r.ocorrencias_novas == 2  # type: ignore[attr-defined]
     assert r.alertas == 1  # type: ignore[attr-defined]  # só a publicação recente avisa
+
+
+@pytest.mark.integracao
+async def test_processo_novo_com_aviso_e_completado_na_hora(fabrica) -> None:
+    await _cliente_com_alvo(fabrica, "Cliente A")
+    antiga = pub("antiga", HOJE - timedelta(days=40))
+    antiga.numero_cnj = "1000001-35.2024.8.26.0100"
+    nova = pub("nova", HOJE)
+    completados: list[int] = []
+
+    async def completar(_sessao: AsyncSession, processo_id: int) -> None:
+        completados.append(processo_id)
+
+    config = ConfigVarreduraDJEN(historico_dias=60, janela_dias=30)
+    await varrer_djen(
+        fabrica,
+        FonteFalsa(lambda *_: [antiga, nova]),
+        hoje=HOJE,
+        chave_hash=CHAVE,
+        config=config,
+        complemento=completar,
+    )
+    # Só o processo recente (que gera aviso); o histórico fica para a repescagem.
+    assert len(completados) == 1
