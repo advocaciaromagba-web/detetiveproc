@@ -189,3 +189,19 @@ async def test_unidades_do_eproc(fabrica) -> None:
     with pytest.raises(SystemExit, match="não existe"):
         await rodar(fabrica, "remover-unidade", "--id", str(criada["unidade_id"]))
     assert len((await rodar(fabrica, "listar-unidades"))["unidades"]) == 1
+
+
+async def test_criar_cliente_com_whatsapp(fabrica) -> None:
+    cliente = await rodar(
+        fabrica, "criar-cliente", "--nome", "Joaquim",
+        "--email-alerta", "j@x.com", "--whatsapp-alerta", "(11) 99999-8888",
+    )  # fmt: skip
+    async with sessao_sistema(fabrica) as s:
+        registro = await s.get(Cliente, cliente["cliente_id"])
+        assert registro is not None
+        assert registro.contatos == {"emails": ["j@x.com"], "whatsapp": ["5511999998888"]}
+
+
+async def test_whatsapp_invalido_e_recusado(fabrica) -> None:
+    with pytest.raises(SystemExit, match="WhatsApp"):
+        await rodar(fabrica, "criar-cliente", "--nome", "X", "--whatsapp-alerta", "123")

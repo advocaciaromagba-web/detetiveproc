@@ -404,6 +404,12 @@ de publicações do PJe):
   aviso é completado na hora, para o e-mail já sair com classe e assunto; o restante vai
   pelo job de repescagem `complemento_datajud` (a cada 15 min). Só preenche campo vazio:
   a capa do tribunal nunca é sobrescrita. Chave pública do CNJ em `DATAJUD_API_KEY`.
+- **Aviso por WhatsApp** (`entrega/whatsapp.py`, API oficial da Meta): cada **processo
+  novo** na lista do cliente gera, além do e-mail, um aviso imediato para os celulares
+  cadastrados (`admin criar-cliente --whatsapp-alerta "(11) 99999-8888"`, repetível). Usa
+  um **modelo aprovado na Meta** (`WHATSAPP_MODELO`) com 4 variáveis: quem é monitorado,
+  tipo de ação, onde tramita e número. Aviso não enviado em 24 h expira. Sem
+  `WHATSAPP_NUMERO_ID`/`WHATSAPP_TOKEN`, o canal fica desligado.
 - **Análise por IA** (opcional, desligada por padrão: `IA_ANALISE_ATIVA`) (`adaptadores/ia.py`, `pipeline/analise.py`): cada publicação é lida
   pela Claude (SDK oficial, saída estruturada) para extrair o **tipo do ato**, o **prazo**
   (quantidade e natureza) e a **audiência** (data/hora/tipo/modalidade/local), além de uma
