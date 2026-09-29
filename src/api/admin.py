@@ -22,6 +22,7 @@ from api.auth import criar_chave_api, criar_usuario, revogar_chave, revogar_sess
 from core.config import obter_settings
 from db.modelos import Cliente, Tribunal
 from db.sessao import criar_engine, criar_fabrica, sessao_sistema
+from entrega.whatsapp import normalizar_whatsapp
 from monitoramento.sentinelas import CAMPOS_SENTINELA, criar_sentinela
 
 Fabrica = async_sessionmaker[AsyncSession]
@@ -36,6 +37,12 @@ def _analisador() -> argparse.ArgumentParser:
     c.add_argument("--nome", required=True)
     c.add_argument("--cnpj")
     c.add_argument("--email-alerta", action="append", default=[], help="repetível")
+    c.add_argument(
+        "--whatsapp-alerta",
+        action="append",
+        default=[],
+        help="celular para o aviso de processo novo, ex.: (11) 99999-8888; repetível",
+    )
 
     u = cmd.add_parser("criar-usuario", help="cria usuário do painel (TOTP obrigatório)")
     u.add_argument("--email", required=True)
@@ -99,7 +106,13 @@ def _senha() -> str:
 
 async def _criar_cliente(args: argparse.Namespace, fabrica: Fabrica) -> dict[str, Any]:
     async with sessao_sistema(fabrica) as s:
-        cliente = Cliente(nome=args.nome, cnpj=args.cnpj, contatos={"emails": args.email_alerta})
+        telefones = [normalizar_whatsapp(n) for n in args.whatsapp_alerta]
+        if None in telefones:
+            raise SystemExit("número de WhatsApp inválido (use DDD + número)")
+        contatos: dict[str, Any] = {"emails": args.email_alerta}
+        if telefones:
+            contatos["whatsapp"] = telefones
+        cliente = Cliente(nome=args.nome, cnpj=args.cnpj, contatos=contatos)
         s.add(cliente)
         await s.flush()
         return {"cliente_id": cliente.id}

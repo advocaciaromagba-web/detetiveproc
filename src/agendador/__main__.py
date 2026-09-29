@@ -12,6 +12,7 @@ from agendador.publicacoes import (
     criar_fonte_datajud,
     montar_analise,
     montar_complemento,
+    montar_despacho_whatsapp,
     montar_varredura_djen,
 )
 from agendador.registro import registro_padrao
@@ -57,6 +58,7 @@ async def executar() -> None:
                 ),
                 analise_publicacoes=montar_analise(fabrica, settings),
                 complemento_datajud=montar_complemento(fabrica, datajud),
+                despacho_whatsapp=montar_despacho_whatsapp(fabrica, settings),
             )
             agendador = montar_agendador(
                 tarefas, settings.fuso_escritorio, djen_minutos=settings.djen_varredura_minutos

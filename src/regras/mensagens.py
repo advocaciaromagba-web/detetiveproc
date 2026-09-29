@@ -125,3 +125,17 @@ def montar_email_resumo(itens: list[DadosAlerta], destinatario: str, dia: date) 
         "Resumo diário do Detetiveproc.\n\n" + "\n\n".join(textos),
         "<p>Resumo diário do Detetiveproc.</p>" + "".join(htmls),
     )
+
+
+def parametros_whatsapp(dados: DadosAlerta) -> tuple[str, str, str, str]:
+    """Os 4 parâmetros do modelo de WhatsApp aprovado na Meta (ver entrega.whatsapp):
+
+    {{1}} quem é monitorado, {{2}} o tipo de ação, {{3}} onde tramita, {{4}} o número.
+    Nunca inclui CPF/CNPJ.
+    """
+    quem = dados.motivo.split(":", 1)[1].strip() if ":" in dados.motivo else dados.motivo
+    tipo = dados.classe or "Processo judicial"
+    if dados.assuntos:
+        tipo = f"{tipo} ({dados.assuntos[0]})"
+    onde = " – ".join(p for p in (dados.tribunal, dados.vara) if p) or "tribunal não informado"
+    return (quem, tipo, onde, dados.numero_cnj)

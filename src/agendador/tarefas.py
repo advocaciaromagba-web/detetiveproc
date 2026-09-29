@@ -18,7 +18,7 @@ from monitoramento.alarmes import avaliar_alarmes, avaliar_volume
 from monitoramento.sentinelas import executar_sentinelas
 from pipeline.complemento_datajud import ResultadoComplemento
 from pipeline.varredura_djen import ResultadoVarreduraDJEN
-from regras.alertas import despachar_alertas, enviar_resumos_diarios
+from regras.alertas import ResultadoEnvio, despachar_alertas, enviar_resumos_diarios
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,8 @@ class Tarefas:
     varredura_djen: Callable[[], Awaitable[ResultadoVarreduraDJEN]] | None = None
     analise_publicacoes: Callable[[], Awaitable[int]] | None = None
     complemento_datajud: Callable[[], Awaitable[ResultadoComplemento]] | None = None
+    # Aviso de processo novo por WhatsApp (None enquanto o app da Meta não estiver ligado).
+    despacho_whatsapp: Callable[[], Awaitable[ResultadoEnvio]] | None = None
 
     async def varredura(self) -> None:
         resultados = await self.orquestrador.executar_ciclo()
@@ -119,6 +121,13 @@ class Tarefas:
         r = await despachar_alertas(self.fabrica, self.enviador)
         if r.enviados or r.falhas:
             logger.info("alertas despachados", extra={"enviados": r.enviados, "falhas": r.falhas})
+        if self.despacho_whatsapp is not None:
+            w = await self.despacho_whatsapp()
+            if w.enviados or w.falhas:
+                logger.info(
+                    "avisos de WhatsApp despachados",
+                    extra={"enviados": w.enviados, "falhas": w.falhas},
+                )
 
     async def resumo_diario(self) -> None:
         r = await enviar_resumos_diarios(self.fabrica, self.enviador)

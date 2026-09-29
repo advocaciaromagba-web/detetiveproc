@@ -12,6 +12,7 @@ from core.config import Settings
 from core.rate_limiter import ConfigLimite, criar_limitador
 from core.tempo import agora_utc, data_no_escritorio
 from db.sessao import sessao_sistema
+from entrega.whatsapp import EnviadorWhatsApp, EnviadorWhatsAppCloud
 from fontes.base import ErroFonte
 from fontes.datajud import ConfigDataJud, FonteDataJud
 from fontes.djen import ConfigDJEN, FonteDJEN
@@ -22,6 +23,7 @@ from pipeline.complemento_datajud import (
     completar_processo,
 )
 from pipeline.varredura_djen import ConfigVarreduraDJEN, ResultadoVarreduraDJEN, varrer_djen
+from regras.alertas import ResultadoEnvio, despachar_whatsapp
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis
@@ -122,5 +124,27 @@ def montar_analise(fabrica: Fabrica, settings: Settings) -> Callable[[], Awaitab
     async def executar() -> int:
         async with sessao_sistema(fabrica) as s:
             return await analisar_pendentes(s, analisador, fuso_nome=settings.fuso_escritorio)
+
+    return executar
+
+
+def montar_despacho_whatsapp(
+    fabrica: Fabrica, settings: Settings, enviador: EnviadorWhatsApp | None = None
+) -> Callable[[], Awaitable[ResultadoEnvio]] | None:
+    """Despacho dos avisos por WhatsApp; None (canal desligado) sem credenciais da Meta."""
+    enviador = enviador or EnviadorWhatsAppCloud.de_settings(settings)
+    if enviador is None:
+        logger.info("WhatsApp não configurado: avisos só por e-mail")
+        return None
+    canal = enviador
+
+    async def executar() -> ResultadoEnvio:
+        return await despachar_whatsapp(
+            fabrica,
+            canal,
+            modelo=settings.whatsapp_modelo,
+            idioma=settings.whatsapp_idioma,
+            agora=agora_utc(),
+        )
 
     return executar

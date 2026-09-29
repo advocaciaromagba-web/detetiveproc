@@ -30,6 +30,14 @@ class Settings(BaseSettings):
     # Recebe avisos de bloqueio de tribunal (DesafioHumano, LayoutAlterado).
     email_operacao: str | None = None
 
+    # WhatsApp (API oficial da Meta): só o aviso de processo novo. Desligado sem as
+    # credenciais do app (ID do número e token permanente de usuário do sistema).
+    whatsapp_numero_id: str = ""
+    whatsapp_token: SecretStr | None = None
+    whatsapp_modelo: str = "novo_processo"  # nome do modelo aprovado na Meta
+    whatsapp_idioma: str = "pt_BR"
+    whatsapp_versao_api: str = "v21.0"
+
     # Coleta nos tribunais (seção 5). O contato técnico vai no User-Agent do robô.
     coletor_contato: str = ""
     coletor_timeout: float = 30.0

@@ -10,7 +10,7 @@ próxima execução, nunca em laço imediato.
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -21,15 +21,24 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from db.modelos import Alerta, Alvo, Cliente, Ocorrencia, Parte, Pessoa, Processo, Regra, Tribunal
 from db.sessao import sessao_sistema
 from entrega.email import EnviadorEmail
+from entrega.whatsapp import EnviadorWhatsApp, MensagemWhatsApp, normalizar_whatsapp
 from monitoramento.metricas import ALERTAS
 from regras.config import ConfigAlertas, carregar_config
-from regras.mensagens import DadosAlerta, montar_email_alerta, montar_email_resumo
+from regras.mensagens import (
+    DadosAlerta,
+    montar_email_alerta,
+    montar_email_resumo,
+    parametros_whatsapp,
+)
 from regras.score import modalidade
 
 logger = logging.getLogger(__name__)
 
-CANAIS_DISPONIVEIS = ("email",)  # WhatsApp e webhook: fase 2
+CANAIS_DISPONIVEIS = ("email",)  # canais que seguem a faixa do score (webhook: fase 2)
 MAX_TENTATIVAS = 3
+# WhatsApp é aviso imediato: alerta não enviado nesse prazo expira (não dispara mensagem
+# velha quando o canal for ligado ou voltar do ar).
+VALIDADE_WHATSAPP = timedelta(hours=24)
 FUSO = ZoneInfo("America/Sao_Paulo")
 
 
@@ -37,6 +46,12 @@ FUSO = ZoneInfo("America/Sao_Paulo")
 class ResultadoEnvio:
     enviados: int = 0
     falhas: int = 0
+
+
+def destinos_whatsapp(contatos: dict[str, Any] | None) -> list[str]:
+    numeros = (contatos or {}).get("whatsapp") or []
+    validos = (normalizar_whatsapp(n) for n in numeros if isinstance(n, str))
+    return list(dict.fromkeys(n for n in validos if n))
 
 
 def destinos_email(contatos: dict[str, Any] | None) -> list[str]:
@@ -54,10 +69,15 @@ async def criar_alertas(
     config: ConfigAlertas,
     contatos: dict[str, Any] | None,
 ) -> int:
-    """Cria os alertas pendentes da ocorrência. Devolve quantos foram criados."""
-    destinos = destinos_email(contatos)
-    if not destinos:
-        logger.warning("cliente sem e-mail de alerta", extra={"cliente_id": cliente_id})
+    """Cria os alertas pendentes da ocorrência. Devolve quantos foram criados.
+
+    E-mail segue a faixa do score (imediato ou resumo diário); WhatsApp, quando o cliente
+    cadastrou números, é sempre imediato — é o aviso de processo novo.
+    """
+    emails = destinos_email(contatos)
+    telefones = destinos_whatsapp(contatos)
+    if not emails and not telefones:
+        logger.warning("cliente sem contato de alerta", extra={"cliente_id": cliente_id})
         return 0
     faixa = modalidade(score, config)
     canais = CANAIS_DISPONIVEIS if faixa == "todos_canais" else ("email",)
@@ -71,7 +91,16 @@ async def criar_alertas(
             "destino": destino,
         }
         for canal in canais
-        for destino in destinos
+        for destino in emails
+    ] + [
+        {
+            "cliente_id": cliente_id,
+            "ocorrencia_id": ocorrencia_id,
+            "canal": "whatsapp",
+            "modalidade": "imediato",
+            "destino": telefone,
+        }
+        for telefone in telefones
     ]
     criados = await sessao.scalars(
         insert(Alerta)
@@ -139,7 +168,7 @@ async def carregar_dados_alerta(sessao: AsyncSession, ocorrencia_id: int) -> Dad
 
 
 def _registrar_falha(alertas: Sequence[Alerta], erro: Exception, max_tentativas: int) -> None:
-    # A mensagem de erro vem do servidor SMTP; não contém dados das partes.
+    # A mensagem de erro vem do servidor SMTP ou da Meta; não contém dados das partes.
     texto = f"{type(erro).__name__}: {erro}"[:500]
     for alerta in alertas:
         alerta.tentativas += 1
@@ -197,6 +226,59 @@ async def despachar_alertas(
                 _registrar_envio([alerta])
                 resultado.enviados += 1
                 ALERTAS.labels(canal="email", modalidade="imediato", resultado="enviado").inc()
+    return resultado
+
+
+async def despachar_whatsapp(
+    fabrica: async_sessionmaker[AsyncSession],
+    enviador: EnviadorWhatsApp,
+    *,
+    modelo: str,
+    idioma: str,
+    agora: datetime,
+    limite: int = 100,
+    max_tentativas: int = MAX_TENTATIVAS,
+    validade: timedelta = VALIDADE_WHATSAPP,
+) -> ResultadoEnvio:
+    """Envia os avisos de WhatsApp pendentes (modelo aprovado na Meta), um por transação.
+
+    Alerta mais antigo que ``validade`` expira sem envio ("falhou", erro "expirado").
+    """
+    resultado = ResultadoEnvio()
+    tentados: set[int] = set()
+    for _ in range(limite):
+        async with sessao_sistema(fabrica) as sessao:
+            consulta = (
+                select(Alerta)
+                .where(Alerta.status_envio == "pendente", Alerta.canal == "whatsapp")
+                .order_by(Alerta.id)
+                .limit(1)
+                .with_for_update(skip_locked=True)
+            )
+            if tentados:
+                consulta = consulta.where(Alerta.id.not_in(tentados))
+            alerta = await sessao.scalar(consulta)
+            if alerta is None:
+                break
+            tentados.add(alerta.id)
+            if alerta.criado_em < agora - validade:
+                alerta.status_envio = "falhou"
+                alerta.erro = "expirado"
+                ALERTAS.labels(canal="whatsapp", modalidade="imediato", resultado="expirado").inc()
+                continue
+            dados = await carregar_dados_alerta(sessao, alerta.ocorrencia_id)
+            mensagem = MensagemWhatsApp(alerta.destino, modelo, idioma, parametros_whatsapp(dados))
+            try:
+                await enviador.enviar(mensagem)
+            except Exception as erro:
+                _registrar_falha([alerta], erro, max_tentativas)
+                resultado.falhas += 1
+                ALERTAS.labels(canal="whatsapp", modalidade="imediato", resultado="falha").inc()
+                logger.warning("falha ao enviar WhatsApp", extra={"alerta_id": alerta.id})
+            else:
+                _registrar_envio([alerta])
+                resultado.enviados += 1
+                ALERTAS.labels(canal="whatsapp", modalidade="imediato", resultado="enviado").inc()
     return resultado
 
 
