@@ -184,6 +184,8 @@ uv run uvicorn api.app:app --port 8000   # documentação interativa em /docs
 | Rota | Função |
 | --- | --- |
 | `POST /v1/auth/login` · `POST /v1/auth/logout` · `GET /v1/auth/eu` | Sessão do painel |
+| `GET /v1/cadastro/planos` · `GET /v1/cadastro/cnpj/{cnpj}` | **Públicas**: preços do plano de nome e razão social pela Receita (BrasilAPI) |
+| `POST /v1/cadastro` · `POST /v1/cadastro/senha` · `POST /v1/cadastro/concluir` | **Públicas**: cadastro pelo próprio cliente (formulário → link por e-mail → senha e QR do autenticador → primeiro código) |
 | `GET /v1/precos` · `PUT /v1/precos/{produto}/{periodicidade}` | Tabela de preços (PUT só operador) |
 | `POST /v1/assinaturas` · `GET /v1/assinaturas?produto=&situacao=` · `GET /v1/assinaturas/{id}` | Contratar e listar nomes (`produto: "nome"`) e termos (`"termo"`), mensal ou anual |
 | `POST /v1/assinaturas/{id}/cancelar` | Não renova (paga) ou encerra já (aguardando pagamento) |
@@ -217,6 +219,26 @@ uv run python -m api.admin ativar-assinatura --id 7              # pagamento rec
 uv run python -m api.admin ativar-assinatura --id 8 --cortesia   # sem cobrança e sem vencimento
 ```
 
+### Cadastro pelo próprio cliente
+
+Página pública `/cadastro` do painel (`api/cadastro.py`):
+
+1. A pessoa escolhe empresa (CNPJ) ou pessoa física (CPF), informa o responsável, o
+   e-mail e o plano. Para CNPJ, o nome monitorado é a **razão social da Receita**
+   (BrasilAPI; libere `brasilapi.com.br` na rede), mais o nome fantasia.
+2. Recebe por e-mail um link de uso único (`CADASTRO_VALIDADE_HORAS`, padrão 48 h;
+   base em `PAINEL_URL_PUBLICA`). O token vai no fragmento `#` do link e é guardado só
+   como hash. Se o e-mail já tem conta, a pessoa recebe um aviso em vez do link — a
+   resposta da API é a mesma nos dois casos.
+3. Pelo link, cria a senha e lê o QR code do autenticador; o primeiro código conclui:
+   cria cliente, usuário e o nome monitorado (CPF/CNPJ + nomes) com a assinatura
+   **aguardando pagamento**.
+
+Limites por hora (só o HMAC do IP/e-mail é guardado): 10 cadastros por IP, 3 por
+e-mail, 30 consultas de CNPJ por IP e 5 códigos errados por cadastro a cada 15 min. O
+IP vem de `X-Forwarded-For` só com `CONFIAR_X_FORWARDED_FOR=true` (API atrás do painel,
+como no compose). O job de limpeza diária apaga tentativas antigas e cadastros vencidos.
+
 ### Assinaturas
 
 Cada **nome** (alvo) e cada **termo** (regra) monitorado é uma assinatura, mensal ou
@@ -240,7 +262,7 @@ MONITOR_API_URL=http://localhost:8000 npm run dev   # http://localhost:3100
 npm run lint && npm run typecheck && npm test && npm run build
 ```
 
-- Telas: login (e-mail, senha e código do autenticador); **Processos** (número,
+- Telas: **criar conta** (pública) e confirmação com o QR do autenticador; login (e-mail, senha e código do autenticador); **Processos** (número,
   classe · assunto, tribunal · vara · grau, autores e réus, datas de distribuição e de
   descoberta; busca por número ou nome da parte; filtros por situação, identificação e
   data; "É meu"/"Não é meu" para possíveis homônimos; marcar como visto, descartar,

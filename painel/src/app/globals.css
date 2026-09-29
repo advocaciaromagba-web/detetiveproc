@@ -136,3 +136,10 @@ tr.descartado td { opacity: 0.55; }
 .abas { display: flex; gap: 12px; margin: 16px 0 8px; }
 .abas a[aria-current="page"] { font-weight: 700; text-decoration: none; color: var(--texto); }
 .lista-curta { margin: 0; padding-left: 18px; }
+
+/* Cadastro público */
+.login-largo { max-width: 720px; }
+.login-largo form.formulario { display: grid; }
+.login fieldset { border: 0; padding: 0; margin: 0; display: flex; gap: 16px; flex-wrap: wrap; }
+.login legend { font-size: 0.85rem; color: var(--texto-suave); margin-bottom: 4px; }
+label.opcao { flex-direction: row; align-items: center; gap: 8px; color: var(--texto); font-size: 0.95rem; }

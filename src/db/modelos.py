@@ -795,3 +795,54 @@ class ChaveApi(Base):
     criada_em: Mapped[datetime] = _agora()
     revogada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ultimo_uso_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# --------------------------------------------------------------------------- cadastro público
+
+
+class Cadastro(Base):
+    """Cadastro feito pelo próprio cliente, até a confirmação do e-mail e do autenticador.
+
+    Tabela de sistema (a API a acessa só nas rotas públicas de cadastro). O link enviado
+    por e-mail vale uma vez e só é guardado como hash. Ao concluir, vira cliente + usuário
+    + nome monitorado (assinatura aguardando pagamento).
+    """
+
+    __tablename__ = "cadastro"
+    __table_args__ = (
+        CheckConstraint("email = lower(email)", name="email_minusculo"),
+        CheckConstraint(_em("tipo_pessoa", "pj", "pf"), name="tipo_pessoa"),
+        CheckConstraint(f"documento ~ '{_REGEX_DOCUMENTO}'", name="documento_normalizado"),
+        CheckConstraint(_em("periodicidade", *PERIODICIDADES), name="periodicidade"),
+        Index("ix_cadastro_email_criado_em", "email", "criado_em"),
+    )
+
+    id: Mapped[int] = _id()
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    email: Mapped[str] = mapped_column(String(254))
+    tipo_pessoa: Mapped[str] = mapped_column(String(2))
+    documento: Mapped[str] = mapped_column(String(14))
+    nome: Mapped[str] = mapped_column(Text)  # razão social (Receita) ou nome completo
+    nome_fantasia: Mapped[str | None] = mapped_column(Text)
+    responsavel: Mapped[str] = mapped_column(Text)
+    periodicidade: Mapped[str] = mapped_column(String(10))
+    senha_hash: Mapped[str | None] = mapped_column(Text)
+    totp_segredo: Mapped[str | None] = mapped_column(String(64))
+    criado_em: Mapped[datetime] = _agora()
+    expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    concluido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cliente_id: Mapped[int | None] = mapped_column(ForeignKey("cliente.id"))
+
+
+class TentativaPublica(Base):
+    """Limite de tentativas nas rotas públicas (por IP ou e-mail, só o hash)."""
+
+    __tablename__ = "tentativa_publica"
+    __table_args__ = (
+        Index("ix_tentativa_publica_acao_chave_criado_em", "acao", "chave_hash", "criado_em"),
+    )
+
+    id: Mapped[int] = _id()
+    acao: Mapped[str] = mapped_column(String(20))
+    chave_hash: Mapped[str] = mapped_column(String(64))
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))

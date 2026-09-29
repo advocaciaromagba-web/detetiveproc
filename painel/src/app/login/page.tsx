@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { FormLogin } from "./FormLogin";
 
 export default async function Login({
@@ -12,6 +14,9 @@ export default async function Login({
         <h1>Detetiveproc</h1>
         {expirada && <p className="aviso">Sua sessão expirou. Entre novamente.</p>}
         <FormLogin />
+        <p className="suave" style={{ marginBottom: 0 }}>
+          Ainda não tem conta? <Link href="/cadastro">Criar conta</Link>
+        </p>
       </div>
     </main>
   );

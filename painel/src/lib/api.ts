@@ -1,7 +1,7 @@
 // Cliente da API usado SOMENTE no servidor do Next (componentes de servidor e server
 // actions). O token fica no cookie httpOnly e nunca chega ao navegador.
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { COOKIE_SESSAO } from "./sessao";
@@ -36,11 +36,13 @@ function mensagemDeErro(corpo: unknown, status: number): string {
 
 async function requisitar(
   caminho: string,
-  init: { method?: string; body?: unknown; token?: string | null } = {},
+  init: { method?: string; body?: unknown; token?: string | null; ip?: string | null } = {},
 ): Promise<Response> {
   const cabecalhos: Record<string, string> = { Accept: "application/json" };
   if (init.body !== undefined) cabecalhos["Content-Type"] = "application/json";
   if (init.token) cabecalhos.Authorization = `Bearer ${init.token}`;
+  // Rotas públicas: a API limita tentativas pelo IP do visitante (não o do painel).
+  if (init.ip) cabecalhos["X-Forwarded-For"] = init.ip;
   return fetch(`${API_URL}${caminho}`, {
     method: init.method ?? "GET",
     headers: cabecalhos,
@@ -70,10 +72,17 @@ export async function api<T>(
   return corpo as T;
 }
 
-/** Login e logout não passam pelo token do cookie. */
+/** IP do visitante, como o proxy reverso/Next informou (para o limite de tentativas). */
+export async function ipDoVisitante(): Promise<string | null> {
+  const h = await headers();
+  const encaminhado = h.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return encaminhado || h.get("x-real-ip") || null;
+}
+
+/** Login, logout e cadastro não passam pelo token do cookie. */
 export async function apiPublica(
   caminho: string,
-  init: { method?: string; body?: unknown; token?: string | null },
+  init: { method?: string; body?: unknown; token?: string | null; ip?: string | null } = {},
 ): Promise<{ status: number; corpo: unknown }> {
   const resposta = await requisitar(caminho, init);
   const corpo: unknown = resposta.status === 204 ? null : await resposta.json().catch(() => null);

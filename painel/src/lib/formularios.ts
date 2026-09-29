@@ -202,3 +202,48 @@ export type PeriodicidadeEscolhida = "mensal" | "anual";
 export function periodicidade(valor: string | undefined): PeriodicidadeEscolhida | null {
   return valor === "mensal" || valor === "anual" ? valor : null;
 }
+
+export interface CorpoCadastro {
+  tipo_pessoa: "pj" | "pf";
+  documento: string;
+  nome: string | null;
+  nome_fantasia: string | null;
+  responsavel: string;
+  email: string;
+  periodicidade: PeriodicidadeEscolhida;
+  aceite_termos: true;
+}
+
+/** Formulário "Criar conta". A API confere os dígitos do CPF/CNPJ e busca a razão social. */
+export function montarCadastro(dados: Record<string, string | undefined>): Resultado<CorpoCadastro> {
+  const erros: Erros = {};
+  const tipo = texto(dados, "tipo_pessoa");
+  const documento = texto(dados, "documento").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  const nome = texto(dados, "nome").replace(/\s+/g, " ");
+  const fantasia = texto(dados, "nome_fantasia").replace(/\s+/g, " ");
+  const responsavel = texto(dados, "responsavel").replace(/\s+/g, " ");
+  const email = texto(dados, "email").toLowerCase();
+  const plano = periodicidade(dados.periodicidade);
+  if (tipo !== "pj" && tipo !== "pf") erros.tipo_pessoa = "Escolha empresa ou pessoa física.";
+  if (tipo === "pj" && documento.length !== 14) erros.documento = "O CNPJ tem 14 caracteres.";
+  if (tipo === "pf" && documento.length !== 11) erros.documento = "O CPF tem 11 dígitos.";
+  if (tipo === "pf" && nome.length < 3) erros.nome = "Informe o nome completo.";
+  if (responsavel.length < 3) erros.responsavel = "Informe o nome de quem vai usar a conta.";
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) erros.email = "E-mail inválido.";
+  if (!plano) erros.periodicidade = "Escolha o plano.";
+  if (dados.aceite_termos !== "on") erros.aceite_termos = "É preciso aceitar os termos de uso.";
+  if (Object.keys(erros).length || !plano) return { corpo: null, erros };
+  return {
+    corpo: {
+      tipo_pessoa: tipo as CorpoCadastro["tipo_pessoa"],
+      documento,
+      nome: tipo === "pf" ? nome : null,
+      nome_fantasia: tipo === "pj" && fantasia ? fantasia : null,
+      responsavel,
+      email,
+      periodicidade: plano,
+      aceite_termos: true,
+    },
+    erros,
+  };
+}
