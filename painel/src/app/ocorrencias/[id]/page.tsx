@@ -14,7 +14,7 @@ import {
 import type { OcorrenciaDetalhe } from "@/lib/tipos";
 
 import { Topo } from "../../Topo";
-import { AcoesOcorrencia, SeloConfianca, SeloUrgencia } from "../componentes";
+import { AcoesHomonimo, AcoesOcorrencia, SeloConfianca, SeloUrgencia } from "../componentes";
 
 async function carregar(id: string): Promise<OcorrenciaDetalhe> {
   if (!/^\d+$/.test(id)) notFound();
@@ -41,7 +41,7 @@ export default async function DetalheOcorrencia({ params }: { params: Promise<{ 
       <Topo eu={eu} />
       <main>
         <p>
-          <Link href="/ocorrencias">← Ocorrências</Link>
+          <Link href="/ocorrencias">← Processos</Link>
         </p>
         <h1>
           {p.numero_cnj} <span className="suave">({p.tribunal})</span>
@@ -61,6 +61,9 @@ export default async function DetalheOcorrencia({ params }: { params: Promise<{ 
               Identificada pelo nome, sem CPF/CNPJ: pode ser um homônimo. Confira as partes antes
               de agir.
             </p>
+          )}
+          {o.confianca === "a_verificar" && o.status !== "descartado" && (
+            <AcoesHomonimo id={o.id} />
           )}
           <dl className="grade">
             <div>

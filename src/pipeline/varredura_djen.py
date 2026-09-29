@@ -102,17 +102,23 @@ class ResultadoVarreduraDJEN:
     interrompida: bool = False
 
 
-def _valores_do_alvo(alvo: Alvo) -> list[str]:
+def _termos_do_alvo(alvo: Alvo) -> list[tuple[str, str]]:
+    """(tipo de busca, valor) de cada termo do alvo no DJEN.
+
+    O DJEN busca por nome ou OAB, nunca por CPF/CNPJ: do alvo por documento valem as
+    variações (razão social, nome), que o cadastro deve trazer.
+    """
     if alvo.tipo == "oab":
-        return [alvo.valor]
-    return list(dict.fromkeys([alvo.valor, *alvo.variacoes]))
+        return [("oab", alvo.valor)]
+    nomes = [alvo.valor, *alvo.variacoes] if alvo.tipo == "nome" else list(alvo.variacoes)
+    return [("nome", nome) for nome in dict.fromkeys(nomes) if nome]
 
 
 async def termos_ativos(sessao: AsyncSession, chave_hash: str | bytes | None) -> list[Termo]:
     """Agrupa os alvos ativos (nome/OAB) de todos os clientes por termo de busca."""
     alvos = (
         await sessao.scalars(
-            select(Alvo).where(Alvo.ativo.is_(True), Alvo.tipo.in_(("nome", "oab")))
+            select(Alvo).where(Alvo.ativo.is_(True), Alvo.tipo.in_(("nome", "oab", "documento")))
         )
     ).all()
     estados = {
@@ -121,12 +127,12 @@ async def termos_ativos(sessao: AsyncSession, chave_hash: str | bytes | None) ->
     }
     termos: dict[tuple[str, str], Termo] = {}
     for alvo in alvos:
-        for valor in _valores_do_alvo(alvo):
-            chave = (alvo.tipo, valor)
+        for tipo, valor in _termos_do_alvo(alvo):
+            chave = (tipo, valor)
             termo = termos.get(chave)
             if termo is None:
-                ph = hash_parametro(f"djen_{alvo.tipo}", valor, chave_hash)
-                termo = termos[chave] = Termo(alvo.tipo, valor, ph)
+                ph = hash_parametro(f"djen_{tipo}", valor, chave_hash)
+                termo = termos[chave] = Termo(tipo, valor, ph)
             if any(d.alvo_id == alvo.id for d in termo.destinos):
                 continue
             desde = estados.get((alvo.id, termo.parametro_hash))

@@ -54,7 +54,7 @@ function texto(dados: Record<string, string | undefined>, campo: string): string
 }
 
 export interface CorpoAlvo {
-  tipo: "documento" | "nome";
+  tipo: "documento" | "nome" | "oab";
   valor: string;
   variacoes: string[];
   prioridade: "critica" | "padrao";
@@ -67,10 +67,19 @@ export function montarAlvo(dados: Record<string, string | undefined>): Resultado
   const valor = texto(dados, "valor");
   const prioridade = texto(dados, "prioridade") || "padrao";
   const finalidade = texto(dados, "finalidade").replace(/\s+/g, " ");
-  if (tipo !== "documento" && tipo !== "nome") erros.tipo = "Escolha CPF/CNPJ ou nome.";
-  if (!valor) erros.valor = "Informe o CPF/CNPJ ou o nome.";
+  const variacoes = linhas(dados.variacoes ?? "");
+  if (tipo !== "documento" && tipo !== "nome" && tipo !== "oab") {
+    erros.tipo = "Escolha nome, CPF/CNPJ ou OAB.";
+  }
+  if (!valor) erros.valor = "Informe o nome, o CPF/CNPJ ou a OAB.";
   else if (tipo === "documento" && !/^[0-9A-Za-z.\-/\s]{11,20}$/.test(valor)) {
     erros.valor = "CPF/CNPJ deve ter 11 ou 14 caracteres (pontuação é opcional).";
+  } else if (tipo === "oab" && !(/[A-Za-z]{2}/.test(valor) && /\d/.test(valor))) {
+    erros.valor = "OAB no formato UF + número, ex.: SP 123456.";
+  }
+  // O Diário de Justiça (DJEN) não busca por CPF/CNPJ: a busca é pelo nome/razão social.
+  if (tipo === "documento" && variacoes.length === 0) {
+    erros.variacoes = "Informe o nome ou a razão social: o Diário não busca por CPF/CNPJ.";
   }
   if (prioridade !== "critica" && prioridade !== "padrao") erros.prioridade = "Prioridade inválida.";
   if (finalidade.length < 5) erros.finalidade = "Informe a finalidade do monitoramento (LGPD).";
@@ -79,7 +88,7 @@ export function montarAlvo(dados: Record<string, string | undefined>): Resultado
     corpo: {
       tipo: tipo as CorpoAlvo["tipo"],
       valor,
-      variacoes: linhas(dados.variacoes ?? ""),
+      variacoes,
       prioridade: prioridade as CorpoAlvo["prioridade"],
       finalidade,
     },
@@ -150,9 +159,30 @@ export function errosDaApi(corpo: unknown): Erros {
     const msg = (item.msg ?? "").replace(/^Value error, /, "");
     const loc = (item.loc ?? []).filter((p) => p !== "body");
     let campo = typeof loc[0] === "string" ? loc[0] : "_geral";
-    if (campo === "_geral" && /CPF|CNPJ|nome inválido/.test(msg)) campo = "valor";
+    if (campo === "_geral" && /CPF|CNPJ|OAB|nome inválido/.test(msg)) campo = "valor";
     if (campo === "valor_min_centavos") campo = "valor_min";
     erros[campo] ??= msg;
   }
   return erros;
+}
+
+export interface CorpoContatos {
+  emails: string[];
+  whatsapp: string[];
+}
+
+/** Um e-mail/celular por linha. A API normaliza o celular (DDI 55 quando faltar). */
+export function montarContatos(dados: Record<string, string | undefined>): Resultado<CorpoContatos> {
+  const erros: Erros = {};
+  const emails = [...new Set(linhas(dados.emails ?? "").map((e) => e.toLowerCase()))];
+  const whatsapp = linhas(dados.whatsapp ?? "");
+  if (emails.some((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) {
+    erros.emails = "Há um e-mail inválido. Use um por linha.";
+  } else if (emails.length > 10) erros.emails = "No máximo 10 e-mails.";
+  const digitos = whatsapp.map((w) => w.replace(/\D/g, ""));
+  if (digitos.some((d) => d.length < 10 || d.length > 15)) {
+    erros.whatsapp = "Há um número inválido. Use DDD + número, um por linha.";
+  } else if (whatsapp.length > 10) erros.whatsapp = "No máximo 10 números.";
+  if (Object.keys(erros).length) return { corpo: null, erros };
+  return { corpo: { emails, whatsapp }, erros };
 }

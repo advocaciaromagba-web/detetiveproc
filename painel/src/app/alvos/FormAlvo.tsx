@@ -6,7 +6,7 @@ import { Campo } from "@/componentes/Campo";
 
 import { cadastrarAlvo, type EstadoFormulario } from "./acoes";
 
-const inicial: EstadoFormulario = { erros: {}, valores: { tipo: "documento", prioridade: "padrao" }, tentativa: 0 };
+const inicial: EstadoFormulario = { erros: {}, valores: { tipo: "nome", prioridade: "padrao" }, tentativa: 0 };
 
 export function FormAlvo() {
   const [estado, acao, enviando] = useActionState(cadastrarAlvo, inicial);
@@ -17,12 +17,13 @@ export function FormAlvo() {
       <Campo nome="tipo" rotulo="Tipo" erro={erros.tipo}>
         {(p) => (
           <select {...p} defaultValue={valores.tipo}>
-            <option value="documento">CPF/CNPJ</option>
-            <option value="nome">Nome (sem documento)</option>
+            <option value="nome">Nome ou razão social</option>
+            <option value="documento">CPF/CNPJ + nome</option>
+            <option value="oab">OAB (advogado)</option>
           </select>
         )}
       </Campo>
-      <Campo nome="valor" rotulo="CPF/CNPJ ou nome" erro={erros.valor}>
+      <Campo nome="valor" rotulo="Nome, CPF/CNPJ ou OAB" erro={erros.valor} dica="OAB: UF + número, ex.: SP 123456">
         {(p) => <input {...p} defaultValue={valores.valor} autoComplete="off" required />}
       </Campo>
       <Campo nome="prioridade" rotulo="Prioridade" erro={erros.prioridade} dica="Crítico: consultado a cada 4 h">
@@ -35,9 +36,9 @@ export function FormAlvo() {
       </Campo>
       <Campo
         nome="variacoes"
-        rotulo="Variações do nome (uma por linha)"
+        rotulo="Nomes buscados no Diário (um por linha)"
         erro={erros.variacoes}
-        dica="Usadas quando a capa não mostra o CPF/CNPJ"
+        dica="Obrigatório para CPF/CNPJ: o Diário de Justiça não busca por documento, só pelo nome ou razão social (ex.: Acme Comércio Ltda). Nome exato da empresa = processo confirmado; nome parecido = a verificar."
         largo
       >
         {(p) => <textarea {...p} defaultValue={valores.variacoes} rows={3} />}
@@ -58,7 +59,7 @@ export function FormAlvo() {
       )}
       <div className="largo">
         <button className="botao-primario" type="submit" disabled={enviando}>
-          {enviando ? "Salvando…" : "Cadastrar alvo"}
+          {enviando ? "Salvando…" : "Monitorar"}
         </button>
       </div>
     </form>

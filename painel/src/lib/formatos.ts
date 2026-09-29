@@ -28,9 +28,9 @@ export function formatarDataHora(iso: string): string {
 }
 
 export const ROTULO_STATUS: Record<string, string> = {
-  novo: "Nova",
-  visto: "Vista",
-  descartado: "Descartada",
+  novo: "Novo",
+  visto: "Visto",
+  descartado: "Descartado",
 };
 
 export const ROTULO_CONFIANCA: Record<string, string> = {
@@ -44,6 +44,30 @@ export const ROTULO_CRITERIO: Record<string, string> = {
   nome: "nome da parte (possível homônimo)",
   regra: "regra de monitoramento",
 };
+
+/** "G1" -> "1º grau" etc.; códigos desconhecidos passam como vieram. */
+export function rotuloGrau(grau: string | null | undefined): string | null {
+  if (!grau) return null;
+  const rotulos: Record<string, string> = {
+    G1: "1º grau",
+    G2: "2º grau",
+    JE: "Juizado Especial",
+    TR: "Turma Recursal",
+    SUP: "Tribunal Superior",
+  };
+  return rotulos[grau.toUpperCase()] ?? grau;
+}
+
+/** Nomes das partes para a lista (a API já corta em 3 por polo). */
+export function listarNomes(nomes: string[]): string {
+  return nomes.length ? nomes.join("; ") : "não informado";
+}
+
+/** "5511999998888" -> "+55 (11) 99999-8888"; outros formatos passam como vieram. */
+export function formatarWhatsapp(numero: string): string {
+  const m = /^55(\d{2})(\d{4,5})(\d{4})$/.exec(numero);
+  return m ? `+55 (${m[1]}) ${m[2]}-${m[3]}` : `+${numero}`;
+}
 
 export const ROTULO_POLO: Record<string, string> = {
   ativo: "Polo ativo",
@@ -85,7 +109,7 @@ export function linkSeguro(url: string | null | undefined): string | null {
 
 /** Monta a query string da listagem a partir dos filtros (ignora vazios). */
 export function queryOcorrencias(filtros: Record<string, string | undefined>): string {
-  const permitidos = ["status", "score_min", "desde", "antes_id"];
+  const permitidos = ["status", "confianca", "q", "score_min", "desde", "antes_id"];
   const params = new URLSearchParams();
   for (const chave of permitidos) {
     const valor = filtros[chave]?.trim();

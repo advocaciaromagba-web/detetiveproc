@@ -13,10 +13,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from core.documentos import normalizar_documento, tipo_documento
 from core.nomes import normalizar_nome
 from core.oab import OABInvalida, normalizar_oab
+from entrega.whatsapp import normalizar_whatsapp
 from pipeline.normalizador import canonizar_comarca
 
 Polo = Literal["ativo", "passivo", "terceiro"]
 StatusOcorrencia = Literal["novo", "visto", "descartado"]
+Confianca = Literal["confirmada", "a_verificar"]
 
 
 class Saida(BaseModel):
@@ -198,6 +200,10 @@ class ProcessoResumo(BaseModel):
     data_distribuicao: date | None
     valor_causa_centavos: int | None
     segredo: bool
+    assunto: str | None = None  # assunto principal (DataJud/capa)
+    grau: str | None = None  # "G1", "G2", "JE"... (DataJud)
+    autores: list[str] = Field(default_factory=list)  # polo ativo
+    reus: list[str] = Field(default_factory=list)  # polo passivo
 
 
 class ProcessoDetalhe(ProcessoResumo):
@@ -229,7 +235,43 @@ class OcorrenciaDetalhe(OcorrenciaResumo):
 
 
 class OcorrenciaAtualizacao(BaseModel):
-    status: StatusOcorrencia
+    """Situação e/ou confirmação de homônimo ("é mesmo o monitorado": confirmada)."""
+
+    status: StatusOcorrencia | None = None
+    confianca: Literal["confirmada"] | None = None
+
+    @model_validator(mode="after")
+    def _algo_para_mudar(self) -> "OcorrenciaAtualizacao":
+        if self.status is None and self.confianca is None:
+            raise ValueError("informe status ou confianca")
+        return self
+
+
+# --------------------------------------------------------------------------- conta
+
+
+class Contatos(BaseModel):
+    """Para onde vão os avisos de processo novo do cliente."""
+
+    emails: list[str] = Field(default_factory=list, max_length=10)
+    whatsapp: list[str] = Field(default_factory=list, max_length=10)
+
+    @field_validator("emails")
+    @classmethod
+    def _emails(cls, valores: list[str]) -> list[str]:
+        limpos = [v.strip().lower() for v in valores if v.strip()]
+        if any("@" not in v or len(v) > 254 or " " in v for v in limpos):
+            raise ValueError("e-mail inválido")
+        return list(dict.fromkeys(limpos))
+
+    @field_validator("whatsapp")
+    @classmethod
+    def _whatsapp(cls, valores: list[str]) -> list[str]:
+        numeros = [normalizar_whatsapp(v) for v in valores if v.strip()]
+        validos = [n for n in numeros if n]
+        if len(validos) != len(numeros):
+            raise ValueError("número de WhatsApp inválido (use DDD + número)")
+        return list(dict.fromkeys(validos))
 
 
 class Pagina[T](BaseModel):

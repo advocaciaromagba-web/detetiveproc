@@ -8,7 +8,10 @@ import {
   formatarDataHora,
   formatarReais,
   linkSeguro,
+  formatarWhatsapp,
+  listarNomes,
   queryOcorrencias,
+  rotuloGrau,
 } from "./formatos";
 
 describe("formatarReais", () => {
@@ -75,6 +78,30 @@ describe("queryOcorrencias", () => {
       }),
     ).toBe("?status=novo&antes_id=9");
     expect(queryOcorrencias({})).toBe("");
+  });
+
+  it("busca e confiança", () => {
+    expect(queryOcorrencias({ q: "  acme ltda ", confianca: "a_verificar" })).toBe(
+      "?confianca=a_verificar&q=acme+ltda",
+    );
+  });
+});
+
+describe("processos na lista", () => {
+  it("grau legível", () => {
+    expect(rotuloGrau("G1")).toBe("1º grau");
+    expect(rotuloGrau("je")).toBe("Juizado Especial");
+    expect(rotuloGrau("XYZ")).toBe("XYZ");
+    expect(rotuloGrau(null)).toBeNull();
+  });
+  it("nomes das partes", () => {
+    expect(listarNomes(["Fulano", "Acme Ltda."])).toBe("Fulano; Acme Ltda.");
+    expect(listarNomes([])).toBe("não informado");
+  });
+  it("WhatsApp formatado", () => {
+    expect(formatarWhatsapp("5511999998888")).toBe("+55 (11) 99999-8888");
+    expect(formatarWhatsapp("552133334444")).toBe("+55 (21) 3333-4444");
+    expect(formatarWhatsapp("14155550100")).toBe("+14155550100");
   });
 });
 

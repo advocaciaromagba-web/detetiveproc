@@ -269,3 +269,22 @@ async def test_processo_novo_com_aviso_e_completado_na_hora(fabrica) -> None:
     )
     # Só o processo recente (que gera aviso); o histórico fica para a repescagem.
     assert len(completados) == 1
+
+
+@pytest.mark.integracao
+async def test_alvo_por_cnpj_e_buscado_pela_razao_social(fabrica) -> None:
+    async with sessao_sistema(fabrica) as s:
+        c = Cliente(nome="Joaquim")
+        s.add(c)
+        await s.flush()
+        s.add_all(
+            [
+                Alvo(cliente_id=c.id, tipo="documento", valor="11222333000181",
+                     variacoes=["JOAQUIM ELETRICISTA"], finalidade="x"),
+                Alvo(cliente_id=c.id, tipo="documento", valor="52998224725", finalidade="x"),
+            ]
+        )  # fmt: skip
+    fonte = FonteFalsa()
+    await _varrer(fabrica, fonte)
+    # O DJEN não busca CPF/CNPJ: vai a razão social; alvo sem variação não é consultado.
+    assert {(t, v) for t, v, *_ in fonte.consultas} == {("nome", "JOAQUIM ELETRICISTA")}

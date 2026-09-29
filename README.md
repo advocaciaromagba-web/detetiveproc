@@ -186,8 +186,9 @@ uv run uvicorn api.app:app --port 8000   # documentação interativa em /docs
 | `POST /v1/auth/login` · `POST /v1/auth/logout` · `GET /v1/auth/eu` | Sessão do painel |
 | `POST /v1/alvos` · `GET /v1/alvos` · `GET/DELETE /v1/alvos/{id}` | Alvos (DELETE desativa) |
 | `POST /v1/regras` · `GET /v1/regras` · `GET/DELETE /v1/regras/{id}` | Regras por padrão |
-| `GET /v1/ocorrencias?status=&desde=&score_min=&limite=&antes_id=` | Ocorrências do cliente |
-| `GET/PATCH /v1/ocorrencias/{id}` | Detalhe; marcar `visto`, `descartado` ou `novo` |
+| `GET /v1/ocorrencias?status=&confianca=&q=&desde=&score_min=&limite=&antes_id=` | Processos do cliente, com autores/réus, assunto e grau; `q` busca por número ou nome da parte |
+| `GET/PATCH /v1/ocorrencias/{id}` | Detalhe; marcar `visto`, `descartado` ou `novo`; `{"confianca": "confirmada"}` confirma um possível homônimo |
+| `GET/PUT /v1/conta/contatos` | E-mails e WhatsApp que recebem o aviso de processo novo |
 | `GET /v1/processos/{numero_cnj}` | Capa (só processos com ocorrência do cliente) |
 | `GET /v1/saude` | Estado dos robôs (somente operador) |
 
@@ -219,16 +220,19 @@ MONITOR_API_URL=http://localhost:8000 npm run dev   # http://localhost:3100
 npm run lint && npm run typecheck && npm test && npm run build
 ```
 
-- Telas: login (e-mail, senha e código do autenticador), ocorrências (filtros por
-  situação, score mínimo e data; marcar como vista, descartar, reabrir), detalhe
-  (capa, partes, advogados, link da consulta pública), alvos (cadastro com
-  finalidade obrigatória, CPF/CNPJ mascarado na lista, desativar/reativar), regras
-  (filtros por classe, assunto, comarca, termos, polo e valor mínimo em R$) e, para
-  operadores, saúde dos robôs.
+- Telas: login (e-mail, senha e código do autenticador); **Processos** (número,
+  classe · assunto, tribunal · vara · grau, autores e réus, datas de distribuição e de
+  descoberta; busca por número ou nome da parte; filtros por situação, identificação e
+  data; "É meu"/"Não é meu" para possíveis homônimos; marcar como visto, descartar,
+  reabrir); detalhe (capa, partes, advogados, link da consulta pública); **Monitorados**
+  (nome, CPF/CNPJ + razão social ou OAB, com finalidade obrigatória; CPF/CNPJ mascarado
+  na lista; desativar/reativar); regras; **Avisos** (e-mails e WhatsApp que recebem o
+  processo novo) e, para operadores, saúde dos robôs.
+- O Diário de Justiça (DJEN) não busca por CPF/CNPJ: um monitorado por documento é
+  procurado pelos nomes informados em "Nomes buscados no Diário" (obrigatório no painel).
 - O painel só fala com a API, pelo servidor do Next. O token fica em cookie
   `httpOnly` + `SameSite=Strict`, e o navegador nunca o vê nem acessa a API ou o banco.
-- Configurações do cliente (pesos do score, e-mails de alerta) ainda são feitas no
-  banco/linha de comando.
+- Pesos do score ainda são configurados no banco/linha de comando.
 
 ## Saúde dos robôs e observabilidade (seção 9)
 

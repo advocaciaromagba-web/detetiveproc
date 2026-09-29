@@ -3,19 +3,35 @@ import { api, exigirCliente } from "@/lib/api";
 import {
   formatarData,
   formatarDataHora,
-  formatarReais,
+  listarNomes,
   queryOcorrencias,
-  ROTULO_POLO,
+  rotuloGrau,
   ROTULO_STATUS,
 } from "@/lib/formatos";
-import type { OcorrenciaResumo, Pagina } from "@/lib/tipos";
+import type { OcorrenciaResumo, Pagina, ProcessoResumo } from "@/lib/tipos";
 
 import { Topo } from "../Topo";
-import { AcoesOcorrencia, SeloConfianca, SeloUrgencia } from "./componentes";
+import { AcoesHomonimo, AcoesOcorrencia, SeloConfianca } from "./componentes";
 
-type Filtros = { status?: string; score_min?: string; desde?: string; antes_id?: string };
+type Filtros = {
+  status?: string;
+  confianca?: string;
+  q?: string;
+  desde?: string;
+  antes_id?: string;
+};
 
-export default async function Ocorrencias({ searchParams }: { searchParams: Promise<Filtros> }) {
+/** "Procedimento Comum Cível · Indenização por Dano Moral" */
+function naturezaDoProcesso(p: ProcessoResumo): string {
+  return [p.classe, p.assunto].filter(Boolean).join(" · ") || "Classe não informada";
+}
+
+/** "TJSP · 2ª Vara Cível de Campinas · 1º grau" */
+function ondeTramita(p: ProcessoResumo): string {
+  return [p.tribunal, p.vara ?? p.comarca, rotuloGrau(p.grau)].filter(Boolean).join(" · ");
+}
+
+export default async function Processos({ searchParams }: { searchParams: Promise<Filtros> }) {
   const eu = await exigirCliente();
   const filtros = await searchParams;
   const pagina = await api<Pagina<OcorrenciaResumo>>(
@@ -26,29 +42,41 @@ export default async function Ocorrencias({ searchParams }: { searchParams: Prom
     <>
       <Topo eu={eu} />
       <main>
-        <h1>Ocorrências</h1>
+        <h1>Processos</h1>
+        <p className="suave">
+          Processos encontrados no Diário de Justiça em nome das empresas e pessoas monitoradas,
+          mais recentes primeiro.
+        </p>
         <form className="filtros cartao" method="get">
+          <label>
+            Buscar
+            <input
+              name="q"
+              type="search"
+              maxLength={120}
+              placeholder="Número do processo ou nome da parte"
+              defaultValue={filtros.q ?? ""}
+            />
+          </label>
           <label>
             Situação
             <select name="status" defaultValue={filtros.status ?? ""}>
               <option value="">Todas</option>
-              <option value="novo">Novas</option>
-              <option value="visto">Vistas</option>
-              <option value="descartado">Descartadas</option>
+              <option value="novo">Novos</option>
+              <option value="visto">Vistos</option>
+              <option value="descartado">Descartados</option>
             </select>
           </label>
           <label>
-            Score mínimo
-            <input
-              name="score_min"
-              type="number"
-              min={0}
-              max={100}
-              defaultValue={filtros.score_min ?? ""}
-            />
+            Identificação
+            <select name="confianca" defaultValue={filtros.confianca ?? ""}>
+              <option value="">Todas</option>
+              <option value="confirmada">Confirmados</option>
+              <option value="a_verificar">A verificar (possível homônimo)</option>
+            </select>
           </label>
           <label>
-            Detectadas desde
+            Encontrados desde
             <input name="desde" type="date" defaultValue={filtros.desde ?? ""} />
           </label>
           <button className="botao-primario" type="submit">
@@ -58,53 +86,68 @@ export default async function Ocorrencias({ searchParams }: { searchParams: Prom
         </form>
 
         {pagina.itens.length === 0 ? (
-          <p className="cartao">Nenhuma ocorrência encontrada com esses filtros.</p>
+          <p className="cartao">Nenhum processo encontrado com esses filtros.</p>
         ) : (
           <div className="tabela-rolagem cartao" style={{ padding: 0 }}>
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Urgência</th>
                   <th scope="col">Processo</th>
-                  <th scope="col">Motivo</th>
-                  <th scope="col">Confiança</th>
-                  <th scope="col">Valor</th>
-                  <th scope="col">Detectada</th>
+                  <th scope="col">Partes</th>
+                  <th scope="col">Identificação</th>
+                  <th scope="col">Datas</th>
                   <th scope="col">Situação</th>
                 </tr>
               </thead>
               <tbody>
-                {pagina.itens.map((o) => (
-                  <tr key={o.id} className={o.status}>
-                    <td>
-                      <SeloUrgencia score={o.score_urgencia} />
-                    </td>
-                    <td>
-                      <Link href={`/ocorrencias/${o.id}`}>{o.processo.numero_cnj}</Link>
-                      <div className="suave">
-                        {o.processo.segredo
-                          ? "Segredo de justiça"
-                          : [o.processo.classe, o.processo.comarca].filter(Boolean).join(" · ")}
-                      </div>
-                      <div className="suave">
-                        Distribuído em {formatarData(o.processo.data_distribuicao)}
-                      </div>
-                    </td>
-                    <td>
-                      {o.motivo}
-                      {o.polo && <div className="suave">{ROTULO_POLO[o.polo] ?? o.polo}</div>}
-                    </td>
-                    <td>
-                      <SeloConfianca confianca={o.confianca} />
-                    </td>
-                    <td>{formatarReais(o.processo.valor_causa_centavos)}</td>
-                    <td>{formatarDataHora(o.detectado_em)}</td>
-                    <td>
-                      <div>{ROTULO_STATUS[o.status]}</div>
-                      <AcoesOcorrencia id={o.id} status={o.status} />
-                    </td>
-                  </tr>
-                ))}
+                {pagina.itens.map((o) => {
+                  const p = o.processo;
+                  const homonimo = o.confianca === "a_verificar" && o.status !== "descartado";
+                  return (
+                    <tr key={o.id} className={o.status}>
+                      <td>
+                        <Link href={`/ocorrencias/${o.id}`}>{p.numero_cnj}</Link>
+                        <div>{p.segredo ? "Segredo de justiça" : naturezaDoProcesso(p)}</div>
+                        <div className="suave">{ondeTramita(p)}</div>
+                      </td>
+                      <td>
+                        {p.segredo ? (
+                          <span className="suave">Não divulgadas</span>
+                        ) : (
+                          <>
+                            <div>
+                              <span className="suave">Autor: </span>
+                              {listarNomes(p.autores)}
+                            </div>
+                            <div>
+                              <span className="suave">Réu: </span>
+                              {listarNomes(p.reus)}
+                            </div>
+                          </>
+                        )}
+                      </td>
+                      <td>
+                        <SeloConfianca confianca={o.confianca} />
+                        <div className="suave">{o.motivo}</div>
+                        {homonimo && <AcoesHomonimo id={o.id} />}
+                      </td>
+                      <td>
+                        <div>
+                          <span className="suave">Distribuído: </span>
+                          {formatarData(p.data_distribuicao)}
+                        </div>
+                        <div>
+                          <span className="suave">Encontrado: </span>
+                          {formatarDataHora(o.detectado_em)}
+                        </div>
+                      </td>
+                      <td>
+                        <div>{ROTULO_STATUS[o.status]}</div>
+                        <AcoesOcorrencia id={o.id} status={o.status} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -115,7 +158,7 @@ export default async function Ocorrencias({ searchParams }: { searchParams: Prom
             <Link
               href={`/ocorrencias${queryOcorrencias({ ...filtros, antes_id: String(pagina.proximo) })}`}
             >
-              Mais antigas →
+              Mais antigos →
             </Link>
           </div>
         )}

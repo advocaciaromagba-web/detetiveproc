@@ -9,6 +9,12 @@ import { Topo } from "../Topo";
 import { desativarAlvo, reativarAlvo } from "./acoes";
 import { FormAlvo } from "./FormAlvo";
 
+const ROTULO_TIPO_ALVO: Record<string, string> = {
+  documento: "CPF/CNPJ",
+  nome: "Nome",
+  oab: "OAB",
+};
+
 const SITUACOES = [
   { valor: "ativos", rotulo: "Ativos" },
   { valor: "inativos", rotulo: "Inativos" },
@@ -31,15 +37,15 @@ export default async function Alvos({
     <>
       <Topo eu={eu} />
       <main>
-        <h1>Alvos monitorados</h1>
+        <h1>Nomes monitorados</h1>
         {salvo && (
           <p className="sucesso" role="status">
-            Alvo salvo. A primeira consulta cria a linha de base: processos antigos não geram
-            alerta.
+            Salvo. A primeira busca traz os processos do último ano para a lista; só os
+            publicados nos últimos dias geram aviso.
           </p>
         )}
         <section className="cartao">
-          <h2 style={{ marginTop: 0 }}>Novo alvo</h2>
+          <h2 style={{ marginTop: 0 }}>Monitorar novo nome</h2>
           <FormAlvo />
         </section>
 
@@ -56,14 +62,14 @@ export default async function Alvos({
         </nav>
 
         {pagina.itens.length === 0 ? (
-          <p className="cartao">Nenhum alvo nesta lista.</p>
+          <p className="cartao">Nenhum nome nesta lista.</p>
         ) : (
           <div className="tabela-rolagem cartao" style={{ padding: 0 }}>
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Alvo</th>
-                  <th scope="col">Variações</th>
+                  <th scope="col">Monitorado</th>
+                  <th scope="col">Nomes buscados</th>
                   <th scope="col">Prioridade</th>
                   <th scope="col">Finalidade</th>
                   <th scope="col">Cadastro</th>
@@ -75,7 +81,7 @@ export default async function Alvos({
                   <tr key={a.id} className={a.ativo ? undefined : "descartado"}>
                     <td>
                       {a.tipo === "documento" ? mascararDocumento(a.valor) : a.valor}
-                      <div className="suave">{a.tipo === "documento" ? "CPF/CNPJ" : "Nome"}</div>
+                      <div className="suave">{ROTULO_TIPO_ALVO[a.tipo] ?? a.tipo}</div>
                     </td>
                     <td>
                       {a.variacoes.length ? (
