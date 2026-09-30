@@ -242,6 +242,20 @@ class DocumentoEntrada(BaseModel):
     documento: str
 
 
+class TrocaSenhaEntrada(BaseModel):
+    """Sem restrições no Pydantic: o erro de validação ecoaria a senha na resposta."""
+
+    senha_atual: str
+    nova_senha: str
+    codigo: str
+
+
+class EncerramentoEntrada(BaseModel):
+    senha: str
+    codigo: str
+    confirmacao: str  # o cliente digita ENCERRAR
+
+
 class PagamentoCliente(BaseModel):
     recebido_em: datetime
     tipo: str
@@ -281,6 +295,7 @@ class ClienteResumo(BaseModel):
     termos_versao: str | None
     assinaturas: dict[str, int]  # quantas em cada status
     problemas: int  # assinaturas com problema na cobrança
+    encerrado_em: datetime | None = None  # conta encerrada pelo cliente
 
 
 class PagamentoRecebido(Saida):

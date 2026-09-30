@@ -156,6 +156,34 @@ async def autenticar_token(fabrica: Fabrica, token: str, agora: datetime) -> Pri
         )
 
 
+def _conferir(usuario: Usuario, senha: str, codigo: str, agora: datetime) -> bool:
+    """Senha + código TOTP (sem reuso) de um usuário já travado na transação.
+
+    Sucesso zera as falhas e marca o passo do código como usado; falha conta para o
+    bloqueio (MAX_FALHAS seguidas bloqueiam por DURACAO_BLOQUEIO). Conta bloqueada
+    recusa mesmo com credenciais certas.
+    """
+    bloqueado = usuario.bloqueado_ate is not None and usuario.bloqueado_ate > agora
+    senha_ok = verificar_senha(usuario.senha_hash, senha)
+    passo = passo_totp(usuario.totp_segredo, codigo, agora) if senha_ok else None
+    reuso = (
+        passo is not None
+        and usuario.totp_ultimo_passo is not None
+        and passo <= usuario.totp_ultimo_passo
+    )
+    if senha_ok and passo is not None and not reuso and not bloqueado:
+        usuario.falhas_login = 0
+        usuario.bloqueado_ate = None
+        usuario.totp_ultimo_passo = passo
+        return True
+    if not bloqueado:
+        usuario.falhas_login += 1
+        if usuario.falhas_login >= MAX_FALHAS:
+            usuario.bloqueado_ate = agora + DURACAO_BLOQUEIO
+            usuario.falhas_login = 0
+    return False
+
+
 async def entrar(
     fabrica: Fabrica, email: str, senha: str, codigo: str, agora: datetime
 ) -> SessaoCriada:
@@ -165,45 +193,102 @@ async def entrar(
         usuario = await s.scalar(select(Usuario).where(Usuario.email == email).with_for_update())
         if usuario is None or not usuario.ativo:
             verificar_senha(_HASH_FALSO, senha)  # mesmo custo de um usuário real
-        else:
-            bloqueado = usuario.bloqueado_ate is not None and usuario.bloqueado_ate > agora
-            senha_ok = verificar_senha(usuario.senha_hash, senha)
-            passo = passo_totp(usuario.totp_segredo, codigo, agora) if senha_ok else None
-            reuso = (
-                passo is not None
-                and usuario.totp_ultimo_passo is not None
-                and passo <= usuario.totp_ultimo_passo
+        elif _conferir(usuario, senha, codigo, agora):
+            usuario.ultimo_login_em = agora
+            if _hasher.check_needs_rehash(usuario.senha_hash):
+                usuario.senha_hash = _hasher.hash(senha)
+            token = gerar_token()
+            expira_em = agora + DURACAO_SESSAO
+            s.add(
+                SessaoUsuario(
+                    usuario_id=usuario.id, token_hash=hash_token(token), expira_em=expira_em
+                )
             )
-            if senha_ok and passo is not None and not reuso and not bloqueado:
-                usuario.falhas_login = 0
-                usuario.bloqueado_ate = None
-                usuario.ultimo_login_em = agora
-                usuario.totp_ultimo_passo = passo
-                if _hasher.check_needs_rehash(usuario.senha_hash):
-                    usuario.senha_hash = _hasher.hash(senha)
-                token = gerar_token()
-                expira_em = agora + DURACAO_SESSAO
-                s.add(
-                    SessaoUsuario(
-                        usuario_id=usuario.id, token_hash=hash_token(token), expira_em=expira_em
-                    )
-                )
-                papel: Papel = "operador" if usuario.papel == "operador" else "cliente"
-                principal = Principal(
-                    papel,
-                    usuario.cliente_id,
-                    usuario_id=usuario.id,
-                    nome=usuario.nome,
-                    email=usuario.email,
-                )
-                return SessaoCriada(token, expira_em, principal)
-            if not bloqueado:
-                usuario.falhas_login += 1
-                if usuario.falhas_login >= MAX_FALHAS:
-                    usuario.bloqueado_ate = agora + DURACAO_BLOQUEIO
-                    usuario.falhas_login = 0
+            papel: Papel = "operador" if usuario.papel == "operador" else "cliente"
+            principal = Principal(
+                papel,
+                usuario.cliente_id,
+                usuario_id=usuario.id,
+                nome=usuario.nome,
+                email=usuario.email,
+            )
+            return SessaoCriada(token, expira_em, principal)
     # A falha é gravada (transação acima concluída) antes de recusar.
     raise CredenciaisInvalidas
+
+
+async def trocar_senha(
+    fabrica: Fabrica,
+    usuario_id: int,
+    *,
+    senha_atual: str,
+    nova_senha: str,
+    codigo: str,
+    token_atual: str | None,
+    agora: datetime,
+) -> int:
+    """Troca a senha (exige a atual e o código do autenticador) e encerra as outras
+    sessões do usuário; a sessão em uso continua. Devolve quantas foram encerradas.
+
+    SenhaFraca antes de conferir (não conta como falha); CredenciaisInvalidas em
+    qualquer recusa, gravada a falha antes (mesmo bloqueio do login)."""
+    novo_hash = hash_senha(nova_senha)
+    async with sessao_sistema(fabrica) as s:
+        usuario = await s.get(Usuario, usuario_id, with_for_update=True)
+        if usuario is not None and usuario.ativo and _conferir(usuario, senha_atual, codigo, agora):
+            usuario.senha_hash = novo_hash
+            outras = (
+                await s.execute(
+                    update(SessaoUsuario)
+                    .where(
+                        SessaoUsuario.usuario_id == usuario_id,
+                        SessaoUsuario.revogada_em.is_(None),
+                        SessaoUsuario.token_hash != hash_token(token_atual or ""),
+                    )
+                    .values(revogada_em=agora)
+                    .returning(SessaoUsuario.id)
+                )
+            ).all()
+            return len(outras)
+    raise CredenciaisInvalidas
+
+
+async def conferir_credenciais(
+    fabrica: Fabrica, usuario_id: int, senha: str, codigo: str, agora: datetime
+) -> None:
+    """Confirmação de uma ação sensível (ex.: encerrar a conta). Mesmas regras do login;
+    levanta CredenciaisInvalidas, com a falha já gravada."""
+    async with sessao_sistema(fabrica) as s:
+        usuario = await s.get(Usuario, usuario_id, with_for_update=True)
+        if usuario is not None and usuario.ativo and _conferir(usuario, senha, codigo, agora):
+            return
+    raise CredenciaisInvalidas
+
+
+async def encerrar_acessos(s: AsyncSession, cliente_id: int, agora: datetime) -> None:
+    """Conta encerrada: usuários desativados, com e-mail anonimizado (o mesmo e-mail pode
+    se cadastrar de novo), senha e segredo do autenticador descartados; sessões e chaves
+    de API revogadas. Roda dentro da transação do encerramento."""
+    usuarios = (
+        await s.scalars(select(Usuario).where(Usuario.cliente_id == cliente_id).with_for_update())
+    ).all()
+    for usuario in usuarios:
+        usuario.email = f"encerrado-{usuario.id}@encerrado.invalid"
+        usuario.nome = "[conta encerrada]"
+        usuario.senha_hash = _HASH_FALSO
+        usuario.totp_segredo = pyotp.random_base32()
+        usuario.ativo = False
+    ids = [u.id for u in usuarios]
+    await s.execute(
+        update(SessaoUsuario)
+        .where(SessaoUsuario.usuario_id.in_(ids), SessaoUsuario.revogada_em.is_(None))
+        .values(revogada_em=agora)
+    )
+    await s.execute(
+        update(ChaveApi)
+        .where(ChaveApi.cliente_id == cliente_id, ChaveApi.revogada_em.is_(None))
+        .values(revogada_em=agora)
+    )
 
 
 async def sair(fabrica: Fabrica, token: str, agora: datetime) -> None:

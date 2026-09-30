@@ -8,8 +8,10 @@ import {
   montarCadastro,
   montarContatos,
   montarDocumento,
+  montarEncerramento,
   montarPrecos,
   montarTermo,
+  montarTrocaSenha,
   periodicidade,
   reaisParaCentavos,
 } from "./formularios";
@@ -263,5 +265,33 @@ describe("montarDocumento", () => {
     });
     expect(montarDocumento({ documento: "123" }).erros.documento).toContain("CPF");
     expect(montarDocumento({}).corpo).toBeNull();
+  });
+});
+
+describe("montarTrocaSenha e montarEncerramento", () => {
+  const ok = {
+    senha_atual: "senha-antiga-123",
+    nova_senha: "senha-nova-4567",
+    confirmacao: "senha-nova-4567",
+    codigo: "123 456",
+  };
+  it("troca de senha: confere tamanho, repetição, diferença e código", () => {
+    expect(montarTrocaSenha(ok).corpo).toEqual({
+      senha_atual: "senha-antiga-123",
+      nova_senha: "senha-nova-4567",
+      codigo: "123456",
+    });
+    const curta = montarTrocaSenha({ ...ok, nova_senha: "curta", confirmacao: "curta" });
+    expect(curta.erros.nova_senha).toContain("12");
+    expect(montarTrocaSenha({ ...ok, confirmacao: "outra" }).erros.confirmacao).toBeDefined();
+    const igual = montarTrocaSenha({ ...ok, nova_senha: ok.senha_atual, confirmacao: ok.senha_atual });
+    expect(igual.erros.nova_senha).toContain("diferente");
+    expect(montarTrocaSenha({ ...ok, codigo: "12" }).erros.codigo).toBeDefined();
+  });
+  it("encerramento: exige senha, código e ENCERRAR", () => {
+    const base = { senha: "x", codigo: "123456", confirmacao: " ENCERRAR " };
+    expect(montarEncerramento(base).corpo).toEqual({ ...base, confirmacao: "ENCERRAR" });
+    expect(montarEncerramento({ ...base, confirmacao: "encerrar" }).erros.confirmacao).toBeDefined();
+    expect(montarEncerramento({ ...base, senha: "" }).erros.senha).toBeDefined();
   });
 });

@@ -216,6 +216,8 @@ export interface ClienteResumo {
   /** Quantas assinaturas em cada status. */
   assinaturas: Record<StatusAssinatura, number>;
   problemas: number;
+  /** Conta encerrada pelo próprio cliente. */
+  encerrado_em: string | null;
 }
 
 export interface PagamentoRecebido {

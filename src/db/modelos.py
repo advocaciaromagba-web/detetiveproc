@@ -375,6 +375,8 @@ class Cliente(Base):
     # Versão dos termos de uso/política de privacidade aceita e quando (prova do aceite).
     termos_versao: Mapped[str | None] = mapped_column(String(20))
     termos_aceitos_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Conta encerrada pelo cliente: nada mais é monitorado nem cobrado.
+    encerrado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Pesos do score, limite de valor e limiares (regras.config.ConfigAlertas).
     config_alertas: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb")

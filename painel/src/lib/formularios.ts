@@ -231,6 +231,44 @@ export function montarDocumento(
   return { corpo: { documento }, erros: {} };
 }
 
+const SENHA_MINIMA = 12; // a mesma da API (api.auth.SENHA_MINIMA)
+const CODIGO = /^\d{6}$/;
+
+export function montarTrocaSenha(dados: Record<string, string | undefined>): Resultado<{
+  senha_atual: string;
+  nova_senha: string;
+  codigo: string;
+}> {
+  const erros: Erros = {};
+  const atual = dados.senha_atual ?? "";
+  const nova = dados.nova_senha ?? "";
+  const codigo = (dados.codigo ?? "").replace(/\s/g, "");
+  if (!atual) erros.senha_atual = "Informe a senha atual.";
+  if (nova.length < SENHA_MINIMA) {
+    erros.nova_senha = `A nova senha precisa ter ao menos ${SENHA_MINIMA} caracteres.`;
+  } else if (nova === atual) erros.nova_senha = "A nova senha precisa ser diferente da atual.";
+  if (nova !== (dados.confirmacao ?? "")) erros.confirmacao = "As senhas não conferem.";
+  if (!CODIGO.test(codigo)) erros.codigo = "Informe o código de 6 dígitos do autenticador.";
+  if (Object.keys(erros).length) return { corpo: null, erros };
+  return { corpo: { senha_atual: atual, nova_senha: nova, codigo }, erros };
+}
+
+export function montarEncerramento(dados: Record<string, string | undefined>): Resultado<{
+  senha: string;
+  codigo: string;
+  confirmacao: string;
+}> {
+  const erros: Erros = {};
+  const senha = dados.senha ?? "";
+  const codigo = (dados.codigo ?? "").replace(/\s/g, "");
+  const confirmacao = (dados.confirmacao ?? "").trim();
+  if (!senha) erros.senha = "Informe sua senha.";
+  if (!CODIGO.test(codigo)) erros.codigo = "Informe o código de 6 dígitos do autenticador.";
+  if (confirmacao !== "ENCERRAR") erros.confirmacao = "Para confirmar, digite ENCERRAR.";
+  if (Object.keys(erros).length) return { corpo: null, erros };
+  return { corpo: { senha, codigo, confirmacao }, erros };
+}
+
 export interface PrecoAlterado {
   produto: "nome" | "termo";
   periodicidade: PeriodicidadeEscolhida;
