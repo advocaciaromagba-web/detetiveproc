@@ -36,6 +36,13 @@ export default async function FichaCliente({
           <Link href="/clientes">← Clientes</Link>
         </p>
         <h1>{cliente.nome}</h1>
+        {cliente.encerrado_em && (
+          <p className="aviso">
+            Conta encerrada pelo cliente em {formatarDataHora(cliente.encerrado_em)}: nada é
+            monitorado nem cobrado, e os dados pessoais que não precisam ser guardados foram
+            apagados.
+          </p>
+        )}
         <Mensagem ok={ok} erro={erro} />
         <section className="cartao grade">
           <div>

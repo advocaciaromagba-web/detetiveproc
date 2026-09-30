@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Mensagem } from "@/componentes/Operador";
 import { api, exigirOperador } from "@/lib/api";
-import { formatarDataHora } from "@/lib/formatos";
+import { formatarData, formatarDataHora } from "@/lib/formatos";
 import { queryOperador, resumoContagem } from "@/lib/operador";
 import type { ClienteResumo, Pagina } from "@/lib/tipos";
 
@@ -77,7 +77,11 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
                     <td>{c.email ?? <span className="suave">—</span>}</td>
                     <td>{resumoContagem(c.assinaturas)}</td>
                     <td>
-                      {c.problemas > 0 ? (
+                      {c.encerrado_em ? (
+                        <span className="selo selo-baixa">
+                          Conta encerrada em {formatarData(c.encerrado_em)}
+                        </span>
+                      ) : c.problemas > 0 ? (
                         <span className="selo selo-alta">
                           {c.problemas === 1 ? "1 problema" : `${c.problemas} problemas`}
                         </span>

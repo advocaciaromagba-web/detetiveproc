@@ -162,6 +162,16 @@ async def cancelar(sessao: AsyncSession, assinatura: Assinatura, agora: datetime
     return assinatura
 
 
+async def encerrar_agora(sessao: AsyncSession, assinatura: Assinatura, agora: datetime) -> None:
+    """Encerramento da conta: cancela já, mesmo com período pago (não renova, não
+    monitora). O cancelamento no Asaas segue pelo caminho normal (``cancelar_no_gateway``)."""
+    if assinatura.status == "cancelada":
+        return
+    assinatura.cancelar_no_fim = False
+    await _encerrar(sessao, assinatura, "cancelada", agora)
+    await sessao.flush()
+
+
 async def _encerrar(
     sessao: AsyncSession, assinatura: Assinatura, status: str, agora: datetime
 ) -> None:

@@ -123,6 +123,7 @@ async def _resumos(
             termos_versao=c.termos_versao,
             assinaturas={st: por_cliente[c.id][st] for st in STATUS_ASSINATURA},
             problemas=int(problemas.get(c.id, 0)),
+            encerrado_em=c.encerrado_em,
         )
         for c in clientes
     ]

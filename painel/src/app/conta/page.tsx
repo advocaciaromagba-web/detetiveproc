@@ -7,6 +7,8 @@ import type { Assinatura, Cobrancas, Conta } from "@/lib/tipos";
 
 import { Topo } from "../Topo";
 import { FormDocumento } from "./FormDocumento";
+import { FormEncerrar } from "./FormEncerrar";
+import { FormSenha } from "./FormSenha";
 
 function descricao(a: Assinatura): string {
   if (a.alvo) {
@@ -138,6 +140,21 @@ export default async function MinhaConta() {
             </table>
           </div>
         )}
+
+        <h2>Senha</h2>
+        <section className="cartao">
+          {conta.email_login ? (
+            <FormSenha />
+          ) : (
+            <p className="suave">Entre com e-mail, senha e autenticador para trocar a senha.</p>
+          )}
+        </section>
+
+        <h2>Encerrar conta</h2>
+        <details className="cartao">
+          <summary>Quero encerrar minha conta</summary>
+          <FormEncerrar />
+        </details>
       </main>
     </>
   );
