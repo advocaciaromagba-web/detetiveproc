@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -106,6 +106,16 @@ class Settings(BaseSettings):
     log_formato: Literal["json", "texto"] = "json"
     log_nivel: str = "INFO"
     metricas_porta: int = 9100  # servidor Prometheus do agendador (rede interna)
+
+    @field_validator("database_url")
+    @classmethod
+    def _driver_assincrono(cls, url: str) -> str:
+        """Aceita a URL como os provedores a entregam (``postgres://`` ou
+        ``postgresql://``, ex.: Railway) e usa o driver assíncrono (asyncpg)."""
+        for prefixo in ("postgres://", "postgresql://"):
+            if url.startswith(prefixo):
+                return "postgresql+asyncpg://" + url.removeprefix(prefixo)
+        return url
 
 
 @lru_cache

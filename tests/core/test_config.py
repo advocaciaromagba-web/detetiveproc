@@ -19,3 +19,15 @@ def test_padroes(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
     assert settings.database_url.startswith("postgresql+asyncpg://")
     assert settings.hash_documento_chave is None
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperada"),
+    [
+        ("postgresql://u:s@h:5432/b", "postgresql+asyncpg://u:s@h:5432/b"),  # Railway
+        ("postgres://u:s@h:5432/b", "postgresql+asyncpg://u:s@h:5432/b"),
+        ("postgresql+asyncpg://u:s@h:5432/b", "postgresql+asyncpg://u:s@h:5432/b"),
+    ],
+)
+def test_url_do_banco_usa_o_driver_assincrono(entrada: str, esperada: str) -> None:
+    assert Settings(database_url=entrada).database_url == esperada
