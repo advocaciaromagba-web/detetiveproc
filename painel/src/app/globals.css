@@ -116,6 +116,7 @@ tr.descartado td { opacity: 0.55; }
 .acoes form { margin: 0; }
 .suave { color: var(--texto-suave); font-size: 0.85rem; }
 .aviso { padding: 10px 12px; border-radius: 6px; background: var(--media-fundo); color: var(--media); }
+.faixa { margin: 0; border-radius: 0; text-align: center; }
 .erro { padding: 10px 12px; border-radius: 6px; background: var(--alta-fundo); color: var(--alta); }
 
 .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; }

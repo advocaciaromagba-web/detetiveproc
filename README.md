@@ -197,6 +197,8 @@ uv run uvicorn api.app:app --port 8000   # documentação interativa em /docs
 | `GET /v1/alvos` · `GET /v1/alvos/{id}` · `GET /v1/regras` · `GET /v1/regras/{id}` | Nomes e termos (leitura: entram e saem pelas assinaturas) |
 | `GET /v1/ocorrencias?status=&confianca=&q=&desde=&score_min=&limite=&antes_id=` | Processos do cliente, com autores/réus, assunto e grau; `q` busca por número ou nome da parte |
 | `GET/PATCH /v1/ocorrencias/{id}` | Detalhe; marcar `visto`, `descartado` ou `novo`; `{"confianca": "confirmada"}` confirma um possível homônimo |
+| `GET /v1/conta` · `PUT /v1/conta/documento` | Minha conta; CPF/CNPJ do titular da cobrança (informado uma vez — depois só o suporte altera; emite na hora as cobranças que esperavam) |
+| `GET /v1/conta/cobrancas` | Assinaturas a pagar/pagas com o link do Asaas e os últimos pagamentos (valor e o que foi pago) |
 | `GET/PUT /v1/conta/contatos` | E-mails e WhatsApp que recebem o aviso de processo novo |
 | `GET /v1/processos/{numero_cnj}` | Capa (só processos com ocorrência do cliente) |
 | `GET /v1/saude` | Estado dos robôs (somente operador) |
@@ -322,7 +324,9 @@ npm run lint && npm run typecheck && npm test && npm run build
   reabrir); detalhe (capa, partes, advogados, link da consulta pública); **Monitorados**
   e **Termos** (contratar um nome ou um termo escolhendo o plano mensal ou anual com o
   preço; situação da assinatura; "Não renovar"); **Avisos** (e-mails e WhatsApp que
-  recebem o processo novo); para operadores, **Clientes** e **Assinaturas** (situação
+  recebem o processo novo); **Minha conta** (titular da cobrança, cobranças com o botão
+  Pagar e histórico de pagamentos; enquanto faltar o CPF/CNPJ do titular, uma faixa no
+  topo avisa); para operadores, **Clientes** e **Assinaturas** (situação
   da cobrança de cada item, filtro "com problema na cobrança", conceder cortesia, liberar
   período, cobrar agora, cancelar), **saúde dos robôs** e **Preços**.
 - O Diário de Justiça (DJEN) não busca por CPF/CNPJ: um monitorado por documento é

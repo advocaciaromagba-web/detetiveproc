@@ -50,6 +50,8 @@ class EuSaida(BaseModel):
     cliente_nome: str | None = None
     usuario_id: int | None = None
     chave_api_id: int | None = None
+    # Clientes: o que impede a cobrança (ex.: "documento" = falta o CPF/CNPJ do titular).
+    pendencias: list[str] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- alvos
@@ -219,6 +221,39 @@ class AssinaturaSaida(Saida):
     link_pagamento: str | None = None  # cobrança em aberto (Pix, boleto ou cartão)
     alvo: AlvoSaida | None = None
     termo: RegraSaida | None = None
+
+
+# --------------------------------------------------------------------------- minha conta
+
+
+class ContaSaida(BaseModel):
+    nome: str
+    email_login: str | None
+    documento: str | None  # titular da cobrança, mascarado
+    pode_informar_documento: bool  # só enquanto não informado
+    termos_versao: str | None
+    termos_aceitos_em: datetime | None
+
+
+class DocumentoEntrada(BaseModel):
+    """CPF ou CNPJ do titular. Validado na rota (tamanho inclusive): o erro de validação
+    do Pydantic ecoaria o valor digitado na resposta."""
+
+    documento: str
+
+
+class PagamentoCliente(BaseModel):
+    recebido_em: datetime
+    tipo: str
+    resultado: str
+    valor_centavos: int | None
+    assinatura_id: int
+    item: str  # o que foi pago, em uma linha
+
+
+class CobrancasSaida(BaseModel):
+    assinaturas: list[AssinaturaSaida]  # em aberto, atrasadas e suspensas
+    pagamentos: list[PagamentoCliente]
 
 
 # --------------------------------------------------------------------------- operador

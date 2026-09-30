@@ -71,3 +71,15 @@ def formatar_cnpj(cnpj: str) -> str:
     if not validar_cnpj(d):
         raise ValueError("CNPJ inválido")
     return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
+
+
+def mascarar_documento(documento: str | None) -> str | None:
+    """Só os dois primeiros e os dois últimos caracteres: identifica sem expor."""
+    if not documento:
+        return None
+    d = normalizar_documento(documento)
+    if len(d) == 14:
+        return f"{d[:2]}.***.***/****-{d[-2:]}"
+    if len(d) == 11:
+        return f"{d[:2]}*.***.***-{d[-2:]}"
+    return "***"

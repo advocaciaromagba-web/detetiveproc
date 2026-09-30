@@ -68,6 +68,8 @@ export interface Eu {
   nome: string;
   cliente_id: number | null;
   cliente_nome: string | null;
+  /** O que impede a cobrança; "documento" = falta o CPF/CNPJ do titular. */
+  pendencias?: string[];
 }
 
 export interface ExecucaoRobo {
@@ -226,4 +228,28 @@ export interface PagamentoRecebido {
 export interface ClienteDetalhe extends ClienteResumo {
   itens: AssinaturaOperador[];
   pagamentos: PagamentoRecebido[];
+}
+
+export interface Conta {
+  nome: string;
+  email_login: string | null;
+  /** CPF/CNPJ do titular da cobrança, já mascarado pela API. */
+  documento: string | null;
+  pode_informar_documento: boolean;
+  termos_versao: string | null;
+  termos_aceitos_em: string | null;
+}
+
+export interface PagamentoCliente {
+  recebido_em: string;
+  tipo: string;
+  resultado: string;
+  valor_centavos: number | null;
+  assinatura_id: number;
+  item: string;
+}
+
+export interface Cobrancas {
+  assinaturas: Assinatura[];
+  pagamentos: PagamentoCliente[];
 }
