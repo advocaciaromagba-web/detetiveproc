@@ -21,11 +21,13 @@ import logging
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Literal
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from cobranca.assinaturas import termos_no_limite
 from core.documentos import normalizar_documento
 from db.modelos import Alvo, Cliente, Ocorrencia, Parte, Pessoa, Processo, Regra, Tribunal
 from pipeline.dedup import travar_processo
@@ -304,7 +306,12 @@ async def avaliar_processo(
     alvos = {
         a.id: a for a in (await sessao.scalars(select(Alvo).where(Alvo.id.in_(casamentos)))).all()
     }
-    regras = (await sessao.scalars(select(Regra).where(Regra.ativo).order_by(Regra.id))).all()
+    regras = list((await sessao.scalars(select(Regra).where(Regra.ativo).order_by(Regra.id))).all())
+    # Termo que atingiu o limite de processos do mês não traz mais nada até o mês seguinte.
+    no_limite = await termos_no_limite(
+        sessao, [r.id for r in regras if r.tipo_termo], datetime.now(UTC)
+    )
+    regras = [r for r in regras if r.id not in no_limite]
 
     polos_por_cliente: dict[int, dict[str, Confianca]] = defaultdict(dict)
     for alvo_id, casamento in casamentos.items():

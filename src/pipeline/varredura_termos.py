@@ -11,6 +11,9 @@ atualização, e não a de ajuizamento (um processo que chega atrasado não se p
 - Depois, cada processo novo gera ocorrência e aviso (e-mail/WhatsApp), como no nome.
 - ``max_paginas`` por termo e tribunal a cada ciclo limita o volume; o resto continua no
   ciclo seguinte (o cursor avança página a página).
+- **Limite do plano**: cada termo traz no máximo ``assinatura.limite_processos``
+  processos por mês. Atingido o limite, a busca daquele termo para (o cursor fica no
+  último processo trazido) e recomeça dali no mês seguinte.
 
 O DataJud não traz as partes: processos achados só por termo aparecem sem autor/réu.
 """
@@ -24,6 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from cobranca.assinaturas import termos_no_limite
 from db.modelos import ConsultaTermo, Processo, Regra
 from db.sessao import sessao_sistema
 from fontes.base import ErroFonte, LimiteFonte
@@ -67,6 +71,7 @@ class ResultadoVarreduraTermos:
     erros: int = 0
     interrompida: bool = False
     tribunais_com_erro: list[str] = field(default_factory=list)
+    termos_no_limite: set[int] = field(default_factory=set)
 
 
 @dataclass(frozen=True)
@@ -150,6 +155,11 @@ async def _salvar_estado(
     )
 
 
+async def _no_limite(fabrica: Fabrica, regra_id: int, agora: datetime) -> bool:
+    async with sessao_sistema(fabrica) as s:
+        return regra_id in await termos_no_limite(s, [regra_id], agora)
+
+
 async def _varrer_tarefa(
     fabrica: Fabrica,
     fonte: BuscaTermo,
@@ -160,6 +170,11 @@ async def _varrer_tarefa(
 ) -> None:
     cursor = tarefa.cursor
     for _ in range(config.max_paginas):
+        # Limite do plano atingido: nem consulta; o cursor fica onde está e a busca
+        # continua dali no mês seguinte (nada se perde, só espera).
+        if await _no_limite(fabrica, tarefa.regra_id, agora):
+            resultado.termos_no_limite.add(tarefa.regra_id)
+            return
         pagina = await fonte.buscar_por_termo(
             tarefa.tribunal,
             tarefa.tipo,
@@ -172,7 +187,7 @@ async def _varrer_tarefa(
         # Fim da fila: página incompleta, ou o cursor não andou (todos com o mesmo
         # @timestamp já vistos): a carga inicial está completa.
         fim = pagina.lidos < config.tamanho_pagina or pagina.cursor == cursor
-        concluida = tarefa.carga_concluida or fim
+        novo_cursor = pagina.cursor
         async with sessao_sistema(fabrica) as s:
             for dado in pagina.processos:
                 novo, ocorrencias, alertas = await registrar_processo_datajud(
@@ -181,10 +196,16 @@ async def _varrer_tarefa(
                 resultado.processos_novos += novo
                 resultado.ocorrencias_novas += ocorrencias
                 resultado.alertas += alertas
-            await _salvar_estado(s, tarefa, pagina.cursor, concluida, agora)
-        if fim:
+                if tarefa.regra_id in await termos_no_limite(s, [tarefa.regra_id], agora):
+                    # Parou no meio da página: o cursor fica neste item (o resto vem depois).
+                    novo_cursor, fim = dado.atualizado_em or cursor, False
+                    resultado.termos_no_limite.add(tarefa.regra_id)
+                    break
+            concluida = tarefa.carga_concluida or fim
+            await _salvar_estado(s, tarefa, novo_cursor, concluida, agora)
+        if fim or tarefa.regra_id in resultado.termos_no_limite:
             return
-        cursor = pagina.cursor
+        cursor = novo_cursor
 
 
 async def varrer_termos(

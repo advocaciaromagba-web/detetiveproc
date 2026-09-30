@@ -216,3 +216,59 @@ export function montarCadastro(dados: Record<string, string | undefined>): Resul
     erros,
   };
 }
+
+export interface PrecoAlterado {
+  produto: "nome" | "termo";
+  periodicidade: PeriodicidadeEscolhida;
+  valor_centavos: number;
+  limite_processos: number | null;
+}
+
+const PLANOS = [
+  ["nome", "mensal"],
+  ["nome", "anual"],
+  ["termo", "mensal"],
+  ["termo", "anual"],
+] as const;
+
+/**
+ * Tela de preços do operador. Vazio = não altera. Termos: todo plano tem limite de
+ * processos por mês; mudar só o limite reaproveita o preço atual.
+ */
+export function montarPrecos(
+  dados: Record<string, string | undefined>,
+  atuais: { produto: string; periodicidade: string; valor_centavos: number; limite_processos: number | null }[],
+): { alterar: PrecoAlterado[]; erros: Erros } {
+  const erros: Erros = {};
+  const alterar: PrecoAlterado[] = [];
+  for (const [produto, periodicidade] of PLANOS) {
+    const campo = `${produto}_${periodicidade}`;
+    const atual = atuais.find((p) => p.produto === produto && p.periodicidade === periodicidade);
+    const centavos = reaisParaCentavos(dados[campo] ?? "");
+    if (Number.isNaN(centavos)) {
+      erros[campo] = "Valor inválido. Exemplo: 49,90";
+      continue;
+    }
+    if (produto === "nome") {
+      if (centavos !== null) {
+        alterar.push({ produto, periodicidade, valor_centavos: centavos, limite_processos: null });
+      }
+      continue;
+    }
+    const textoLimite = (dados[`${campo}_limite`] ?? "").trim();
+    const limite = textoLimite === "" ? null : /^\d+$/.test(textoLimite) ? Number(textoLimite) : NaN;
+    const mudouLimite = limite !== null && limite !== atual?.limite_processos;
+    if (centavos === null && !mudouLimite) continue;
+    if (limite === null || Number.isNaN(limite) || limite < 1) {
+      erros[`${campo}_limite`] = "Todo plano de termos tem limite: informe os processos por mês.";
+      continue;
+    }
+    const valor = centavos ?? atual?.valor_centavos;
+    if (valor === undefined) {
+      erros[campo] = "Informe o preço deste plano.";
+      continue;
+    }
+    alterar.push({ produto, periodicidade, valor_centavos: valor, limite_processos: limite });
+  }
+  return { alterar, erros };
+}

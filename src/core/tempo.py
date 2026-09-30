@@ -35,6 +35,12 @@ def para_fuso(momento: datetime, nome: str = FUSO_PADRAO) -> datetime:
     return momento.astimezone(fuso(nome))
 
 
+def inicio_do_mes(momento: datetime, nome: str = FUSO_PADRAO) -> datetime:
+    """Meia-noite do dia 1º do mês corrente, no fuso do escritório (com fuso)."""
+    local = para_fuso(momento, nome)
+    return local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
 def data_no_escritorio(momento: datetime, nome: str = FUSO_PADRAO) -> date:
     """Dia civil do instante no fuso do escritório (ex.: 23h em UTC já é o dia seguinte)."""
     return para_fuso(momento, nome).date()

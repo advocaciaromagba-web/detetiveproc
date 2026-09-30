@@ -143,11 +143,14 @@ class PrecoSaida(Saida):
     produto: str
     periodicidade: str
     valor_centavos: int
+    limite_processos: int | None = None  # termos: processos novos por mês
     atualizado_em: datetime
 
 
 class PrecoEntrada(BaseModel):
     valor_centavos: int = Field(ge=0, le=100_000_000)  # até R$ 1 milhão
+    # Obrigatório para termos (todo plano de termos tem limite); ignorado para nome.
+    limite_processos: int | None = Field(default=None, ge=1, le=1_000_000)
 
 
 class ContratoNome(BaseModel):
@@ -211,6 +214,8 @@ class AssinaturaSaida(Saida):
     criado_em: datetime
     ativada_em: datetime | None
     encerrada_em: datetime | None
+    limite_processos: int | None = None  # termos: processos por mês
+    usados_no_mes: int | None = None  # termos: processos já trazidos neste mês
     link_pagamento: str | None = None  # cobrança em aberto (Pix, boleto ou cartão)
     alvo: AlvoSaida | None = None
     termo: RegraSaida | None = None

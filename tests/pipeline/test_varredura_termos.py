@@ -8,7 +8,16 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from db.modelos import Alerta, Cliente, ConsultaTermo, Ocorrencia, Processo, Regra
+from cobranca.assinaturas import uso_do_mes
+from db.modelos import (
+    Alerta,
+    Assinatura,
+    Cliente,
+    ConsultaTermo,
+    Ocorrencia,
+    Processo,
+    Regra,
+)
 from db.sessao import sessao_sistema
 from fontes.base import FonteIndisponivel, LimiteFonte
 from fontes.datajud import (
@@ -177,3 +186,36 @@ async def test_sigiloso_e_termo_desligado(fabrica, dados) -> None:
     fonte.buscas.clear()
     r = await varrer_termos(fabrica, fonte, ConfigVarreduraTermos(), AGORA)
     assert (r.termos, fonte.buscas) == (0, [])
+
+
+async def test_limite_mensal_do_plano(fabrica, dados) -> None:
+    """Todo plano de termos tem limite: atingido, a busca pausa e o cursor fica no último
+    processo trazido (o resto vem no mês seguinte)."""
+    regra_id = await _termo(fabrica, dados)
+    async with sessao_sistema(fabrica) as s:
+        s.add(
+            Assinatura(
+                cliente_id=dados.cliente_a,
+                produto="termo",
+                regra_id=regra_id,
+                periodicidade="mensal",
+                valor_centavos=9990,
+                limite_processos=2,
+                status="ativa",
+                vigente_ate=datetime(2026, 10, 30, tzinfo=UTC),
+            )
+        )
+    agora = datetime.now(UTC)
+    fonte = DataJudFalso(paginas=[[dto(1), dto(2), dto(3)]])
+    r = await varrer_termos(fabrica, fonte, ConfigVarreduraTermos(tamanho_pagina=10), agora)
+    assert (r.ocorrencias_novas, r.termos_no_limite) == (2, {regra_id})
+    async with sessao_sistema(fabrica) as s:
+        estado = await s.get(ConsultaTermo, (regra_id, "TRF3"))
+        assert estado is not None
+        assert (estado.cursor, estado.carga_inicial_concluida) == ("2026-09-20T00:00:02Z", False)
+        assert await uso_do_mes(s, [regra_id], agora) == {regra_id: 2}
+
+    # No limite: nem consulta o DataJud neste mês.
+    fonte.buscas.clear()
+    r = await varrer_termos(fabrica, fonte, ConfigVarreduraTermos(tamanho_pagina=10), agora)
+    assert (fonte.buscas, r.termos_no_limite) == ([], {regra_id})

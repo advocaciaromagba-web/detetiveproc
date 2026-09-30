@@ -216,6 +216,7 @@ uv run python -m api.admin criar-chave --cliente-id 1 --descricao "ERP"   # chav
 uv run python -m api.admin revogar-chave --id 1
 uv run python -m api.admin liberar-tribunal --id 2   # após CAPTCHA/layout, depois de resolver
 uv run python -m api.admin definir-preco --produto nome --periodicidade mensal --centavos 4990
+uv run python -m api.admin definir-preco --produto termo --periodicidade mensal --centavos 9990 --limite 200
 uv run python -m api.admin ativar-assinatura --id 7              # pagamento recebido por fora
 uv run python -m api.admin ativar-assinatura --id 8 --cortesia   # sem cobrança e sem vencimento
 ```
@@ -274,6 +275,10 @@ vara), no **Brasil todo** (91 índices do DataJud) ou em **um tribunal**.
   `TERMOS_MAX_PAGINAS` (5) páginas de 100 por ciclo — o resto continua no seguinte.
 - **Carga inicial** (processos ajuizados até `TERMOS_HISTORICO_DIAS`, 30, antes da
   contratação) entra na lista sem aviso; depois, **um aviso por processo novo**.
+- **Todo plano de termos tem limite** de processos por mês (`preco.limite_processos`,
+  obrigatório para termos; travado na contratação em `assinatura.limite_processos`).
+  Atingido o limite, a busca daquele termo pausa (o cursor fica no último processo
+  trazido) e continua dali no mês seguinte; o painel mostra "X de Y processos neste mês".
 - Limites da fonte: o DataJud é abastecido pelos tribunais em lotes (atraso de dias a
   semanas conforme o tribunal) e não traz as partes — processos achados só por termo
   aparecem sem autor/réu. Termos amplos podem trazer milhares de processos por semana.

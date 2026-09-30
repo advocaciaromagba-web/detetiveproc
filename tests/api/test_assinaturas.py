@@ -36,7 +36,12 @@ async def precos(fabrica) -> None:  # type: ignore[no-untyped-def]
         s.add_all(
             [
                 Preco(produto="nome", periodicidade="mensal", valor_centavos=4990),
-                Preco(produto="termo", periodicidade="anual", valor_centavos=19900),
+                Preco(
+                    produto="termo",
+                    periodicidade="anual",
+                    valor_centavos=19900,
+                    limite_processos=300,
+                ),
             ]
         )
 
@@ -52,6 +57,17 @@ async def test_precos_so_o_operador_altera(cliente_http, dados, relogio) -> None
     assert r.status_code == 200
     r = await cliente_http.put("/v1/precos/nome/mensal", headers=op, json={"valor_centavos": 5990})
     assert r.json()["valor_centavos"] == 5990
+    # Todo plano de termos tem limite de processos por mês.
+    sem_limite = await cliente_http.put("/v1/precos/termo/mensal", headers=op, json=corpo)
+    assert sem_limite.status_code == 422
+    assert "limite" in sem_limite.text
+    termo = {"valor_centavos": 9990, "limite_processos": 200}
+    r = await cliente_http.put("/v1/precos/termo/mensal", headers=op, json=termo)
+    assert (r.status_code, r.json()["limite_processos"]) == (200, 200)
+    zero = {"valor_centavos": 9990, "limite_processos": 0}
+    assert (
+        await cliente_http.put("/v1/precos/termo/mensal", headers=op, json=zero)
+    ).status_code == 422
     assert (
         await cliente_http.put("/v1/precos/nome/semanal", headers=op, json=corpo)
     ).status_code == 422
@@ -60,7 +76,8 @@ async def test_precos_so_o_operador_altera(cliente_http, dados, relogio) -> None
     ).status_code == 422
     lista = (await cliente_http.get("/v1/precos", headers=chave(dados))).json()
     assert [(p["produto"], p["periodicidade"], p["valor_centavos"]) for p in lista] == [
-        ("nome", "mensal", 5990)
+        ("nome", "mensal", 5990),
+        ("termo", "mensal", 9990),
     ]
 
 
@@ -105,6 +122,8 @@ async def test_contrata_termo_normalizado(cliente_http, dados, precos) -> None:
     )  # fmt: skip
     assert termo["nome"] == "Execução Fiscal"
     assert r.json()["valor_centavos"] == 19900
+    # O limite do plano fica travado na contratação, como o preço.
+    assert (r.json()["limite_processos"], r.json()["usados_no_mes"]) == (300, 0)
     lista = (await cliente_http.get(f"{URL}?produto=termo", headers=chave(dados))).json()
     assert [a["id"] for a in lista["itens"]] == [r.json()["id"]]
     tribunais = (await cliente_http.get(f"{URL}/tribunais", headers=chave(dados))).json()

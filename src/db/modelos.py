@@ -458,11 +458,14 @@ class Preco(Base):
         CheckConstraint(_em("produto", *PRODUTOS), name="produto"),
         CheckConstraint(_em("periodicidade", *PERIODICIDADES), name="periodicidade"),
         CheckConstraint("valor_centavos >= 0", name="valor"),
+        CheckConstraint("limite_processos > 0", name="limite"),
     )
 
     produto: Mapped[str] = mapped_column(String(10), primary_key=True)
     periodicidade: Mapped[str] = mapped_column(String(10), primary_key=True)
     valor_centavos: Mapped[int] = mapped_column(BigInteger)
+    # Termos: máximo de processos novos por mês (None = sem limite; nome não tem limite).
+    limite_processos: Mapped[int | None] = mapped_column(Integer)
     atualizado_em: Mapped[datetime] = _agora()
 
 
@@ -513,6 +516,7 @@ class Assinatura(Base):
     regra_id: Mapped[int | None] = mapped_column(BigInteger)
     periodicidade: Mapped[str] = mapped_column(String(10))
     valor_centavos: Mapped[int] = mapped_column(BigInteger)  # preço travado na contratação
+    limite_processos: Mapped[int | None] = mapped_column(Integer)  # por mês, travado também
     status: Mapped[str] = mapped_column(String(10), server_default="pendente")
     cortesia: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     vigente_ate: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

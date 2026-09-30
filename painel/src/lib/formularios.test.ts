@@ -7,6 +7,7 @@ import {
   montarAlvo,
   montarCadastro,
   montarContatos,
+  montarPrecos,
   montarTermo,
   periodicidade,
   reaisParaCentavos,
@@ -221,5 +222,32 @@ describe("montarCadastro", () => {
       "periodicidade",
       "responsavel",
     ]);
+  });
+});
+
+describe("montarPrecos", () => {
+  const atuais = [
+    { produto: "nome", periodicidade: "mensal", valor_centavos: 4990, limite_processos: null },
+    { produto: "termo", periodicidade: "mensal", valor_centavos: 9990, limite_processos: 200 },
+  ];
+  it("vazio não altera; nome sem limite", () => {
+    expect(montarPrecos({ termo_mensal_limite: "200" }, atuais)).toEqual({ alterar: [], erros: {} });
+    expect(montarPrecos({ nome_anual: "499,00" }, atuais).alterar).toEqual([
+      { produto: "nome", periodicidade: "anual", valor_centavos: 49900, limite_processos: null },
+    ]);
+  });
+  it("todo plano de termos tem limite", () => {
+    const r = montarPrecos({ termo_anual: "999,00" }, atuais);
+    expect(r.erros.termo_anual_limite).toMatch(/limite/);
+    expect(r.alterar).toEqual([]);
+    expect(montarPrecos({ termo_anual: "999,00", termo_anual_limite: "0" }, atuais).erros).toHaveProperty(
+      "termo_anual_limite",
+    );
+  });
+  it("mudar só o limite reaproveita o preço atual", () => {
+    expect(montarPrecos({ termo_mensal_limite: "500" }, atuais).alterar).toEqual([
+      { produto: "termo", periodicidade: "mensal", valor_centavos: 9990, limite_processos: 500 },
+    ]);
+    expect(montarPrecos({ termo_anual_limite: "500" }, atuais).erros.termo_anual).toMatch(/preço/);
   });
 });

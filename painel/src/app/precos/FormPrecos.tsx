@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { Fragment, useActionState } from "react";
 
 import { Campo } from "@/componentes/Campo";
 import { formatarReais } from "@/lib/formatos";
@@ -25,16 +25,36 @@ export function FormPrecos({ precos }: { precos: Preco[] }) {
     <form key={estado.tentativa} action={acao} className="formulario" noValidate>
       {CAMPOS.map((c) => {
         const preco = atual(c.produto, c.periodicidade);
+        const campo = `${c.produto}_${c.periodicidade}`;
         return (
-          <Campo
-            key={`${c.produto}_${c.periodicidade}`}
-            nome={`${c.produto}_${c.periodicidade}`}
-            rotulo={`${c.rotulo} (R$)`}
-            erro={estado.erros[`${c.produto}_${c.periodicidade}`]}
-            dica={preco ? `Atual: ${formatarReais(preco.valor_centavos)}` : "Sem preço: não é oferecido"}
-          >
-            {(p) => <input {...p} inputMode="decimal" placeholder="49,90" autoComplete="off" />}
-          </Campo>
+          <Fragment key={campo}>
+            <Campo
+              nome={campo}
+              rotulo={`${c.rotulo} (R$)`}
+              erro={estado.erros[campo]}
+              dica={preco ? `Atual: ${formatarReais(preco.valor_centavos)}` : "Sem preço: não é oferecido"}
+            >
+              {(p) => <input {...p} inputMode="decimal" placeholder="49,90" autoComplete="off" />}
+            </Campo>
+            {c.produto === "termo" && (
+              <Campo
+                nome={`${campo}_limite`}
+                rotulo={`${c.rotulo}: limite de processos por mês`}
+                erro={estado.erros[`${campo}_limite`]}
+                dica="Todo plano de termos tem limite; atingido, a busca pausa até o mês seguinte"
+              >
+                {(p) => (
+                  <input
+                    {...p}
+                    inputMode="numeric"
+                    placeholder="200"
+                    defaultValue={preco?.limite_processos ?? ""}
+                    autoComplete="off"
+                  />
+                )}
+              </Campo>
+            )}
+          </Fragment>
         );
       })}
       {estado.salvo && (

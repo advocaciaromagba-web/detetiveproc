@@ -6,6 +6,7 @@ monitoramento por aqui (``cobranca.assinaturas``).
 """
 
 import logging
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -32,6 +33,7 @@ from cobranca.assinaturas import (
     ativar,
     cancelar,
     contratar,
+    uso_do_mes,
 )
 from cobranca.pagamentos import cancelar_no_gateway, pos_contratacao
 from db.modelos import STATUS_ASSINATURA_ABERTA, Alvo, Assinatura, Regra
@@ -66,9 +68,12 @@ async def _saidas(sessao: AsyncSession, assinaturas: list[Assinatura]) -> list[A
     regras = {
         r.id: r for r in (await sessao.scalars(select(Regra).where(Regra.id.in_(regra_ids)))).all()
     }
+    usos = await uso_do_mes(sessao, regra_ids, datetime.now(UTC))
     saidas = []
     for a in assinaturas:
         saida = AssinaturaSaida.model_validate(a)
+        if a.regra_id is not None and a.limite_processos is not None:
+            saida.usados_no_mes = usos.get(a.regra_id, 0)
         if a.alvo_id is not None:
             saida.alvo = AlvoSaida.model_validate(alvos[a.alvo_id])
         if a.regra_id is not None:
