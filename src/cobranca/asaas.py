@@ -153,17 +153,31 @@ class AsaasAPI:
         }
         return self._id(await self._pedir("POST", "/subscriptions", corpo))
 
-    async def link_em_aberto(self, assinatura_id: str) -> str | None:
+    async def cobrancas_da_assinatura(self, assinatura_id: str) -> list[dict[str, Any]]:
         dados = await self._pedir("GET", f"/subscriptions/{assinatura_id}/payments?limit=100")
+        return [c for c in dados.get("data", []) if isinstance(c, dict)]
+
+    async def link_em_aberto(self, assinatura_id: str) -> str | None:
         cobrancas = [
             c
-            for c in dados.get("data", [])
-            if isinstance(c, dict) and c.get("status") in EM_ABERTO and c.get("invoiceUrl")
+            for c in await self.cobrancas_da_assinatura(assinatura_id)
+            if c.get("status") in EM_ABERTO and c.get("invoiceUrl")
         ]
         if not cobrancas:
             return None
         mais_antiga = min(cobrancas, key=lambda c: str(c.get("dueDate", "")))
         return str(mais_antiga["invoiceUrl"])
+
+    async def obter_assinatura(self, assinatura_id: str) -> dict[str, Any]:
+        return await self._pedir("GET", f"/subscriptions/{assinatura_id}")
+
+    async def obter_cobranca(self, cobranca_id: str) -> dict[str, Any]:
+        return await self._pedir("GET", f"/payments/{cobranca_id}")
+
+    async def receber_em_dinheiro(self, cobranca_id: str, valor_centavos: int, dia: date) -> None:
+        """Confirma o recebimento fora do Asaas. No sandbox, simula o pagamento."""
+        corpo = {"paymentDate": dia.isoformat(), "value": round(valor_centavos / 100, 2)}
+        await self._pedir("POST", f"/payments/{cobranca_id}/receiveInCash", corpo)
 
     async def cancelar_assinatura(self, assinatura_id: str) -> None:
         try:
