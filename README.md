@@ -228,6 +228,20 @@ uv run python -m api.admin ativar-assinatura --id 7              # pagamento rec
 uv run python -m api.admin ativar-assinatura --id 8 --cortesia   # sem cobrança e sem vencimento
 ```
 
+**Ensaio da cobrança no sandbox do Asaas** (antes de ligar a chave de produção): cria um
+cliente de teste, emite a cobrança, simula o pagamento ("recebido em dinheiro"), aplica o
+aviso pelo mesmo caminho do webhook, confere a liberação do monitoramento e cancela.
+Recusa rodar contra o Asaas de produção. Use um banco de desenvolvimento: os dados de
+teste ficam nele (cancelados) para conferência nas telas do operador.
+
+```bash
+ASAAS_URL=https://api-sandbox.asaas.com/v3 ASAAS_API_KEY=<chave do sandbox> \
+  uv run python -m cobranca.ensaio_sandbox
+```
+
+O webhook de verdade só é exercitado com o painel publicado (o Asaas precisa alcançar
+`/api/pagamentos/asaas`).
+
 ### Cadastro pelo próprio cliente
 
 Página pública `/cadastro` do painel (`api/cadastro.py`):
