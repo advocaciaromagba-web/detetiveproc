@@ -187,3 +187,43 @@ export interface Assinatura {
   alvo: Alvo | null;
   termo: Regra | null;
 }
+
+/** Situação da cobrança em palavras; ``problema`` pede ação do operador. */
+export interface SituacaoCobranca {
+  codigo: string;
+  texto: string;
+  problema: boolean;
+}
+
+/** Assinatura vista pelo operador (qualquer cliente). */
+export interface AssinaturaOperador extends Assinatura {
+  cliente_id: number;
+  cliente_nome: string;
+  cobranca: SituacaoCobranca;
+  cobranca_erro_em: string | null;
+}
+
+export interface ClienteResumo {
+  id: number;
+  nome: string;
+  /** CPF/CNPJ do titular, já mascarado pela API. */
+  documento: string | null;
+  email: string | null;
+  criado_em: string;
+  termos_versao: string | null;
+  /** Quantas assinaturas em cada status. */
+  assinaturas: Record<StatusAssinatura, number>;
+  problemas: number;
+}
+
+export interface PagamentoRecebido {
+  tipo: string;
+  resultado: string;
+  recebido_em: string;
+  assinatura_id: number | null;
+}
+
+export interface ClienteDetalhe extends ClienteResumo {
+  itens: AssinaturaOperador[];
+  pagamentos: PagamentoRecebido[];
+}

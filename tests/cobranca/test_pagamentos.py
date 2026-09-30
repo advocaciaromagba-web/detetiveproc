@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from cobranca.asaas import ErroGateway, GatewayMemoria
-from cobranca.assinaturas import cancelar, contratar
+from cobranca.assinaturas import ativar, cancelar, contratar
 from cobranca.pagamentos import (
     emitir_cobranca,
     processar_evento,
@@ -102,11 +102,15 @@ async def test_falha_no_meio_nao_duplica_o_cliente(fabrica, dados: Dados) -> Non
     gateway.criar_assinatura = falhar  # type: ignore[method-assign]
     with pytest.raises(ErroGateway):
         await emitir_cobranca(fabrica, gateway, i, AGORA)
+    falha = await _assinatura(fabrica, i)  # o operador vê o motivo
+    assert (falha.cobranca_erro, falha.cobranca_erro_em) == ("HTTP 500", AGORA)
     gateway.criar_assinatura = original  # type: ignore[method-assign]
     r = await sincronizar_cobrancas(fabrica, gateway, AGORA)  # o job tenta de novo
     assert (r.emitidas, r.erros) == (1, 0)
     assert list(gateway.clientes) == ["cus_1"]  # o cliente do Asaas foi reaproveitado
     assert len(gateway.assinaturas) == 1
+    emitida = await _assinatura(fabrica, i)
+    assert (emitida.cobranca_erro, emitida.cobranca_erro_em) == (None, None)
 
 
 async def test_webhook_pagamento_renova_uma_vez_por_pagamento(fabrica, dados: Dados) -> None:
@@ -167,11 +171,27 @@ async def test_cancelamento_propaga_e_pagamento_tardio_nao_reativa(fabrica, dado
         await cancelar(s, assinatura, AGORA)
     gateway.falhar = True
     assert (await sincronizar_cobrancas(fabrica, gateway, AGORA)).erros == 1
+    assert (await _assinatura(fabrica, i)).cobranca_erro is not None
     gateway.falhar = False
     assert (await sincronizar_cobrancas(fabrica, gateway, AGORA)).canceladas == 1
+    assert (await _assinatura(fabrica, i)).cobranca_erro is None
     assert gateway.canceladas == ["sub_1"]
     assert (await sincronizar_cobrancas(fabrica, gateway, AGORA)).canceladas == 0
     tardio = _evento("evt_t", "PAYMENT_RECEIVED", "pay_1")
     assert await processar_evento(fabrica, tardio, AGORA) == "pago_cancelada"
     async with sessao_sistema(fabrica) as s:
         assert (await s.scalar(select(Assinatura.status).where(Assinatura.id == i))) == "cancelada"
+
+
+async def test_cortesia_para_de_cobrar_no_asaas(fabrica, dados: Dados) -> None:
+    gateway = GatewayMemoria()
+    i = await _pendente(fabrica, dados)
+    await emitir_cobranca(fabrica, gateway, i, AGORA)
+    async with sessao_sistema(fabrica) as s:
+        assinatura = await s.get(Assinatura, i)
+        assert assinatura is not None
+        await ativar(s, assinatura, AGORA, cortesia=True)
+    assert (await sincronizar_cobrancas(fabrica, gateway, AGORA)).canceladas == 1
+    assert gateway.canceladas == ["sub_1"]
+    assinatura = await _assinatura(fabrica, i)
+    assert (assinatura.status, assinatura.link_pagamento) == ("ativa", None)

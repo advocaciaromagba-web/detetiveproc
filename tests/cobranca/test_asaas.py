@@ -5,8 +5,10 @@ from datetime import date
 
 import httpx
 import pytest
+from pydantic import SecretStr
 
 from cobranca.asaas import AsaasAPI, ErroGateway
+from core.config import Settings
 
 CHAVE = "$aact_chave_secreta"
 
@@ -103,3 +105,9 @@ async def test_falha_de_conexao() -> None:
     api, _ = _api(cair)
     with pytest.raises(ErroGateway, match="ConnectTimeout"):
         await api.link_em_aberto("sub_1")
+
+
+def test_sem_chave_ou_chave_vazia_desliga_a_cobranca() -> None:
+    assert AsaasAPI.de_settings(Settings(asaas_api_key=None)) is None
+    assert AsaasAPI.de_settings(Settings(asaas_api_key=SecretStr("  "))) is None
+    assert AsaasAPI.de_settings(Settings(asaas_api_key=SecretStr(CHAVE))) is not None

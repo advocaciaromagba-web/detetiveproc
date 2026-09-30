@@ -189,7 +189,10 @@ uv run uvicorn api.app:app --port 8000   # documentação interativa em /docs
 | `GET /v1/precos` · `PUT /v1/precos/{produto}/{periodicidade}` | Tabela de preços (PUT só operador) |
 | `POST /v1/assinaturas` · `GET /v1/assinaturas?produto=&situacao=` · `GET /v1/assinaturas/{id}` | Contratar e listar nomes (`produto: "nome"`) e termos (`"termo"`), mensal ou anual |
 | `POST /v1/assinaturas/{id}/cancelar` | Não renova (paga) ou encerra já (aguardando pagamento) |
-| `POST /v1/assinaturas/{id}/ativar` | Só operador: libera um período pago fora da plataforma ou dá cortesia |
+| `POST /v1/assinaturas/{id}/ativar` | Só operador: libera um período pago fora da plataforma ou dá cortesia (cortesia para de cobrar no Asaas) |
+| `GET /v1/operador/clientes?q=&problema=` · `GET /v1/operador/clientes/{id}` | Só operador: clientes (CPF/CNPJ mascarado), assinaturas por status e últimos avisos do Asaas |
+| `GET /v1/operador/assinaturas?status=&produto=&problema=&cliente_id=` | Só operador: assinaturas de todos os clientes com a **situação da cobrança** (ex.: "Sem cobrança: falta o CPF/CNPJ do titular", "Erro no Asaas: HTTP 400 (...)") |
+| `POST /v1/operador/assinaturas/{id}/cobrar` · `POST /v1/operador/assinaturas/{id}/cancelar` | Só operador: faz agora o que o job de cobranças faria (emitir, buscar link, cancelar no Asaas); cancelar |
 | `POST /v1/pagamentos/asaas` | **Webhook do Asaas** (token no cabeçalho `asaas-access-token`); exposto pelo painel em `/api/pagamentos/asaas` |
 | `GET /v1/alvos` · `GET /v1/alvos/{id}` · `GET /v1/regras` · `GET /v1/regras/{id}` | Nomes e termos (leitura: entram e saem pelas assinaturas) |
 | `GET /v1/ocorrencias?status=&confianca=&q=&desde=&score_min=&limite=&antes_id=` | Processos do cliente, com autores/réus, assunto e grau; `q` busca por número ou nome da parte |
@@ -319,7 +322,9 @@ npm run lint && npm run typecheck && npm test && npm run build
   reabrir); detalhe (capa, partes, advogados, link da consulta pública); **Monitorados**
   e **Termos** (contratar um nome ou um termo escolhendo o plano mensal ou anual com o
   preço; situação da assinatura; "Não renovar"); **Avisos** (e-mails e WhatsApp que
-  recebem o processo novo); para operadores, **saúde dos robôs** e **Preços**.
+  recebem o processo novo); para operadores, **Clientes** e **Assinaturas** (situação
+  da cobrança de cada item, filtro "com problema na cobrança", conceder cortesia, liberar
+  período, cobrar agora, cancelar), **saúde dos robôs** e **Preços**.
 - O Diário de Justiça (DJEN) não busca por CPF/CNPJ: um monitorado por documento é
   procurado pelos nomes informados em "Nomes buscados no Diário" (obrigatório no painel).
 - O painel só fala com a API, pelo servidor do Next. O token fica em cookie
