@@ -5,6 +5,7 @@ import { useActionState, useState, useTransition } from "react";
 
 import { Campo } from "@/componentes/Campo";
 import { formatarPreco } from "@/lib/formatos";
+import { TERMOS_VERSAO } from "@/lib/legal";
 import type { Preco } from "@/lib/tipos";
 
 import { consultarCnpj, enviarCadastro, type EmpresaReceita, type EstadoCadastro } from "./acoes";
@@ -138,9 +139,20 @@ export function FormCadastro({ planos }: { planos: Preco[] }) {
           </select>
         )}
       </Campo>
+      <input type="hidden" name="termos_versao" value={TERMOS_VERSAO} />
       <label className="largo opcao">
         <input type="checkbox" name="aceite_termos" defaultChecked={valores.aceite_termos === "on"} />
-        Li e aceito os termos de uso e a política de privacidade.
+        <span>
+          Li e aceito os{" "}
+          <a href="/termos" target="_blank" rel="noopener">
+            termos de uso
+          </a>{" "}
+          e a{" "}
+          <a href="/privacidade" target="_blank" rel="noopener">
+            política de privacidade
+          </a>
+          .
+        </span>
         {erros.aceite_termos && (
           <span className="erro-campo" role="alert">
             {erros.aceite_termos}

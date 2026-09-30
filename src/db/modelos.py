@@ -372,6 +372,9 @@ class Cliente(Base):
     # Titular da conta (CPF/CNPJ) e seu cadastro no intermediador de pagamento.
     documento: Mapped[str | None] = mapped_column(String(14))
     gateway_cliente_id: Mapped[str | None] = mapped_column(String(40))
+    # Versão dos termos de uso/política de privacidade aceita e quando (prova do aceite).
+    termos_versao: Mapped[str | None] = mapped_column(String(20))
+    termos_aceitos_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Pesos do score, limite de valor e limiares (regras.config.ConfigAlertas).
     config_alertas: Mapped[dict[str, Any]] = mapped_column(
         JSONB, server_default=text("'{}'::jsonb")
@@ -833,6 +836,7 @@ class Cadastro(Base):
     nome_fantasia: Mapped[str | None] = mapped_column(Text)
     responsavel: Mapped[str] = mapped_column(Text)
     periodicidade: Mapped[str] = mapped_column(String(10))
+    termos_versao: Mapped[str] = mapped_column(String(20))  # aceita no formulário
     senha_hash: Mapped[str | None] = mapped_column(Text)
     totp_segredo: Mapped[str | None] = mapped_column(String(64))
     criado_em: Mapped[datetime] = _agora()

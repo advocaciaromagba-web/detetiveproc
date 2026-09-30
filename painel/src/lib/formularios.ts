@@ -212,6 +212,7 @@ export interface CorpoCadastro {
   email: string;
   periodicidade: PeriodicidadeEscolhida;
   aceite_termos: true;
+  termos_versao: string;
 }
 
 /** Formulário "Criar conta". A API confere os dígitos do CPF/CNPJ e busca a razão social. */
@@ -243,6 +244,7 @@ export function montarCadastro(dados: Record<string, string | undefined>): Resul
       email,
       periodicidade: plano,
       aceite_termos: true,
+      termos_versao: texto(dados, "termos_versao"),
     },
     erros,
   };

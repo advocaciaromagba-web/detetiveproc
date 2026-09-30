@@ -139,3 +139,10 @@ describe("assinaturas", () => {
     expect(resumoAssinatura({ ...base, status: "pendente", vigente_ate: null })).toBe("Aguardando pagamento");
   });
 });
+
+describe("versão dos termos", () => {
+  it("data legível", async () => {
+    const { dataDaVersao } = await import("./legal");
+    expect(dataDaVersao("2026-09-30")).toBe("30/09/2026");
+  });
+});

@@ -12,6 +12,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.documentos import normalizar_documento, tipo_documento
+from core.legal import TERMOS_VERSAO
 from core.nomes import normalizar_nome
 from core.oab import OABInvalida, normalizar_oab
 from entrega.whatsapp import normalizar_whatsapp
@@ -243,6 +244,7 @@ class CadastroEntrada(BaseModel):
     email: str = Field(min_length=3, max_length=254)
     periodicidade: Periodicidade = "mensal"
     aceite_termos: bool
+    termos_versao: str = Field(min_length=1, max_length=20)  # a versão que a pessoa leu
 
     @field_validator("email")
     @classmethod
@@ -268,6 +270,8 @@ class CadastroEntrada(BaseModel):
             raise ValueError("informe o nome completo")
         if not self.aceite_termos:
             raise ValueError("é preciso aceitar os termos de uso")
+        if self.termos_versao != TERMOS_VERSAO:
+            raise ValueError("os termos de uso foram atualizados; recarregue a página")
         return self
 
 

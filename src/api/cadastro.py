@@ -67,6 +67,7 @@ class DadosCadastro:
     responsavel: str
     email: str  # minúsculo
     periodicidade: str
+    termos_versao: str
 
 
 @dataclass(frozen=True)
@@ -206,6 +207,7 @@ async def iniciar_cadastro(
                     nome_fantasia=dados.nome_fantasia,
                     responsavel=dados.responsavel,
                     periodicidade=dados.periodicidade,
+                    termos_versao=dados.termos_versao,
                     criado_em=agora,
                     expira_em=agora + config.validade,
                 )
@@ -286,6 +288,8 @@ async def _criar_conta(s: AsyncSession, cadastro: Cadastro, passo: int, agora: d
         nome=cadastro.nome,
         cnpj=cadastro.documento if cadastro.tipo_pessoa == "pj" else None,
         documento=cadastro.documento,  # titular: vai para a cobrança
+        termos_versao=cadastro.termos_versao,
+        termos_aceitos_em=cadastro.criado_em,
         contatos={"emails": [cadastro.email]},
     )
     s.add(cliente)
