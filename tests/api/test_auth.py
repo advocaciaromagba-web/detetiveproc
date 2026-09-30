@@ -39,6 +39,7 @@ async def test_chave_de_api(cliente_http, dados, fabrica, relogio) -> None:
         "cliente_nome": "Cliente A",
         "usuario_id": None,
         "chave_api_id": dados.chave_a_id,
+        "pendencias": [],
     }
     async with sessao_sistema(fabrica) as s:
         chave = await s.get(ChaveApi, dados.chave_a_id)

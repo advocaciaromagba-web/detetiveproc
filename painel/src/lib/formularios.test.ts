@@ -7,6 +7,7 @@ import {
   montarAlvo,
   montarCadastro,
   montarContatos,
+  montarDocumento,
   montarPrecos,
   montarTermo,
   periodicidade,
@@ -249,5 +250,18 @@ describe("montarPrecos", () => {
       { produto: "termo", periodicidade: "mensal", valor_centavos: 9990, limite_processos: 500 },
     ]);
     expect(montarPrecos({ termo_anual_limite: "500" }, atuais).erros.termo_anual).toMatch(/preço/);
+  });
+});
+
+describe("montarDocumento", () => {
+  it("aceita CPF e CNPJ com pontuação e recusa outros tamanhos", () => {
+    expect(montarDocumento({ documento: "11.222.333/0001-81" }).corpo).toEqual({
+      documento: "11222333000181",
+    });
+    expect(montarDocumento({ documento: "529.982.247-25" }).corpo).toEqual({
+      documento: "52998224725",
+    });
+    expect(montarDocumento({ documento: "123" }).erros.documento).toContain("CPF");
+    expect(montarDocumento({}).corpo).toBeNull();
   });
 });

@@ -298,6 +298,13 @@ def _texto(valor: object) -> str | None:
     return valor if isinstance(valor, str) and valor else None
 
 
+def _centavos(valor: object) -> int | None:
+    """``value`` do Asaas vem em reais (49.9) -> 4990."""
+    if isinstance(valor, bool) or not isinstance(valor, int | float) or valor < 0:
+        return None
+    return round(valor * 100)
+
+
 async def processar_evento(fabrica: Fabrica, evento: dict[str, Any], agora: datetime) -> str:
     """Webhook do Asaas. Devolve o resultado (para log/testes); nunca levanta por evento
     desconhecido, para o Asaas não pausar a fila de envios."""
@@ -322,6 +329,7 @@ async def processar_evento(fabrica: Fabrica, evento: dict[str, Any], agora: date
                     gateway_assinatura_id=gateway_assinatura[:40] if gateway_assinatura else None,
                     recebido_em=agora,
                     resultado=resultado,
+                    valor_centavos=_centavos(pagamento.get("value")),
                 )
             )
     except IntegrityError:

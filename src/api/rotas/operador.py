@@ -28,6 +28,7 @@ from cobranca.asaas import ErroGateway, GatewayPagamento
 from cobranca.assinaturas import cancelar
 from cobranca.pagamentos import atualizar_link, cancelar_no_gateway, emitir_cobranca
 from cobranca.situacao import condicao_problema, situacao_cobranca
+from core.documentos import mascarar_documento
 from db.modelos import STATUS_ASSINATURA, Assinatura, Cliente, EventoPagamento
 from db.sessao import sessao_sistema
 
@@ -47,18 +48,6 @@ def _exigir_operador(ctx: Ctx) -> None:
 def _gateway(ctx: Ctx) -> GatewayPagamento | None:
     gateway: GatewayPagamento | None = ctx.request.app.state.gateway
     return gateway
-
-
-def mascarar_documento(documento: str | None) -> str | None:
-    """Só os dois primeiros e os dois últimos dígitos: identifica sem expor."""
-    if not documento:
-        return None
-    d = "".join(c for c in documento if c.isdigit())
-    if len(d) == 14:
-        return f"{d[:2]}.***.***/****-{d[-2:]}"
-    if len(d) == 11:
-        return f"{d[:2]}*.***.***-{d[-2:]}"
-    return "***"
 
 
 def _email(cliente: Cliente) -> str | None:

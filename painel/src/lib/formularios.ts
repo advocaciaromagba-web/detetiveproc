@@ -217,6 +217,20 @@ export function montarCadastro(dados: Record<string, string | undefined>): Resul
   };
 }
 
+/** CPF/CNPJ do titular da cobrança (Minha conta). Os dígitos verificadores a API confere. */
+export function montarDocumento(
+  dados: Record<string, string | undefined>,
+): Resultado<{ documento: string }> {
+  const documento = texto(dados, "documento").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+  if (documento.length !== 11 && documento.length !== 14) {
+    return {
+      corpo: null,
+      erros: { documento: "Informe o CPF (11 dígitos) ou o CNPJ (14 caracteres)." },
+    };
+  }
+  return { corpo: { documento }, erros: {} };
+}
+
 export interface PrecoAlterado {
   produto: "nome" | "termo";
   periodicidade: PeriodicidadeEscolhida;

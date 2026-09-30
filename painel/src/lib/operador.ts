@@ -125,6 +125,12 @@ export const ROTULO_RESULTADO: Record<string, string> = {
   ignorado: "sem efeito",
 };
 
+/** Efeito do aviso, na linguagem do cliente (os demais ficam sem legenda). */
+export const ROTULO_RESULTADO_CLIENTE: Record<string, string> = {
+  ativada: "monitoramento liberado",
+  estorno: "estornado",
+};
+
 /** Filtros das listas do operador -> query da API (valores fora da lista são ignorados). */
 export function queryOperador(
   filtros: Record<string, string | undefined>,

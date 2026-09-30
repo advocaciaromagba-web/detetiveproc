@@ -1,12 +1,13 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from api.auth import CredenciaisInvalidas, entrar, sair
 from api.dependencias import Ctx, extrair_bearer, obter_agora, obter_fabrica
 from api.esquemas import EuSaida, LoginEntrada, LoginSaida
-from db.modelos import Cliente
+from db.modelos import Assinatura, Cliente
 
 rotas = APIRouter(prefix="/v1/auth", tags=["autenticação"])
 
@@ -42,10 +43,20 @@ async def logout(ctx: Ctx, authorization: Annotated[str | None, Header()] = None
 @rotas.get("/eu", response_model=EuSaida)
 async def eu(ctx: Ctx) -> EuSaida:
     cliente_nome = None
+    pendencias: list[str] = []
     if ctx.principal.cliente_id is not None:
         async with ctx.cliente() as s:
             cliente = await s.get(Cliente, ctx.principal.cliente_id)
             cliente_nome = cliente.nome if cliente else None
+            # Sem CPF/CNPJ do titular, o que foi contratado não é cobrado (nem ativado).
+            if cliente is not None and not cliente.documento:
+                aguardando = await s.scalar(
+                    select(Assinatura.id)
+                    .where(Assinatura.status == "pendente", Assinatura.cortesia.is_(False))
+                    .limit(1)
+                )
+                if aguardando is not None:
+                    pendencias.append("documento")
     return EuSaida(
         papel=ctx.principal.papel,
         nome=ctx.principal.nome,
@@ -53,4 +64,5 @@ async def eu(ctx: Ctx) -> EuSaida:
         cliente_nome=cliente_nome,
         usuario_id=ctx.principal.usuario_id,
         chave_api_id=ctx.principal.chave_id,
+        pendencias=pendencias,
     )

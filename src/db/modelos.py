@@ -890,6 +890,7 @@ class EventoPagamento(Base):
     gateway_assinatura_id: Mapped[str | None] = mapped_column(String(40))
     recebido_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     resultado: Mapped[str] = mapped_column(String(20))
+    valor_centavos: Mapped[int | None] = mapped_column(BigInteger)  # valor da cobrança
 
 
 class PagamentoAplicado(Base):

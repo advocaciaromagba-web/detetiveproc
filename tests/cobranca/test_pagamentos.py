@@ -13,7 +13,7 @@ from cobranca.pagamentos import (
     processar_evento,
     sincronizar_cobrancas,
 )
-from db.modelos import Alvo, Assinatura, Cliente, Preco
+from db.modelos import Alvo, Assinatura, Cliente, EventoPagamento, Preco
 from db.sessao import sessao_sistema
 from tests.conftest import Dados
 
@@ -132,6 +132,10 @@ async def test_webhook_pagamento_renova_uma_vez_por_pagamento(fabrica, dados: Da
     assert (assinatura.status, assinatura.vigente_ate, assinatura.link_pagamento) == (
         "ativa", datetime(2026, 10, 29, 12, tzinfo=UTC), None,
     )  # fmt: skip
+    async with sessao_sistema(fabrica) as s:
+        evento = await s.get(EventoPagamento, "evt_1")
+        assert evento is not None
+        assert evento.valor_centavos == 4990  # "value": 49.9 (reais)
     async with sessao_sistema(fabrica) as s:
         alvo = await s.get(Alvo, dados.alvo_a)
         assert alvo is not None

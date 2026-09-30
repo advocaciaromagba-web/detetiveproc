@@ -57,6 +57,7 @@ class Principal:
     usuario_id: int | None = None
     chave_id: int | None = None
     nome: str = ""
+    email: str = ""
 
 
 @dataclass(frozen=True)
@@ -146,7 +147,13 @@ async def autenticar_token(fabrica: Fabrica, token: str, agora: datetime) -> Pri
         if usuario is None:
             return None
         papel: Papel = "operador" if usuario.papel == "operador" else "cliente"
-        return Principal(papel, usuario.cliente_id, usuario_id=usuario.id, nome=usuario.nome)
+        return Principal(
+            papel,
+            usuario.cliente_id,
+            usuario_id=usuario.id,
+            nome=usuario.nome,
+            email=usuario.email,
+        )
 
 
 async def entrar(
@@ -183,7 +190,11 @@ async def entrar(
                 )
                 papel: Papel = "operador" if usuario.papel == "operador" else "cliente"
                 principal = Principal(
-                    papel, usuario.cliente_id, usuario_id=usuario.id, nome=usuario.nome
+                    papel,
+                    usuario.cliente_id,
+                    usuario_id=usuario.id,
+                    nome=usuario.nome,
+                    email=usuario.email,
                 )
                 return SessaoCriada(token, expira_em, principal)
             if not bloqueado:
