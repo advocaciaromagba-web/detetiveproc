@@ -83,10 +83,11 @@ class AsaasAPI:
     @classmethod
     def de_settings(cls, settings: Settings) -> "AsaasAPI | None":
         """None enquanto a chave não estiver configurada (cobrança desligada)."""
-        if settings.asaas_api_key is None:
+        chave = settings.asaas_api_key
+        if chave is None or not chave.get_secret_value().strip():  # variável vazia também
             return None
         return cls(
-            settings.asaas_api_key.get_secret_value(),
+            chave.get_secret_value().strip(),
             settings.asaas_url,
             contato=settings.coletor_contato,
         )

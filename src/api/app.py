@@ -27,6 +27,7 @@ from api.rotas import (
     cadastro,
     conta,
     ocorrencias,
+    operador,
     pagamentos,
     precos,
     processos,
@@ -57,11 +58,20 @@ _ENTIDADES = {
     "precos": "preco",
     "cadastro": "cadastro",
     "pagamentos": "pagamento",
+    "clientes": "cliente",
 }
 
 
 def _agora() -> datetime:
     return datetime.now(UTC)
+
+
+def _recurso(modelo: str) -> str:
+    """ "/v1/alvos/{id}" -> "alvos"; "/v1/operador/assinaturas/..." -> "assinaturas"."""
+    partes = modelo.split("/")
+    if partes[2] == "operador" and len(partes) > 3:
+        return partes[3]
+    return partes[2]
 
 
 async def registrar_auditoria(
@@ -85,7 +95,7 @@ async def registrar_auditoria(
                     cliente_id=principal.cliente_id if principal else None,
                     usuario_id=principal.usuario_id if principal else None,
                     acao=f"{request.method} {modelo}",
-                    entidade=_ENTIDADES.get(modelo.split("/")[2], "outro"),
+                    entidade=_ENTIDADES.get(_recurso(modelo), "outro"),
                     entidade_id=entidade_id,
                     detalhes=detalhes,
                 )
@@ -195,6 +205,7 @@ def criar_app(
         processos,
         saude,
         conta,
+        operador,
     ):
         app.include_router(modulo.rotas)
     return app

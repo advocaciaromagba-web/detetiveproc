@@ -221,6 +221,45 @@ class AssinaturaSaida(Saida):
     termo: RegraSaida | None = None
 
 
+# --------------------------------------------------------------------------- operador
+
+
+class SituacaoCobrancaSaida(BaseModel):
+    codigo: str
+    texto: str
+    problema: bool  # pede ação do operador
+
+
+class AssinaturaOperador(AssinaturaSaida):
+    cliente_id: int
+    cliente_nome: str
+    cobranca: SituacaoCobrancaSaida
+    cobranca_erro_em: datetime | None = None
+
+
+class ClienteResumo(BaseModel):
+    id: int
+    nome: str
+    documento: str | None  # mascarado: só os primeiros e os últimos dígitos
+    email: str | None
+    criado_em: datetime
+    termos_versao: str | None
+    assinaturas: dict[str, int]  # quantas em cada status
+    problemas: int  # assinaturas com problema na cobrança
+
+
+class PagamentoRecebido(Saida):
+    tipo: str
+    resultado: str
+    recebido_em: datetime
+    assinatura_id: int | None = None
+
+
+class ClienteDetalhe(ClienteResumo):
+    itens: list[AssinaturaOperador]
+    pagamentos: list[PagamentoRecebido]
+
+
 # --------------------------------------------------------------------------- cadastro público
 
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")

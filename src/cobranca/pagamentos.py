@@ -5,7 +5,8 @@
   pelo job ``sincronizar_cobrancas``.
 - ``processar_evento``: webhook. Pagamento confirmado renova a assinatura (uma vez por
   pagamento, via ``cobranca.assinaturas.ativar``); cobrança nova/vencida atualiza o link.
-- ``cancelar_no_gateway``: assinatura cancelada aqui deixa de ser cobrada lá.
+- ``cancelar_no_gateway``: assinatura cancelada (ou em cortesia) aqui deixa de ser
+  cobrada lá.
 
 Cada etapa externa grava o resultado na hora (cliente, depois assinatura), para uma
 falha no meio não criar cobranças em dobro na nova tentativa.
@@ -81,10 +82,37 @@ async def _garantir_cliente(
         return cliente.gateway_cliente_id
 
 
+async def _registrar_erro(
+    fabrica: Fabrica, assinatura_id: int, erro: ErroGateway | None, agora: datetime
+) -> None:
+    """Guarda (ou limpa, com ``erro=None``) o último erro do Asaas na assinatura, para a
+    tela do operador. A mensagem de ``ErroGateway`` já vem sem dados pessoais."""
+    async with sessao_sistema(fabrica) as s:
+        assinatura = await s.get(Assinatura, assinatura_id)
+        if assinatura is None:
+            return
+        assinatura.cobranca_erro = str(erro)[:120] if erro is not None else None
+        assinatura.cobranca_erro_em = agora if erro is not None else None
+
+
 async def emitir_cobranca(
     fabrica: Fabrica, gateway: GatewayPagamento, assinatura_id: int, agora: datetime
 ) -> bool:
-    """Cria a assinatura no Asaas para uma assinatura pendente. True se emitiu agora."""
+    """Cria a assinatura no Asaas para uma assinatura pendente. True se emitiu agora.
+    Falha do Asaas fica registrada na assinatura (``cobranca_erro``) e é relançada."""
+    try:
+        emitiu = await _emitir(fabrica, gateway, assinatura_id, agora)
+    except ErroGateway as erro:
+        await _registrar_erro(fabrica, assinatura_id, erro, agora)
+        raise
+    if emitiu:
+        await _registrar_erro(fabrica, assinatura_id, None, agora)
+    return emitiu
+
+
+async def _emitir(
+    fabrica: Fabrica, gateway: GatewayPagamento, assinatura_id: int, agora: datetime
+) -> bool:
     async with sessao_sistema(fabrica) as s:
         assinatura = await s.get(Assinatura, assinatura_id)
         if (
@@ -139,19 +167,38 @@ async def atualizar_link(fabrica: Fabrica, gateway: GatewayPagamento, assinatura
 async def cancelar_no_gateway(
     fabrica: Fabrica, gateway: GatewayPagamento, assinatura_id: int, agora: datetime
 ) -> bool:
-    """Assinatura cancelada (ou que não renova) deixa de gerar cobranças no Asaas."""
+    """Assinatura cancelada, que não renova ou que virou cortesia deixa de gerar
+    cobranças no Asaas.
+    Falha do Asaas fica registrada na assinatura (``cobranca_erro``) e é relançada."""
+    try:
+        cancelou = await _cancelar(fabrica, gateway, assinatura_id, agora)
+    except ErroGateway as erro:
+        await _registrar_erro(fabrica, assinatura_id, erro, agora)
+        raise
+    if cancelou:
+        await _registrar_erro(fabrica, assinatura_id, None, agora)
+    return cancelou
+
+
+async def _cancelar(
+    fabrica: Fabrica, gateway: GatewayPagamento, assinatura_id: int, agora: datetime
+) -> bool:
     async with sessao_sistema(fabrica) as s:
         assinatura = await s.get(Assinatura, assinatura_id, with_for_update=True)
         if (
             assinatura is None
             or assinatura.gateway_id is None
             or assinatura.gateway_cancelado_em is not None
-            or not (assinatura.status == "cancelada" or assinatura.cancelar_no_fim)
+            or not (
+                assinatura.status == "cancelada"
+                or assinatura.cancelar_no_fim
+                or assinatura.cortesia
+            )
         ):
             return False
         await gateway.cancelar_assinatura(assinatura.gateway_id)
         assinatura.gateway_cancelado_em = agora
-        if assinatura.status == "cancelada":
+        if assinatura.status == "cancelada" or assinatura.cortesia:
             assinatura.link_pagamento = None
         return True
 
@@ -219,7 +266,11 @@ async def sincronizar_cobrancas(
                 .where(
                     Assinatura.gateway_id.is_not(None),
                     Assinatura.gateway_cancelado_em.is_(None),
-                    or_(Assinatura.status == "cancelada", Assinatura.cancelar_no_fim),
+                    or_(
+                        Assinatura.status == "cancelada",
+                        Assinatura.cancelar_no_fim,
+                        Assinatura.cortesia,
+                    ),
                 )
                 .order_by(Assinatura.id)
                 .limit(LOTE)

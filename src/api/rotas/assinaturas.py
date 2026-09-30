@@ -59,7 +59,9 @@ async def _obter(sessao: AsyncSession, assinatura_id: int) -> Assinatura:
     return assinatura
 
 
-async def _saidas(sessao: AsyncSession, assinaturas: list[Assinatura]) -> list[AssinaturaSaida]:
+async def montar_saidas(
+    sessao: AsyncSession, assinaturas: list[Assinatura]
+) -> list[AssinaturaSaida]:
     alvo_ids = [a.alvo_id for a in assinaturas if a.alvo_id is not None]
     regra_ids = [a.regra_id for a in assinaturas if a.regra_id is not None]
     alvos = {
@@ -135,7 +137,7 @@ async def contratar_item(contrato: Contrato, ctx: Ctx) -> AssinaturaSaida:
     # Depois do commit: cria a cobrança no Asaas (se falhar, o job tenta de novo).
     await pos_contratacao(ctx.fabrica, _gateway(ctx), [assinatura_id], ctx.agora)
     async with ctx.cliente() as s:
-        (saida,) = await _saidas(s, [await _obter(s, assinatura_id)])
+        (saida,) = await montar_saidas(s, [await _obter(s, assinatura_id)])
     return saida
 
 
@@ -158,7 +160,7 @@ async def listar(
         consulta = consulta.where(Assinatura.id < antes_id)
     async with ctx.cliente() as s:
         assinaturas = list((await s.scalars(consulta)).all())
-        itens = await _saidas(s, assinaturas[:limite])
+        itens = await montar_saidas(s, assinaturas[:limite])
     proximo = itens[-1].id if len(assinaturas) > limite else None
     return Pagina[AssinaturaSaida](itens=itens, proximo=proximo)
 
@@ -169,7 +171,7 @@ async def obter(assinatura_id: int, ctx: Ctx) -> AssinaturaSaida:
         assinatura = await s.get(Assinatura, assinatura_id)
         if assinatura is None:
             raise NAO_ENCONTRADA
-        (saida,) = await _saidas(s, [assinatura])
+        (saida,) = await montar_saidas(s, [assinatura])
     return saida
 
 
@@ -188,7 +190,7 @@ async def cancelar_assinatura(assinatura_id: int, ctx: Ctx) -> AssinaturaSaida:
         except ErroGateway as erro:  # o job tenta de novo
             logger.warning("cancelamento no Asaas adiado", extra={"motivo": str(erro)})
     async with ctx.cliente() as s:
-        (saida,) = await _saidas(s, [await _obter(s, assinatura_id)])
+        (saida,) = await montar_saidas(s, [await _obter(s, assinatura_id)])
     return saida
 
 
@@ -206,5 +208,13 @@ async def ativar_assinatura(
             await ativar(s, assinatura, ctx.agora, cortesia=entrada.cortesia)
         except (TransicaoInvalida, AssinaturaEmAberto) as erro:
             raise HTTPException(status.HTTP_409_CONFLICT, str(erro)) from erro
-        (saida,) = await _saidas(s, [assinatura])
+    # Cortesia: a assinatura no Asaas, se já emitida, para de cobrar.
+    gateway = _gateway(ctx)
+    if gateway is not None and entrada.cortesia:
+        try:
+            await cancelar_no_gateway(ctx.fabrica, gateway, assinatura_id, ctx.agora)
+        except ErroGateway as erro:  # registrado na assinatura; o job tenta de novo
+            logger.warning("cancelamento no Asaas adiado", extra={"motivo": str(erro)})
+    async with ctx.sistema() as s:
+        (saida,) = await montar_saidas(s, [await _obter(s, assinatura_id)])
     return saida

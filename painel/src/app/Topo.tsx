@@ -20,6 +20,8 @@ export function Topo({ eu }: { eu: Eu }) {
           </>
         ) : (
           <>
+            <Link href="/clientes">Clientes</Link>
+            <Link href="/assinaturas">Assinaturas</Link>
             <Link href="/saude">Saúde dos robôs</Link>
             <Link href="/precos">Preços</Link>
           </>

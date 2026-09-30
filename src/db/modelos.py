@@ -528,6 +528,9 @@ class Assinatura(Base):
     gateway_id: Mapped[str | None] = mapped_column(String(40), unique=True)
     link_pagamento: Mapped[str | None] = mapped_column(Text)
     gateway_cancelado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Último erro do intermediador (sem dados pessoais), limpo no próximo sucesso.
+    cobranca_erro: Mapped[str | None] = mapped_column(String(120))
+    cobranca_erro_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Ocorrencia(Base):
