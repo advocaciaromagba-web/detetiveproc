@@ -33,7 +33,7 @@ def consulta_ocorrencias() -> Select[tuple[Ocorrencia, Processo, str, Alvo, str]
 def motivo(alvo: Alvo | None, regra_nome: str | None) -> str:
     if alvo is not None:
         return f"Alvo: {rotulo_alvo(alvo)}"
-    return f"Regra: {regra_nome}" if regra_nome else "Monitoramento"
+    return f"Termo: {regra_nome}" if regra_nome else "Monitoramento"
 
 
 # Quantas partes de cada polo aparecem na lista (o detalhe mostra todas).

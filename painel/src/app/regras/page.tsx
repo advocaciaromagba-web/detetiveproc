@@ -15,8 +15,19 @@ const SITUACOES = [
   { valor: "todas", rotulo: "Todos" },
 ] as const;
 
+const ROTULO_TIPO_TERMO: Record<string, string> = {
+  acao: "Nome da ação",
+  assunto: "Assunto",
+  frase: "Frase",
+};
+
 function Filtros({ r }: { r: Regra }) {
   const itens: [string, string][] = [];
+  if (r.tipo_termo) {
+    itens.push([ROTULO_TIPO_TERMO[r.tipo_termo] ?? r.tipo_termo, r.texto_termo ?? ""]);
+    itens.push(["Onde", r.tribunal_sigla ?? "Brasil todo"]);
+  }
+  // Regras antigas (por código TPU e outros filtros), anteriores aos termos por nome.
   if (r.classes.length) itens.push(["Classes", r.classes.join(", ")]);
   if (r.assuntos.length) itens.push(["Assuntos", r.assuntos.join(", ")]);
   if (r.comarcas.length) itens.push(["Comarcas", r.comarcas.join(", ")]);
@@ -42,9 +53,10 @@ export default async function Termos({
   const eu = await exigirCliente();
   const { situacao: bruta, contratado } = await searchParams;
   const situacao = SITUACOES.some((s) => s.valor === bruta) ? bruta! : "abertas";
-  const [pagina, precos] = await Promise.all([
+  const [pagina, precos, tribunais] = await Promise.all([
     api<Pagina<Assinatura>>(`/v1/assinaturas?produto=termo&situacao=${situacao}&limite=200`),
     api<Preco[]>("/v1/precos"),
+    api<string[]>("/v1/assinaturas/tribunais"),
   ]);
   const precosTermo = precos.filter((p) => p.produto === "termo");
 
@@ -54,8 +66,9 @@ export default async function Termos({
       <main>
         <h1>Termos monitorados</h1>
         <p className="suave">
-          Cada termo é uma assinatura (mensal ou anual): processos novos de qualquer parte que
-          casem com ele aparecem em Processos.
+          Cada termo é uma assinatura (mensal ou anual): processos novos com esse nome de ação,
+          assunto ou frase, no Brasil todo ou em um tribunal, aparecem em Processos e geram
+          aviso.
         </p>
         {contratado && (
           <p className="sucesso" role="status">
@@ -65,7 +78,7 @@ export default async function Termos({
         <section className="cartao">
           <h2 style={{ marginTop: 0 }}>Contratar novo termo</h2>
           {precosTermo.length ? (
-            <FormRegra precos={precosTermo} />
+            <FormRegra precos={precosTermo} tribunais={tribunais} />
           ) : (
             <p className="aviso">Contratação indisponível no momento. Tente mais tarde.</p>
           )}

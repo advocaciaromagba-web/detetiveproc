@@ -261,6 +261,25 @@ anual, com o preço da tabela travado na contratação (`cobranca/assinaturas.py
 - O agendador confere os vencimentos de hora em hora (job `assinaturas`).
 - A migração 0014 dá **cortesia** (sem vencimento) a tudo que já era monitorado.
 
+### Termos contratados (DataJud)
+
+Cada termo é **um** critério, fixo depois de contratado (trigger no banco; para mudar,
+contrata-se outro): **nome da ação** (nome exato da classe, ex.: "Execução Fiscal"),
+**assunto** (nome exato de um assunto) ou **frase** (contida na classe, nos assuntos ou na
+vara), no **Brasil todo** (91 índices do DataJud) ou em **um tribunal**.
+
+- `pipeline/varredura_termos.py`, job `varredura_termos` a cada
+  `TERMOS_VARREDURA_MINUTOS` (180): busca no DataJud em ordem de atualização
+  (`@timestamp`), com cursor por termo e tribunal (`consulta_termo`), no máximo
+  `TERMOS_MAX_PAGINAS` (5) páginas de 100 por ciclo — o resto continua no seguinte.
+- **Carga inicial** (processos ajuizados até `TERMOS_HISTORICO_DIAS`, 30, antes da
+  contratação) entra na lista sem aviso; depois, **um aviso por processo novo**.
+- Limites da fonte: o DataJud é abastecido pelos tribunais em lotes (atraso de dias a
+  semanas conforme o tribunal) e não traz as partes — processos achados só por termo
+  aparecem sem autor/réu. Termos amplos podem trazer milhares de processos por semana.
+- Datas vão no formato do índice (`AAAAMMDDhhmmss`); data ISO é ignorada em silêncio pelo
+  DataJud. Buscas no TJSP levam ~30 s (`DATAJUD_TIMEOUT`, 90 s).
+
 ### Cobrança (Asaas)
 
 Com `ASAAS_API_KEY` configurada (`cobranca/asaas.py`, `cobranca/pagamentos.py`):

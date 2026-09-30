@@ -88,6 +88,13 @@ class Settings(BaseSettings):
         "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
     )
     datajud_req_min: float = 30.0
+    # Busca por termo nos tribunais grandes (TJSP) leva ~30 s na API pública.
+    datajud_timeout: float = 90.0
+    # Termos contratados (ação/assunto/frase) buscados no DataJud: intervalo do ciclo,
+    # páginas de 100 por termo e tribunal a cada ciclo, e janela da carga inicial.
+    termos_varredura_minutos: int = 180
+    termos_max_paginas: int = 5
+    termos_historico_dias: int = 30
 
     # Opcional: o produto entrega a lista de processos; o resumo por IA fica desligado.
     ia_analise_ativa: bool = False

@@ -27,7 +27,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.documentos import normalizar_documento
-from db.modelos import Alvo, Cliente, Ocorrencia, Parte, Pessoa, Processo, Regra
+from db.modelos import Alvo, Cliente, Ocorrencia, Parte, Pessoa, Processo, Regra, Tribunal
 from pipeline.dedup import travar_processo
 from pipeline.normalizador import canonizar_comarca
 from pipeline.tpu import chave_tpu
@@ -112,14 +112,35 @@ def termo_casa(termo: str, texto: str) -> bool:
     return bool(chave) and f" {chave} " in f" {texto} "
 
 
+def termo_contratado_casa(regra: Regra, processo: Processo, sigla: str | None) -> bool:
+    """Termo contratado: nome EXATO da ação (classe) ou de um assunto, ou frase contida
+    na classe/assuntos/vara; e, se escolhido, só no tribunal do termo."""
+    if regra.tribunal_sigla and (sigla or "").upper() != regra.tribunal_sigla:
+        return False
+    chave = chave_tpu(regra.texto_termo or "")
+    if not chave:
+        return False
+    if regra.tipo_termo == "acao":
+        return chave_tpu(processo.classe_nome or "") == chave
+    if regra.tipo_termo == "assunto":
+        return any(chave_tpu(str(a.get("nome") or "")) == chave for a in processo.assuntos or [])
+    return termo_casa(regra.texto_termo or "", texto_capa(processo))
+
+
 def regra_casa(
-    regra: Regra, processo: Processo, polos_alvos: dict[str, Confianca]
+    regra: Regra,
+    processo: Processo,
+    polos_alvos: dict[str, Confianca],
+    sigla: str | None = None,
 ) -> Confianca | None:
     """Devolve a confiança se a regra casa, ou None.
 
     ``polos_alvos``: polos em que aparecem alvos do mesmo cliente, com a melhor confiança.
+    ``sigla``: tribunal do processo (para termos restritos a um tribunal).
     Regra sem nenhum filtro nunca casa (evita alertar sobre todos os processos).
     """
+    if regra.tipo_termo:
+        return "confirmada" if termo_contratado_casa(regra, processo, sigla) else None
     filtros: list[bool] = []
     if regra.classes:
         filtros.append(processo.classe_codigo in regra.classes)
@@ -293,9 +314,11 @@ async def avaliar_processo(
         if polos.get(casamento.polo) != "confirmada":
             polos[casamento.polo] = casamento.confianca
 
+    sigla = await sessao.scalar(select(Tribunal.sigla).where(Tribunal.id == processo.tribunal_id))
     regras_casadas: list[tuple[Regra, Confianca]] = []
     for regra in regras:
-        confianca = regra_casa(regra, processo, polos_por_cliente.get(regra.cliente_id, {}))
+        polos = polos_por_cliente.get(regra.cliente_id, {})
+        confianca = regra_casa(regra, processo, polos, sigla)
         if confianca is not None:
             regras_casadas.append((regra, confianca))
 

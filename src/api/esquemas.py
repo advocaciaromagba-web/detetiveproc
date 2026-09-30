@@ -16,7 +16,8 @@ from core.legal import TERMOS_VERSAO
 from core.nomes import normalizar_nome
 from core.oab import OABInvalida, normalizar_oab
 from entrega.whatsapp import normalizar_whatsapp
-from pipeline.normalizador import canonizar_comarca
+from fontes.datajud import TRIBUNAIS_DATAJUD
+from pipeline.tpu import chave_tpu
 
 Polo = Literal["ativo", "passivo", "terceiro"]
 StatusOcorrencia = Literal["novo", "visto", "descartado"]
@@ -115,48 +116,6 @@ class AlvoSaida(Saida):
 # --------------------------------------------------------------------------- regras
 
 
-class RegraEntrada(BaseModel):
-    nome: str = Field(min_length=1, max_length=200)
-    finalidade: str = Field(min_length=5, max_length=500)
-    classes: list[int] = Field(default_factory=list, max_length=200)
-    assuntos: list[int] = Field(default_factory=list, max_length=200)
-    termos: list[str] = Field(default_factory=list, max_length=50)
-    comarcas: list[str] = Field(default_factory=list, max_length=200)
-    polo: Polo | None = None
-    valor_min_centavos: int | None = Field(default=None, ge=0)
-
-    @field_validator("classes", "assuntos")
-    @classmethod
-    def _codigos(cls, valores: list[int]) -> list[int]:
-        if any(v <= 0 for v in valores):
-            raise ValueError("códigos TPU são inteiros positivos")
-        return sorted(set(valores))
-
-    @field_validator("termos")
-    @classmethod
-    def _termos(cls, valores: list[str]) -> list[str]:
-        return list(dict.fromkeys(t for t in (" ".join(v.split()) for v in valores) if t))
-
-    @field_validator("comarcas")
-    @classmethod
-    def _comarcas(cls, valores: list[str]) -> list[str]:
-        return list(dict.fromkeys(c for c in map(canonizar_comarca, valores) if c))
-
-    @model_validator(mode="after")
-    def _algum_filtro(self) -> "RegraEntrada":
-        filtros = (
-            self.classes,
-            self.assuntos,
-            self.termos,
-            self.comarcas,
-            self.polo,
-            self.valor_min_centavos is not None,
-        )
-        if not any(filtros):
-            raise ValueError("a regra precisa de ao menos um filtro")
-        return self
-
-
 class RegraSaida(Saida):
     id: int
     nome: str
@@ -169,6 +128,9 @@ class RegraSaida(Saida):
     valor_min_centavos: int | None
     ativo: bool
     criado_em: datetime
+    tipo_termo: str | None = None
+    texto_termo: str | None = None
+    tribunal_sigla: str | None = None
 
 
 # --------------------------------------------------------------------------- assinaturas
@@ -196,12 +158,38 @@ class ContratoNome(BaseModel):
     alvo: AlvoEntrada
 
 
+class TermoEntrada(BaseModel):
+    """Um único critério, que não pode ser alterado depois de contratado."""
+
+    tipo: Literal["acao", "assunto", "frase"]  # nome da ação (classe), assunto ou frase
+    texto: str = Field(min_length=3, max_length=200)
+    tribunal: str | None = Field(default=None, max_length=10)  # None = Brasil todo
+
+    @field_validator("texto")
+    @classmethod
+    def _texto(cls, valor: str) -> str:
+        limpo = " ".join(valor.split())
+        if len(chave_tpu(limpo)) < 3:
+            raise ValueError("informe o nome da ação, do assunto ou a frase")
+        return limpo
+
+    @field_validator("tribunal")
+    @classmethod
+    def _tribunal(cls, valor: str | None) -> str | None:
+        if valor is None or not valor.strip():
+            return None
+        sigla = valor.strip().upper()
+        if sigla not in TRIBUNAIS_DATAJUD:
+            raise ValueError("tribunal inválido")
+        return sigla
+
+
 class ContratoTermo(BaseModel):
-    """Monitoramento de um termo (frase, classe ou assunto, com filtros opcionais)."""
+    """Monitoramento de um termo: nome da ação, assunto ou frase (Brasil ou um tribunal)."""
 
     produto: Literal["termo"]
     periodicidade: Periodicidade = "mensal"
-    termo: RegraEntrada
+    termo: TermoEntrada
 
 
 Contrato = Annotated[ContratoNome | ContratoTermo, Field(discriminator="produto")]

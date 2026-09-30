@@ -25,6 +25,11 @@ from pipeline.complemento_datajud import (
     completar_processo,
 )
 from pipeline.varredura_djen import ConfigVarreduraDJEN, ResultadoVarreduraDJEN, varrer_djen
+from pipeline.varredura_termos import (
+    ConfigVarreduraTermos,
+    ResultadoVarreduraTermos,
+    varrer_termos,
+)
 from regras.alertas import ResultadoEnvio, despachar_whatsapp
 
 if TYPE_CHECKING:
@@ -51,6 +56,7 @@ def criar_fonte_datajud(
             url_base=settings.datajud_url,
             chave_api=settings.datajud_api_key.get_secret_value(),
             contato=settings.coletor_contato,
+            timeout=settings.datajud_timeout,
         ),
         chave_hash=_chave_hash(settings),
     )
@@ -164,5 +170,19 @@ def montar_cobrancas(
 
     async def executar() -> ResultadoSincronizacao:
         return await sincronizar_cobrancas(fabrica, canal, agora_utc())
+
+    return executar
+
+
+def montar_varredura_termos(
+    fabrica: Fabrica, settings: Settings, fonte: FonteDataJud
+) -> Callable[[], Awaitable[ResultadoVarreduraTermos]]:
+    """Job dos termos contratados (DataJud), com o mesmo limitador "DATAJUD"."""
+    config = ConfigVarreduraTermos(
+        historico_dias=settings.termos_historico_dias, max_paginas=settings.termos_max_paginas
+    )
+
+    async def executar() -> ResultadoVarreduraTermos:
+        return await varrer_termos(fabrica, fonte, config, agora_utc())
 
     return executar

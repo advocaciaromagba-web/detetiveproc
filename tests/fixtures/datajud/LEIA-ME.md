@@ -18,3 +18,7 @@ conversa). O resumo impresso diz se veio `valorCausa` e confirma que **não** v�
 
 O DataJud público não expõe nome/CPF/CNPJ das partes. Ainda assim, confira o arquivo
 antes de commitar e remova qualquer dado sensível que porventura apareça.
+
+- `trf3_por_classe.json`: resposta REAL de 30/09/2026 à busca por termo
+  (`match_phrase` em `classe.nome` = "Execução Fiscal", `dataAjuizamento` >= 20260901000000,
+  `@timestamp` > 2026-09-20, ordenado por `@timestamp`, 3 itens). Dados públicos, sem partes.

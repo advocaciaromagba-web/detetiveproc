@@ -9,7 +9,7 @@ import pytest
 
 from adaptadores.bruto import ArmazemMemoria
 from fontes.base import LimiteFonte, RespostaInvalida
-from fontes.datajud import ConfigDataJud, FonteDataJud, indice
+from fontes.datajud import TRIBUNAIS_DATAJUD, ConfigDataJud, FonteDataJud, indice
 from tests.agendador.apoio import LimitadorContador
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "datajud"
@@ -108,3 +108,63 @@ def test_indice_valida_a_sigla() -> None:
     assert indice("TRT2") == "api_publica_trt2"
     with pytest.raises(ValueError, match="sigla"):
         indice("../x")
+
+
+# --------------------------------------------------------------------------- busca por termo
+
+
+async def test_busca_por_termo_com_resposta_real() -> None:
+    """trf3_por_classe.json: resposta REAL de 30/09/2026 (classe "Execução Fiscal")."""
+    simulado = DataJudSimulado(resposta("trf3_por_classe.json"))
+    pagina = await fonte(simulado).buscar_por_termo(
+        "TRF3", "acao", "Execução  Fiscal", ajuizados_desde=date(2026, 9, 1), tamanho=3
+    )
+    assert (pagina.lidos, len(pagina.processos)) == (3, 3)
+    primeiro = pagina.processos[0]
+    assert primeiro.numero_cnj == "5010564-38.2026.4.03.6105"
+    assert (primeiro.tribunal, primeiro.grau) == ("TRF3", "G1")
+    assert primeiro.classe is not None
+    assert primeiro.classe.nome == "Execução Fiscal"
+    assert primeiro.orgao_julgador == "05ª VARA FEDERAL DE CAMPINAS"
+    assert primeiro.data_ajuizamento == date(2026, 9, 1)
+    assert pagina.cursor == pagina.processos[-1].atualizado_em is not None
+
+    (pedido,) = simulado.pedidos
+    assert pedido.url.path == "/api_publica_trf3/_search"
+    corpo = json.loads(pedido.content)
+    assert corpo["sort"] == [{"@timestamp": {"order": "asc"}}]
+    assert corpo["query"]["bool"]["must"] == [{"match_phrase": {"classe.nome": "Execução  Fiscal"}}]
+    # Data no formato do índice (ISO seria ignorada em silêncio pelo DataJud).
+    assert corpo["query"]["bool"]["filter"] == [
+        {"range": {"dataAjuizamento": {"gte": "20260901000000"}}}
+    ]
+
+
+async def test_busca_por_termo_continua_do_cursor_e_por_tipo() -> None:
+    simulado = DataJudSimulado(resposta("trf3_por_classe.json"))
+    f = fonte(simulado)
+    await f.buscar_por_termo(
+        "TRE-SP",
+        "assunto",
+        "Dano Moral",
+        ajuizados_desde=date(2026, 9, 1),
+        apos="2026-09-20T00:00:00Z",
+    )
+    await f.buscar_por_termo("TJDFT", "frase", "divida ativa", ajuizados_desde=date(2026, 9, 1))
+    primeiro, segundo = (json.loads(p.content) for p in simulado.pedidos)
+    assert simulado.pedidos[0].url.path == "/api_publica_tre-sp/_search"
+    assert primeiro["query"]["bool"]["must"] == [{"match_phrase": {"assuntos.nome": "Dano Moral"}}]
+    assert {"range": {"@timestamp": {"gte": "2026-09-20T00:00:00Z"}}} in primeiro["query"]["bool"][
+        "filter"
+    ]
+    assert segundo["query"]["bool"]["must"][0]["multi_match"]["fields"] == [
+        "classe.nome",
+        "assuntos.nome",
+    ]
+
+
+def test_indices_de_todos_os_tribunais() -> None:
+    assert len(TRIBUNAIS_DATAJUD) == len(set(TRIBUNAIS_DATAJUD)) == 91
+    assert indice("TRE-SP") == "api_publica_tre-sp"
+    with pytest.raises(ValueError, match="sigla"):
+        indice("TJ SP")

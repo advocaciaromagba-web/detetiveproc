@@ -141,6 +141,10 @@ export interface Regra {
   valor_min_centavos: number | null;
   ativo: boolean;
   criado_em: string;
+  /** Termo contratado (um critério, fixo): "acao" | "assunto" | "frase". */
+  tipo_termo: "acao" | "assunto" | "frase" | null;
+  texto_termo: string | null;
+  tribunal_sigla: string | null;
 }
 
 /** Para onde vão os avisos de processo novo (WhatsApp só com DDI+DDD, só dígitos). */

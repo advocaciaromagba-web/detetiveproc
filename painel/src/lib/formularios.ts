@@ -23,14 +23,6 @@ export function linhas(texto: string): string[] {
     .filter(Boolean);
 }
 
-/** "12154, 7 40" -> [12154, 7, 40]; null se algum item não for inteiro positivo. */
-export function codigos(texto: string): number[] | null {
-  const partes = texto.split(/[\s,;]+/).filter(Boolean);
-  const numeros = partes.map((p) => (/^\d+$/.test(p) ? Number(p) : NaN));
-  if (numeros.some((n) => !Number.isSafeInteger(n) || n <= 0)) return null;
-  return [...new Set(numeros)];
-}
-
 /**
  * Valor em reais digitado pela pessoa -> centavos inteiros, sem ponto flutuante.
  * Aceita "10.000,50", "10000,5", "1.234" (milhar), "1234.56", "R$ 99".
@@ -103,54 +95,29 @@ export function montarAlvo(dados: Record<string, string | undefined>): Resultado
   };
 }
 
-export interface CorpoRegra {
-  nome: string;
-  finalidade: string;
-  classes: number[];
-  assuntos: number[];
-  termos: string[];
-  comarcas: string[];
-  polo: "ativo" | "passivo" | "terceiro" | null;
-  valor_min_centavos: number | null;
+export type TipoTermo = "acao" | "assunto" | "frase";
+
+export interface CorpoTermo {
+  tipo: TipoTermo;
+  texto: string;
+  tribunal: string | null; // null = Brasil todo
 }
 
-export function montarRegra(dados: Record<string, string | undefined>): Resultado<CorpoRegra> {
+/** Termo contratado: UM critério (nome da ação, assunto ou frase), fixo depois de contratado. */
+export function montarTermo(dados: Record<string, string | undefined>): Resultado<CorpoTermo> {
   const erros: Erros = {};
-  const nome = texto(dados, "nome");
-  const finalidade = texto(dados, "finalidade").replace(/\s+/g, " ");
-  const classes = codigos(dados.classes ?? "");
-  const assuntos = codigos(dados.assuntos ?? "");
-  const polo = texto(dados, "polo");
-  const valor = reaisParaCentavos(dados.valor_min ?? "");
-
-  if (!nome) erros.nome = "Dê um nome à regra.";
-  if (finalidade.length < 5) erros.finalidade = "Informe a finalidade da regra (LGPD).";
-  if (classes === null) erros.classes = "Use códigos TPU numéricos, separados por vírgula.";
-  if (assuntos === null) erros.assuntos = "Use códigos TPU numéricos, separados por vírgula.";
-  if (polo && !["ativo", "passivo", "terceiro"].includes(polo)) erros.polo = "Polo inválido.";
-  if (Number.isNaN(valor)) erros.valor_min = "Valor inválido. Exemplo: 10.000,00";
-
-  const corpo: CorpoRegra = {
-    nome,
-    finalidade,
-    classes: classes ?? [],
-    assuntos: assuntos ?? [],
-    termos: linhas(dados.termos ?? ""),
-    comarcas: linhas(dados.comarcas ?? ""),
-    polo: (polo || null) as CorpoRegra["polo"],
-    valor_min_centavos: Number.isNaN(valor) ? null : valor,
-  };
-  const algumFiltro =
-    corpo.classes.length > 0 ||
-    corpo.assuntos.length > 0 ||
-    corpo.termos.length > 0 ||
-    corpo.comarcas.length > 0 ||
-    corpo.polo !== null ||
-    corpo.valor_min_centavos !== null;
-  if (!algumFiltro && Object.keys(erros).length === 0) {
-    erros._geral = "Preencha ao menos um filtro: sem filtro a regra casaria com qualquer processo.";
+  const tipo = texto(dados, "tipo");
+  const valor = texto(dados, "texto").replace(/\s+/g, " ");
+  const tribunal = texto(dados, "tribunal").toUpperCase();
+  if (tipo !== "acao" && tipo !== "assunto" && tipo !== "frase") {
+    erros.tipo = "Escolha: nome da ação, assunto ou frase.";
   }
-  return Object.keys(erros).length ? { corpo: null, erros } : { corpo, erros };
+  if (valor.replace(/[^0-9A-Za-zÀ-ÿ]/g, "").length < 3) {
+    erros.texto = "Informe o nome da ação, do assunto ou a frase (ao menos 3 letras).";
+  } else if (valor.length > 200) erros.texto = "No máximo 200 caracteres.";
+  if (tribunal && !/^[A-Z0-9]{2,6}(-[A-Z]{2})?$/.test(tribunal)) erros.tribunal = "Tribunal inválido.";
+  if (Object.keys(erros).length) return { corpo: null, erros };
+  return { corpo: { tipo: tipo as TipoTermo, texto: valor, tribunal: tribunal || null }, erros };
 }
 
 /**

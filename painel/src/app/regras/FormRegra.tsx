@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { CampoPeriodicidade } from "@/componentes/Assinatura";
 import { Campo } from "@/componentes/Campo";
@@ -9,54 +9,86 @@ import type { Preco } from "@/lib/tipos";
 
 import { contratarTermo } from "./acoes";
 
-const inicial: EstadoFormulario = { erros: {}, valores: {}, tentativa: 0 };
+const inicial: EstadoFormulario = { erros: {}, valores: { tipo: "acao" }, tentativa: 0 };
 
-export function FormRegra({ precos }: { precos: Preco[] }) {
+const TIPOS = [
+  {
+    valor: "acao",
+    rotulo: "Nome da ação",
+    exemplo: "Execução Fiscal",
+    dica: "Nome exato da classe processual, como aparece no processo.",
+  },
+  {
+    valor: "assunto",
+    rotulo: "Assunto",
+    exemplo: "Indenização por Dano Moral",
+    dica: "Nome exato de um dos assuntos do processo.",
+  },
+  {
+    valor: "frase",
+    rotulo: "Frase",
+    exemplo: "dívida ativa",
+    dica: "Encontra a frase no nome da ação, nos assuntos ou na vara.",
+  },
+] as const;
+
+export function FormRegra({ precos, tribunais }: { precos: Preco[]; tribunais: string[] }) {
   const [estado, acao, enviando] = useActionState(contratarTermo, inicial);
   const { erros, valores } = estado;
+  const [tipo, setTipo] = useState<string>(valores.tipo ?? "acao");
+  const atual = TIPOS.find((t) => t.valor === tipo) ?? TIPOS[0];
   return (
     <form key={estado.tentativa} action={acao} className="formulario" noValidate>
-      <Campo nome="nome" rotulo="Nome do termo" erro={erros.nome} dica="Para você identificar, ex.: Execuções fiscais em SP">
-        {(p) => <input {...p} defaultValue={valores.nome} required />}
-      </Campo>
-      <Campo nome="polo" rotulo="Polo de um alvo seu" erro={erros.polo} dica="Opcional: exige um alvo seu neste polo">
+      <fieldset className="largo">
+        <legend>O que buscar</legend>
+        {TIPOS.map((t) => (
+          <label key={t.valor} className="opcao">
+            <input
+              type="radio"
+              name="tipo"
+              value={t.valor}
+              checked={tipo === t.valor}
+              onChange={() => setTipo(t.valor)}
+            />
+            {t.rotulo}
+          </label>
+        ))}
+        {erros.tipo && (
+          <span className="erro-campo" role="alert">
+            {erros.tipo}
+          </span>
+        )}
+      </fieldset>
+      <Campo nome="texto" rotulo={atual.rotulo} erro={erros.texto} dica={atual.dica} largo>
         {(p) => (
-          <select {...p} defaultValue={valores.polo ?? ""}>
-            <option value="">Qualquer</option>
-            <option value="passivo">Passivo (réu)</option>
-            <option value="ativo">Ativo (autor)</option>
-            <option value="terceiro">Terceiro</option>
+          <input
+            {...p}
+            defaultValue={valores.texto}
+            placeholder={`ex.: ${atual.exemplo}`}
+            maxLength={200}
+            autoComplete="off"
+            required
+          />
+        )}
+      </Campo>
+      <Campo nome="tribunal" rotulo="Onde" erro={erros.tribunal}>
+        {(p) => (
+          <select {...p} defaultValue={valores.tribunal ?? ""}>
+            <option value="">Brasil todo</option>
+            {tribunais.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
           </select>
         )}
       </Campo>
-      <Campo nome="valor_min" rotulo="Valor mínimo da causa (R$)" erro={erros.valor_min}>
-        {(p) => <input {...p} defaultValue={valores.valor_min} inputMode="decimal" placeholder="10.000,00" />}
-      </Campo>
-      <Campo nome="classes" rotulo="Classes (códigos TPU)" erro={erros.classes} dica="Ex.: 12154, 40">
-        {(p) => <input {...p} defaultValue={valores.classes} inputMode="numeric" />}
-      </Campo>
-      <Campo nome="assuntos" rotulo="Assuntos (códigos TPU)" erro={erros.assuntos}>
-        {(p) => <input {...p} defaultValue={valores.assuntos} inputMode="numeric" />}
-      </Campo>
-      <Campo nome="comarcas" rotulo="Comarcas (uma por linha)" erro={erros.comarcas}>
-        {(p) => <textarea {...p} defaultValue={valores.comarcas} rows={3} />}
-      </Campo>
-      <Campo
-        nome="termos"
-        rotulo="Termos livres (um por linha)"
-        erro={erros.termos}
-        dica="Procurados na classe, nos assuntos e na vara"
-      >
-        {(p) => <textarea {...p} defaultValue={valores.termos} rows={3} />}
-      </Campo>
-      <Campo nome="finalidade" rotulo="Finalidade" erro={erros.finalidade} dica="Exigida pela LGPD" largo>
-        {(p) => <input {...p} defaultValue={valores.finalidade} required />}
-      </Campo>
-      <p className="suave largo">
-        Todos os filtros preenchidos precisam casar. Classes e assuntos usam os códigos das Tabelas
-        Processuais Unificadas do CNJ.
-      </p>
       <CampoPeriodicidade precos={precos} erro={erros.periodicidade} valor={valores.periodicidade} />
+      <p className="aviso largo">
+        Depois de contratado, o termo <strong>não pode ser alterado</strong>. Para buscar outra
+        coisa, contrate outro termo. Os dados vêm do DataJud (CNJ), que é atualizado pelos
+        tribunais com atraso de dias a semanas, e não trazem os nomes das partes.
+      </p>
       {erros._geral && (
         <p className="erro largo" role="alert">
           {erros._geral}

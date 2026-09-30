@@ -13,6 +13,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from typing import Literal
 
 import httpx
 
@@ -26,7 +27,27 @@ logger = logging.getLogger(__name__)
 
 FONTE = "DATAJUD"
 URL_BASE = "https://api-publica.datajud.cnj.jus.br"
-_SIGLA = re.compile(r"^[A-Z0-9]{2,10}$")
+_SIGLA = re.compile(r"^[A-Z0-9]{2,6}(-[A-Z]{2})?$")  # "TJSP", "TRT15", "TRE-SP"
+
+# Índices públicos do DataJud (um por tribunal): termos "Brasil todo" buscam em todos.
+_UFS = (
+    "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA",
+    "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO",
+)  # fmt: skip
+TRIBUNAIS_DATAJUD: tuple[str, ...] = (
+    "STJ",
+    "TST",
+    "TSE",
+    "STM",
+    *(f"TRF{n}" for n in range(1, 7)),
+    *("TJDFT" if uf == "DF" else f"TJ{uf}" for uf in _UFS),
+    *(f"TRT{n}" for n in range(1, 25)),
+    *(f"TRE-{uf}" for uf in _UFS),
+    "TJMMG",
+    "TJMRS",
+    "TJMSP",
+)
+CampoTermo = Literal["acao", "assunto", "frase"]
 # Instância preferida quando o mesmo número aparece em mais de um grau.
 _ORDEM_GRAU = {"G1": 0, "JE": 1, "G2": 2, "TR": 3, "SUP": 4}
 
@@ -56,6 +77,14 @@ class ProcessoDataJudDTO:
     data_ajuizamento: date | None = None
     nivel_sigilo: int = 0
     bruto_ref: str = ""
+    atualizado_em: str | None = None  # @timestamp (última atualização no DataJud)
+
+
+@dataclass
+class PaginaTermo:
+    processos: list[ProcessoDataJudDTO]
+    cursor: str | None  # @timestamp do último item (para continuar dali)
+    lidos: int  # itens da página, inclusive descartados
 
 
 def indice(sigla_tribunal: str) -> str:
@@ -133,6 +162,7 @@ def _processo(fonte_json: object, bruto_ref: str) -> ProcessoDataJudDTO | None:
         data_ajuizamento=_data(dado.get("dataAjuizamento")),
         nivel_sigilo=sigilo if isinstance(sigilo, int) else 0,
         bruto_ref=bruto_ref,
+        atualizado_em=atualizado if isinstance(atualizado := dado.get("@timestamp"), str) else None,
     )
 
 
@@ -203,3 +233,51 @@ class FonteDataJud:
         if not candidatos:
             return None
         return min(candidatos, key=lambda p: _ORDEM_GRAU.get(p.grau or "", 9))
+
+    async def buscar_por_termo(
+        self,
+        sigla_tribunal: str,
+        tipo: CampoTermo,
+        texto: str,
+        *,
+        ajuizados_desde: date,
+        apos: str | None = None,
+        tamanho: int = 100,
+    ) -> PaginaTermo:
+        """Processos ajuizados desde ``ajuizados_desde`` cujo nome da classe ("acao"), de
+        um assunto ("assunto") ou de ambos ("frase") contém o texto, em ordem de
+        atualização no DataJud; ``apos`` continua a partir do cursor anterior (inclusive:
+        quem chama descarta repetidos). A data vai como "AAAAMMDDhhmmss" (formato do
+        índice; data ISO é ignorada pelo DataJud sem erro)."""
+        frase: dict[str, object]
+        if tipo == "acao":
+            frase = {"match_phrase": {"classe.nome": texto}}
+        elif tipo == "assunto":
+            frase = {"match_phrase": {"assuntos.nome": texto}}
+        else:
+            frase = {
+                "multi_match": {
+                    "query": texto, "type": "phrase", "fields": ["classe.nome", "assuntos.nome"]
+                }
+            }  # fmt: skip
+        filtros: list[object] = [
+            {"range": {"dataAjuizamento": {"gte": ajuizados_desde.strftime("%Y%m%d000000")}}}
+        ]
+        if apos:
+            filtros.append({"range": {"@timestamp": {"gte": apos}}})
+        corpo: dict[str, object] = {
+            "size": tamanho,
+            "sort": [{"@timestamp": {"order": "asc"}}],
+            "query": {"bool": {"must": [frase], "filter": filtros}},
+        }
+        parametro_hash = hash_parametro(f"termo_{tipo}", " ".join(texto.split()), self._chave_hash)
+        async with self._cliente() as cliente:
+            bruta, dados = await cliente.postar(
+                f"{indice(sigla_tribunal)}/_search", corpo, parametro_hash=parametro_hash, pagina=1
+            )
+        hits = _hits(dados)
+        processos = [
+            p for p in (_processo(_dict(h).get("_source"), bruta.bruto_ref) for h in hits) if p
+        ]
+        cursor = next((p.atualizado_em for p in reversed(processos) if p.atualizado_em), apos)
+        return PaginaTermo(processos, cursor, len(hits))

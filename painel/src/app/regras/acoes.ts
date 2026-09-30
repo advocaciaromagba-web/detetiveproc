@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { api } from "@/lib/api";
 import { errosDaContratacao, valoresDe } from "@/lib/contratacao";
-import { montarRegra, periodicidade, type EstadoFormulario } from "@/lib/formularios";
+import { montarTermo, periodicidade, type EstadoFormulario } from "@/lib/formularios";
 import type { Assinatura } from "@/lib/tipos";
 
 /** Contrata o monitoramento de um termo: fica aguardando pagamento até ser liberado. */
@@ -15,7 +15,7 @@ export async function contratarTermo(
 ): Promise<EstadoFormulario> {
   const valores = valoresDe(dados);
   const tentativa = anterior.tentativa + 1;
-  const { corpo, erros } = montarRegra(valores);
+  const { corpo, erros } = montarTermo(valores);
   const plano = periodicidade(valores.periodicidade);
   if (!plano) erros.periodicidade = "Escolha o plano.";
   if (!corpo || !plano) return { erros, valores, tentativa };

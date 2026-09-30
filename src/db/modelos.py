@@ -416,11 +416,21 @@ class Regra(Base):
         CheckConstraint(_em("polo", "ativo", "passivo", "terceiro"), name="polo"),
         CheckConstraint("length(trim(finalidade)) > 0", name="finalidade"),
         CheckConstraint("valor_min_centavos >= 0", name="valor_min"),
+        CheckConstraint(
+            "tipo_termo IS NULL OR (tipo_termo IN ('acao', 'assunto', 'frase')"
+            " AND texto_termo IS NOT NULL)",
+            name="termo",
+        ),
     )
 
     id: Mapped[int] = _id()
     cliente_id: Mapped[int] = mapped_column(ForeignKey("cliente.id"), index=True)
     nome: Mapped[str] = mapped_column(Text)
+    # Termo contratado (um só critério, imutável; trigger no banco): nome da ação (classe),
+    # assunto ou frase, buscado no DataJud, opcionalmente em um tribunal só.
+    tipo_termo: Mapped[str | None] = mapped_column(String(10))
+    texto_termo: Mapped[str | None] = mapped_column(Text)
+    tribunal_sigla: Mapped[str | None] = mapped_column(String(10))
     finalidade: Mapped[str] = mapped_column(Text)
     classes: Mapped[list[int]] = mapped_column(ARRAY(Integer), server_default=text("'{}'"))
     assuntos: Mapped[list[int]] = mapped_column(ARRAY(Integer), server_default=text("'{}'"))
@@ -884,3 +894,18 @@ class PagamentoAplicado(Base):
     pagamento_id: Mapped[str] = mapped_column(String(40), primary_key=True)
     assinatura_id: Mapped[int] = mapped_column(ForeignKey("assinatura.id"))
     aplicado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ConsultaTermo(Base):
+    """Até onde cada termo já foi buscado em cada tribunal do DataJud (cursor pelo
+    ``@timestamp`` da última atualização). Tabela de sistema."""
+
+    __tablename__ = "consulta_termo"
+
+    regra_id: Mapped[int] = mapped_column(
+        ForeignKey("regra.id", ondelete="CASCADE"), primary_key=True
+    )
+    tribunal: Mapped[str] = mapped_column(String(10), primary_key=True)
+    cursor: Mapped[str | None] = mapped_column(String(40))  # último @timestamp lido
+    carga_inicial_concluida: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    atualizado_em: Mapped[datetime] = _agora()

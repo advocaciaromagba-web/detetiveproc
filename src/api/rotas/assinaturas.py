@@ -35,11 +35,13 @@ from cobranca.assinaturas import (
 )
 from cobranca.pagamentos import cancelar_no_gateway, pos_contratacao
 from db.modelos import STATUS_ASSINATURA_ABERTA, Alvo, Assinatura, Regra
+from fontes.datajud import TRIBUNAIS_DATAJUD
 
 rotas = APIRouter(prefix="/v1/assinaturas", tags=["assinaturas"])
 Situacao = Literal["abertas", "encerradas", "todas"]
 
 NAO_ENCONTRADA = HTTPException(status.HTTP_404_NOT_FOUND, "assinatura não encontrada")
+ROTULO_TIPO_TERMO = {"acao": "nome da ação", "assunto": "assunto", "frase": "frase"}
 logger = logging.getLogger(__name__)
 
 
@@ -79,7 +81,15 @@ async def _item_do_contrato(
     sessao: AsyncSession, contrato: Contrato, cliente_id: int
 ) -> Alvo | Regra:
     if not isinstance(contrato, ContratoNome):
-        return Regra(cliente_id=cliente_id, **contrato.termo.model_dump())
+        termo = contrato.termo
+        return Regra(
+            cliente_id=cliente_id,
+            nome=termo.texto,
+            finalidade=f"Termo contratado: {ROTULO_TIPO_TERMO[termo.tipo]}",
+            tipo_termo=termo.tipo,
+            texto_termo=termo.texto,
+            tribunal_sigla=termo.tribunal,
+        )
     dados = contrato.alvo
     # Nome já monitorado antes (assinatura encerrada): reaproveita o mesmo alvo.
     alvo = await sessao.scalar(
@@ -91,6 +101,13 @@ async def _item_do_contrato(
     alvo.prioridade = dados.prioridade
     alvo.finalidade = dados.finalidade
     return alvo
+
+
+@rotas.get("/tribunais", response_model=list[str])
+async def tribunais(ctx: Ctx) -> list[str]:
+    """Tribunais em que um termo pode ser restrito (índices do DataJud)."""
+    _ = ctx  # só usuários autenticados
+    return list(TRIBUNAIS_DATAJUD)
 
 
 @rotas.post("", response_model=AssinaturaSaida, status_code=status.HTTP_201_CREATED)

@@ -90,3 +90,33 @@ def test_termo_casa_palavra_inteira() -> None:
     assert termo_casa("Execução", texto)
     assert not termo_casa("exec", texto)
     assert not termo_casa("  ", texto)
+
+
+FISCAL = {
+    "classe_nome": "Execução Fiscal",
+    "assuntos": [{"codigo": 6017, "nome": "Dívida Ativa (Execução Fiscal)"}],
+    "vara": "SEF DE CAMPINAS",
+}
+
+
+@pytest.mark.parametrize(
+    ("tipo", "texto", "tribunal", "classe", "sigla", "casa"),
+    [
+        ("acao", "execucao fiscal", None, "Execução Fiscal", "TJSP", True),
+        # Ação é o nome EXATO da classe: embargos não entram em "Execução Fiscal".
+        ("acao", "Execução Fiscal", None, "Embargos à Execução Fiscal", "TJSP", False),
+        ("assunto", "Dívida Ativa (Execução Fiscal)", None, "Execução Fiscal", "TJSP", True),
+        ("assunto", "Dívida Ativa", None, "Execução Fiscal", "TJSP", False),
+        # Frase: contida na classe, nos assuntos ou na vara.
+        ("frase", "divida ativa", None, "Execução Fiscal", "TJSP", True),
+        ("frase", "Campinas", None, "Execução Fiscal", "TJSP", True),
+        ("frase", "falência", None, "Execução Fiscal", "TJSP", False),
+        # Termo restrito a um tribunal.
+        ("acao", "Execução Fiscal", "TRF3", "Execução Fiscal", "TRF3", True),
+        ("acao", "Execução Fiscal", "TRF3", "Execução Fiscal", "TJSP", False),
+    ],
+)
+def test_termo_contratado(tipo, texto, tribunal, classe, sigla, casa) -> None:  # type: ignore[no-untyped-def]
+    termo = regra(tipo_termo=tipo, texto_termo=texto, tribunal_sigla=tribunal)
+    p = processo(**{**FISCAL, "classe_nome": classe})
+    assert (regra_casa(termo, p, {}, sigla) == "confirmada") is casa
