@@ -141,6 +141,10 @@ export interface Regra {
   valor_min_centavos: number | null;
   ativo: boolean;
   criado_em: string;
+  /** Termo contratado (um critério, fixo): "acao" | "assunto" | "frase". */
+  tipo_termo: "acao" | "assunto" | "frase" | null;
+  texto_termo: string | null;
+  tribunal_sigla: string | null;
 }
 
 /** Para onde vão os avisos de processo novo (WhatsApp só com DDI+DDD, só dígitos). */
@@ -157,6 +161,8 @@ export interface Preco {
   produto: Produto;
   periodicidade: Periodicidade;
   valor_centavos: number;
+  /** Termos: processos novos por mês (todo plano de termos tem limite). */
+  limite_processos: number | null;
   atualizado_em: string;
 }
 
@@ -173,6 +179,9 @@ export interface Assinatura {
   criado_em: string;
   ativada_em: string | null;
   encerrada_em: string | null;
+  /** Termos: limite de processos por mês (travado na contratação) e uso no mês. */
+  limite_processos: number | null;
+  usados_no_mes: number | null;
   /** Cobrança em aberto no Asaas (Pix, boleto ou cartão). */
   link_pagamento: string | null;
   alvo: Alvo | null;

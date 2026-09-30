@@ -1,8 +1,10 @@
 """Contratação de nomes e termos pela API: preço, pendência, liberação e cancelamento."""
 
 import pytest
+from sqlalchemy import update
+from sqlalchemy.exc import DBAPIError
 
-from db.modelos import Preco
+from db.modelos import Preco, Regra
 from db.sessao import sessao_sistema
 from tests.api.conftest import entrar
 from tests.api.test_recursos import CPF, chave
@@ -24,15 +26,7 @@ NOME = {
 TERMO = {
     "produto": "termo",
     "periodicidade": "anual",
-    "termo": {
-        "nome": "Execuções em SP",
-        "finalidade": "Prospecção de carteira própria",
-        "classes": [12154, 12154],
-        "comarcas": ["Comarca de São Paulo", "SÃO PAULO", "Campinas"],
-        "termos": ["  duplicata  "],
-        "polo": "passivo",
-        "valor_min_centavos": 1_000_000,
-    },
+    "termo": {"tipo": "acao", "texto": "  Execução   Fiscal ", "tribunal": "trf3"},
 }
 
 
@@ -42,7 +36,12 @@ async def precos(fabrica) -> None:  # type: ignore[no-untyped-def]
         s.add_all(
             [
                 Preco(produto="nome", periodicidade="mensal", valor_centavos=4990),
-                Preco(produto="termo", periodicidade="anual", valor_centavos=19900),
+                Preco(
+                    produto="termo",
+                    periodicidade="anual",
+                    valor_centavos=19900,
+                    limite_processos=300,
+                ),
             ]
         )
 
@@ -58,6 +57,17 @@ async def test_precos_so_o_operador_altera(cliente_http, dados, relogio) -> None
     assert r.status_code == 200
     r = await cliente_http.put("/v1/precos/nome/mensal", headers=op, json={"valor_centavos": 5990})
     assert r.json()["valor_centavos"] == 5990
+    # Todo plano de termos tem limite de processos por mês.
+    sem_limite = await cliente_http.put("/v1/precos/termo/mensal", headers=op, json=corpo)
+    assert sem_limite.status_code == 422
+    assert "limite" in sem_limite.text
+    termo = {"valor_centavos": 9990, "limite_processos": 200}
+    r = await cliente_http.put("/v1/precos/termo/mensal", headers=op, json=termo)
+    assert (r.status_code, r.json()["limite_processos"]) == (200, 200)
+    zero = {"valor_centavos": 9990, "limite_processos": 0}
+    assert (
+        await cliente_http.put("/v1/precos/termo/mensal", headers=op, json=zero)
+    ).status_code == 422
     assert (
         await cliente_http.put("/v1/precos/nome/semanal", headers=op, json=corpo)
     ).status_code == 422
@@ -66,7 +76,8 @@ async def test_precos_so_o_operador_altera(cliente_http, dados, relogio) -> None
     ).status_code == 422
     lista = (await cliente_http.get("/v1/precos", headers=chave(dados))).json()
     assert [(p["produto"], p["periodicidade"], p["valor_centavos"]) for p in lista] == [
-        ("nome", "mensal", 5990)
+        ("nome", "mensal", 5990),
+        ("termo", "mensal", 9990),
     ]
 
 
@@ -106,26 +117,59 @@ async def test_contrata_termo_normalizado(cliente_http, dados, precos) -> None:
     r = await cliente_http.post(URL, headers=chave(dados), json=TERMO)
     assert r.status_code == 201, r.text
     termo = r.json()["termo"]
-    assert (termo["classes"], termo["comarcas"], termo["termos"], termo["ativo"]) == (
-        [12154], ["SAO PAULO", "CAMPINAS"], ["duplicata"], False,
+    assert (termo["tipo_termo"], termo["texto_termo"], termo["tribunal_sigla"], termo["ativo"]) == (
+        "acao", "Execução Fiscal", "TRF3", False,
     )  # fmt: skip
+    assert termo["nome"] == "Execução Fiscal"
     assert r.json()["valor_centavos"] == 19900
+    # O limite do plano fica travado na contratação, como o preço.
+    assert (r.json()["limite_processos"], r.json()["usados_no_mes"]) == (300, 0)
     lista = (await cliente_http.get(f"{URL}?produto=termo", headers=chave(dados))).json()
     assert [a["id"] for a in lista["itens"]] == [r.json()["id"]]
+    tribunais = (await cliente_http.get(f"{URL}/tribunais", headers=chave(dados))).json()
+    assert {"TJSP", "TRF3", "TRT2", "TRE-SP", "STJ"} <= set(tribunais)
+    assert len(tribunais) == 91
 
 
 @pytest.mark.parametrize(
-    "termo",
+    ("termo", "trecho"),
     [
-        {"nome": "Sem filtro", "finalidade": "finalidade"},
-        {"nome": "Só vazios", "finalidade": "finalidade", "termos": ["  "], "comarcas": [""]},
-        {"nome": "Código negativo", "finalidade": "finalidade", "classes": [-1]},
-        {"nome": "Valor negativo", "finalidade": "finalidade", "valor_min_centavos": -5},
+        ({"tipo": "acao", "texto": "  "}, "texto"),
+        ({"tipo": "acao", "texto": "!!!!"}, "nome da ação"),
+        ({"tipo": "classe", "texto": "Execução Fiscal"}, "tipo"),
+        ({"tipo": "assunto", "texto": "Dano Moral", "tribunal": "TJXX"}, "tribunal inválido"),
+        ({"classes": [1116]}, "tipo"),  # formato antigo (vários filtros) não vale mais
     ],
 )
-async def test_termo_invalido(cliente_http, dados, precos, termo) -> None:
-    corpo = {**TERMO, "termo": termo}
-    assert (await cliente_http.post(URL, headers=chave(dados), json=corpo)).status_code == 422
+async def test_termo_invalido(cliente_http, dados, precos, termo, trecho) -> None:
+    r = await cliente_http.post(URL, headers=chave(dados), json={**TERMO, "termo": termo})
+    assert r.status_code == 422
+    assert trecho in r.text
+
+
+async def test_termo_contratado_nao_muda(fabrica, dados) -> None:  # type: ignore[no-untyped-def]
+    """Depois de gravado, o termo é imutável até no banco: para mudar, contrata outro."""
+    async with sessao_sistema(fabrica) as s:
+        regra = Regra(
+            cliente_id=dados.cliente_a,
+            nome="Execução Fiscal",
+            finalidade="teste",
+            tipo_termo="acao",
+            texto_termo="Execução Fiscal",
+        )
+        s.add(regra)
+        await s.flush()
+        regra_id = regra.id
+    for mudanca in (
+        {"texto_termo": "Monitória"},
+        {"tribunal_sigla": "TJSP"},
+        {"tipo_termo": "frase"},
+    ):
+        with pytest.raises(DBAPIError, match="não pode ser alterado"):
+            async with sessao_sistema(fabrica) as s:
+                await s.execute(update(Regra).where(Regra.id == regra_id).values(**mudanca))
+    async with sessao_sistema(fabrica) as s:  # ligar/desligar (assinatura) continua possível
+        await s.execute(update(Regra).where(Regra.id == regra_id).values(ativo=False))
 
 
 @pytest.mark.parametrize(

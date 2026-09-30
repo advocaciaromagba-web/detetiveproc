@@ -98,6 +98,7 @@ def _analisador() -> argparse.ArgumentParser:
     dp.add_argument("--produto", choices=["nome", "termo"], required=True)
     dp.add_argument("--periodicidade", choices=["mensal", "anual"], required=True)
     dp.add_argument("--centavos", type=int, required=True, help="ex.: 9990 para R$ 99,90")
+    dp.add_argument("--limite", type=int, help="termos: processos novos por mês (obrigatório)")
 
     at = cmd.add_parser("ativar-assinatura", help="libera um período pago fora da plataforma")
     at.add_argument("--id", type=int, required=True)
@@ -229,12 +230,15 @@ async def _listar_unidades(args: argparse.Namespace, fabrica: Fabrica) -> dict[s
 async def _definir_preco(args: argparse.Namespace, fabrica: Fabrica) -> dict[str, Any]:
     if args.centavos < 0:
         raise SystemExit("o preço não pode ser negativo")
+    if args.produto == "termo" and (args.limite is None or args.limite < 1):
+        raise SystemExit("todo plano de termos tem limite: informe --limite (processos por mês)")
     async with sessao_sistema(fabrica) as s:
         preco = await s.get(Preco, (args.produto, args.periodicidade))
         if preco is None:
             preco = Preco(produto=args.produto, periodicidade=args.periodicidade)
             s.add(preco)
         preco.valor_centavos = args.centavos
+        preco.limite_processos = args.limite if args.produto == "termo" else None
         preco.atualizado_em = datetime.now(UTC)
     return {"produto": args.produto, "periodicidade": args.periodicidade, "centavos": args.centavos}
 

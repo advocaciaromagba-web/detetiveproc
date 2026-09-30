@@ -1,0 +1,152 @@
+{
+    "took": 3269,
+    "timed_out": false,
+    "_shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+    },
+    "hits": {
+        "total": {
+            "value": 1210,
+            "relation": "eq"
+        },
+        "max_score": null,
+        "hits": [
+            {
+                "_index": "api_publica_trf3",
+                "_id": "TRF3_G1_50105643820264036105",
+                "_score": null,
+                "_source": {
+                    "tribunal": "TRF3",
+                    "grau": "G1",
+                    "numeroProcesso": "50105643820264036105",
+                    "dataAjuizamento": "20260901201106",
+                    "nivelSigilo": 0,
+                    "orgaoJulgador": {
+                        "codigo": 14057,
+                        "nome": "05\u00aa VARA FEDERAL DE CAMPINAS",
+                        "codigoMunicipioIBGE": 3509502
+                    },
+                    "classe": {
+                        "codigo": 1116,
+                        "nome": "Execu\u00e7\u00e3o Fiscal"
+                    },
+                    "@timestamp": "2026-09-20T13:49:23.963000Z",
+                    "assuntos": [
+                        {
+                            "codigo": 6045,
+                            "nome": "Contribui\u00e7\u00f5es para o SEBRAE, SESC, SENAC, SENAI e outros"
+                        },
+                        {
+                            "codigo": 6060,
+                            "nome": "Contribui\u00e7\u00e3o sobre a folha de sal\u00e1rios"
+                        },
+                        {
+                            "codigo": 6092,
+                            "nome": "SIMPLES"
+                        }
+                    ]
+                },
+                "sort": [
+                    1789912163963
+                ]
+            },
+            {
+                "_index": "api_publica_trf3",
+                "_id": "TRF3_G1_50185206820264036182",
+                "_score": null,
+                "_source": {
+                    "tribunal": "TRF3",
+                    "grau": "G1",
+                    "numeroProcesso": "50185206820264036182",
+                    "dataAjuizamento": "20260901203813",
+                    "nivelSigilo": 0,
+                    "orgaoJulgador": {
+                        "codigo": 13997,
+                        "nome": "09\u00aa VARA FEDERAL DE EXECU\u00c7\u00d5ES FISCAIS DE S\u00c3O PAULO",
+                        "codigoMunicipioIBGE": 3550308
+                    },
+                    "classe": {
+                        "codigo": 1116,
+                        "nome": "Execu\u00e7\u00e3o Fiscal"
+                    },
+                    "@timestamp": "2026-09-20T13:49:23.963000Z",
+                    "assuntos": [
+                        {
+                            "codigo": 6035,
+                            "nome": "Cofins"
+                        },
+                        {
+                            "codigo": 6045,
+                            "nome": "Contribui\u00e7\u00f5es para o SEBRAE, SESC, SENAC, SENAI e outros"
+                        },
+                        {
+                            "codigo": 6060,
+                            "nome": "Contribui\u00e7\u00e3o sobre a folha de sal\u00e1rios"
+                        },
+                        {
+                            "codigo": 10395,
+                            "nome": "Multas e demais San\u00e7\u00f5es"
+                        }
+                    ]
+                },
+                "sort": [
+                    1789912163963
+                ]
+            },
+            {
+                "_index": "api_publica_trf3",
+                "_id": "TRF3_G1_50027352420264036002",
+                "_score": null,
+                "_source": {
+                    "tribunal": "TRF3",
+                    "grau": "G1",
+                    "numeroProcesso": "50027352420264036002",
+                    "dataAjuizamento": "20260901204514",
+                    "nivelSigilo": 0,
+                    "orgaoJulgador": {
+                        "codigo": 12544,
+                        "nome": "01\u00aa VARA FEDERAL DE DOURADOS COM JUIZADO ESPECIAL FEDERAL CRIMINAL ADJUNTO",
+                        "codigoMunicipioIBGE": 5003702
+                    },
+                    "classe": {
+                        "codigo": 1116,
+                        "nome": "Execu\u00e7\u00e3o Fiscal"
+                    },
+                    "@timestamp": "2026-09-20T13:49:23.965000Z",
+                    "assuntos": [
+                        {
+                            "codigo": 5933,
+                            "nome": "IRPJ/Imposto de Renda de Pessoa Jur\u00eddica"
+                        },
+                        {
+                            "codigo": 6035,
+                            "nome": "Cofins"
+                        },
+                        {
+                            "codigo": 6036,
+                            "nome": "Contribui\u00e7\u00e3o Social sobre o Lucro L\u00edquido"
+                        },
+                        {
+                            "codigo": 6039,
+                            "nome": "PIS"
+                        },
+                        {
+                            "codigo": 6060,
+                            "nome": "Contribui\u00e7\u00e3o sobre a folha de sal\u00e1rios"
+                        },
+                        {
+                            "codigo": 6092,
+                            "nome": "SIMPLES"
+                        }
+                    ]
+                },
+                "sort": [
+                    1789912163965
+                ]
+            }
+        ]
+    }
+}

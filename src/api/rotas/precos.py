@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, HTTPException, Path, status
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
@@ -30,16 +30,21 @@ async def definir(
     entrada: PrecoEntrada,
     ctx: Ctx,
 ) -> Preco:
-    """Vale para novas contratações; assinaturas existentes mantêm o preço contratado."""
+    """Vale para novas contratações; assinaturas existentes mantêm o preço contratado.
+    Todo plano de termos tem limite mensal de processos (``limite_processos``)."""
+    limite = entrada.limite_processos if produto == "termo" else None
+    if produto == "termo" and limite is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "informe o limite de processos por mês"
+        )
     async with ctx.sistema() as s:
+        valores = {"valor_centavos": entrada.valor_centavos, "limite_processos": limite}
         await s.execute(
             insert(Preco)
-            .values(
-                produto=produto, periodicidade=periodicidade, valor_centavos=entrada.valor_centavos
-            )
+            .values(produto=produto, periodicidade=periodicidade, **valores)
             .on_conflict_do_update(
                 index_elements=[Preco.produto, Preco.periodicidade],
-                set_={"valor_centavos": entrada.valor_centavos, "atualizado_em": ctx.agora},
+                set_={**valores, "atualizado_em": ctx.agora},
             )
         )
         preco = await s.get(Preco, (produto, periodicidade), populate_existing=True)

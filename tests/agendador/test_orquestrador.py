@@ -46,6 +46,7 @@ from pipeline.complemento_datajud import ResultadoComplemento
 from pipeline.dedup import gravar_processo
 from pipeline.normalizador import normalizar_processo
 from pipeline.varredura_djen import ResultadoVarreduraDJEN
+from pipeline.varredura_termos import ResultadoVarreduraTermos
 from tests.agendador.apoio import (
     BRT,
     CNPJ,
@@ -548,6 +549,9 @@ def test_jobs_de_publicacoes_so_quando_configurados(fabrica) -> None:
     async def complemento() -> ResultadoComplemento:
         return ResultadoComplemento()
 
+    async def termos() -> ResultadoVarreduraTermos:
+        return ResultadoVarreduraTermos()
+
     registro = RegistroAdaptadores(fabrica_limitador=lambda _t: LimitadorContador())
     orquestrador = Orquestrador(fabrica, registro, chave_hash=CHAVE)
     tarefas = Tarefas(
@@ -557,9 +561,15 @@ def test_jobs_de_publicacoes_so_quando_configurados(fabrica) -> None:
         varredura_djen=djen,
         analise_publicacoes=analise,
         complemento_datajud=complemento,
+        varredura_termos=termos,
     )
-    jobs = {j.id: j for j in montar_agendador(tarefas, djen_minutos=30).get_jobs()}
-    assert {"varredura_djen", "analise_publicacoes", "complemento_datajud"} <= set(jobs)
+    jobs = {
+        j.id: j for j in montar_agendador(tarefas, djen_minutos=30, termos_minutos=120).get_jobs()
+    }
+    assert {
+        "varredura_djen", "analise_publicacoes", "complemento_datajud", "varredura_termos"
+    } <= set(jobs)  # fmt: skip
+    assert "2:00:00" in str(jobs["varredura_termos"].trigger)
     assert "0:30:00" in str(jobs["varredura_djen"].trigger)
 
 

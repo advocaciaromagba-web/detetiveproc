@@ -141,7 +141,7 @@ async def carregar_dados_alerta(sessao: AsyncSession, ocorrencia_id: int) -> Dad
         motivo = f"Alvo: {rotulo_alvo(alvo)}" if alvo else "Alvo monitorado"
     else:
         nome_regra = await sessao.scalar(select(Regra.nome).where(Regra.id == ocorrencia.regra_id))
-        motivo = f"Regra: {nome_regra}"
+        motivo = f"Termo: {nome_regra}"
     config = carregar_config(cliente.config_alertas, cliente.id)
     return DadosAlerta(
         ocorrencia_id=ocorrencia.id,

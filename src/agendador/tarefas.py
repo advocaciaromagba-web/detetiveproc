@@ -21,6 +21,7 @@ from monitoramento.alarmes import avaliar_alarmes, avaliar_volume
 from monitoramento.sentinelas import executar_sentinelas
 from pipeline.complemento_datajud import ResultadoComplemento
 from pipeline.varredura_djen import ResultadoVarreduraDJEN
+from pipeline.varredura_termos import ResultadoVarreduraTermos
 from regras.alertas import ResultadoEnvio, despachar_alertas, enviar_resumos_diarios
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,8 @@ class Tarefas:
     carencia_assinatura_dias: int = 7
     # Cobrança pelo Asaas (None enquanto a chave não estiver configurada).
     sincronizar_cobrancas: Callable[[], Awaitable[ResultadoSincronizacao]] | None = None
+    # Termos contratados buscados no DataJud (None sem a fonte do DataJud).
+    varredura_termos: Callable[[], Awaitable[ResultadoVarreduraTermos]] | None = None
 
     async def varredura(self) -> None:
         resultados = await self.orquestrador.executar_ciclo()
@@ -172,6 +175,23 @@ class Tarefas:
                 },
             )
 
+    async def termos(self) -> None:
+        if self.varredura_termos is None:
+            return
+        r = await self.varredura_termos()
+        logger.info(
+            "busca dos termos no DataJud concluída",
+            extra={
+                "termos": r.termos,
+                "consultas": r.consultas,
+                "processos_novos": r.processos_novos,
+                "ocorrencias_novas": r.ocorrencias_novas,
+                "alertas": r.alertas,
+                "erros": r.erros,
+                "interrompida": r.interrompida,
+            },
+        )
+
     async def cobrancas(self) -> None:
         """Emite cobranças que falharam, busca links que faltam e propaga cancelamentos."""
         if self.sincronizar_cobrancas is None:
@@ -195,7 +215,11 @@ class Tarefas:
 
 
 def montar_agendador(
-    tarefas: Tarefas, fuso: str = "America/Sao_Paulo", *, djen_minutos: int = 60
+    tarefas: Tarefas,
+    fuso: str = "America/Sao_Paulo",
+    *,
+    djen_minutos: int = 60,
+    termos_minutos: int = 180,
 ) -> AsyncIOScheduler:
     """Jobs sem sobreposição (max_instances=1) e sem rajada após atraso (coalesce)."""
     agendador = AsyncIOScheduler(timezone=fuso)
@@ -205,6 +229,10 @@ def montar_agendador(
     agendador.add_job(tarefas.resumo_diario, "cron", hour=7, id="resumo_diario", **padrao)
     agendador.add_job(tarefas.limpeza, "cron", hour=3, minute=30, id="limpeza", **padrao)
     agendador.add_job(tarefas.assinaturas, "interval", hours=1, id="assinaturas", **padrao)
+    if tarefas.varredura_termos is not None:
+        agendador.add_job(
+            tarefas.termos, "interval", minutes=termos_minutos, id="varredura_termos", **padrao
+        )
     if tarefas.sincronizar_cobrancas is not None:
         agendador.add_job(tarefas.cobrancas, "interval", minutes=5, id="cobrancas", **padrao)
     agendador.add_job(tarefas.sentinelas, "interval", hours=1, id="sentinelas", **padrao)

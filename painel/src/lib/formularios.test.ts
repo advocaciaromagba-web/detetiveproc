@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  codigos,
   errosDaApi,
   linhas,
   mascararDocumento,
   montarAlvo,
   montarCadastro,
   montarContatos,
-  montarRegra,
+  montarPrecos,
+  montarTermo,
   periodicidade,
   reaisParaCentavos,
 } from "./formularios";
@@ -46,15 +46,9 @@ describe("mascararDocumento", () => {
   });
 });
 
-describe("linhas e códigos", () => {
+describe("linhas", () => {
   it("linhas limpas", () => {
     expect(linhas(" a \n\n b  c \r\nd")).toEqual(["a", "b c", "d"]);
-  });
-  it("códigos TPU", () => {
-    expect(codigos("12154, 7 40;7")).toEqual([12154, 7, 40]);
-    expect(codigos("")).toEqual([]);
-    expect(codigos("7, x")).toBeNull();
-    expect(codigos("0")).toBeNull();
   });
 });
 
@@ -103,35 +97,21 @@ describe("montarAlvo", () => {
   });
 });
 
-describe("montarRegra", () => {
-  const base = { nome: "Execuções", finalidade: "Prospecção própria" };
-
-  it("monta o corpo com valor em centavos", () => {
-    const r = montarRegra({
-      ...base,
-      classes: "12154",
-      comarcas: "São Paulo\nCampinas",
-      termos: "duplicata",
-      polo: "passivo",
-      valor_min: "10.000,00",
+describe("montarTermo", () => {
+  it("um critério, texto limpo e tribunal opcional", () => {
+    expect(montarTermo({ tipo: "acao", texto: "  Execução   Fiscal ", tribunal: "trf3" }).corpo).toEqual({
+      tipo: "acao",
+      texto: "Execução Fiscal",
+      tribunal: "TRF3",
     });
-    expect(r.erros).toEqual({});
-    expect(r.corpo).toMatchObject({
-      classes: [12154],
-      comarcas: ["São Paulo", "Campinas"],
-      termos: ["duplicata"],
-      polo: "passivo",
-      valor_min_centavos: 1_000_000,
-    });
+    expect(montarTermo({ tipo: "frase", texto: "dívida ativa", tribunal: "" }).corpo?.tribunal).toBeNull();
+    expect(montarTermo({ tipo: "assunto", texto: "Dano Moral", tribunal: "TRE-SP" }).corpo?.tribunal).toBe(
+      "TRE-SP",
+    );
   });
-
-  it("exige ao menos um filtro", () => {
-    expect(montarRegra(base).erros._geral).toMatch(/ao menos um filtro/);
-  });
-
-  it("erros de campo", () => {
-    const r = montarRegra({ ...base, classes: "abc", valor_min: "dez reais" });
-    expect(Object.keys(r.erros).sort()).toEqual(["classes", "valor_min"]);
+  it("aponta cada campo", () => {
+    const r = montarTermo({ tipo: "classe", texto: "!!", tribunal: "TJ SP" });
+    expect(Object.keys(r.erros).sort()).toEqual(["texto", "tipo", "tribunal"]);
   });
 });
 
@@ -242,5 +222,32 @@ describe("montarCadastro", () => {
       "periodicidade",
       "responsavel",
     ]);
+  });
+});
+
+describe("montarPrecos", () => {
+  const atuais = [
+    { produto: "nome", periodicidade: "mensal", valor_centavos: 4990, limite_processos: null },
+    { produto: "termo", periodicidade: "mensal", valor_centavos: 9990, limite_processos: 200 },
+  ];
+  it("vazio não altera; nome sem limite", () => {
+    expect(montarPrecos({ termo_mensal_limite: "200" }, atuais)).toEqual({ alterar: [], erros: {} });
+    expect(montarPrecos({ nome_anual: "499,00" }, atuais).alterar).toEqual([
+      { produto: "nome", periodicidade: "anual", valor_centavos: 49900, limite_processos: null },
+    ]);
+  });
+  it("todo plano de termos tem limite", () => {
+    const r = montarPrecos({ termo_anual: "999,00" }, atuais);
+    expect(r.erros.termo_anual_limite).toMatch(/limite/);
+    expect(r.alterar).toEqual([]);
+    expect(montarPrecos({ termo_anual: "999,00", termo_anual_limite: "0" }, atuais).erros).toHaveProperty(
+      "termo_anual_limite",
+    );
+  });
+  it("mudar só o limite reaproveita o preço atual", () => {
+    expect(montarPrecos({ termo_mensal_limite: "500" }, atuais).alterar).toEqual([
+      { produto: "termo", periodicidade: "mensal", valor_centavos: 9990, limite_processos: 500 },
+    ]);
+    expect(montarPrecos({ termo_anual_limite: "500" }, atuais).erros.termo_anual).toMatch(/preço/);
   });
 });

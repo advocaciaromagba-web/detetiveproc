@@ -23,6 +23,7 @@ export function CampoPeriodicidade({
             <option key={preco.periodicidade} value={preco.periodicidade}>
               {preco.periodicidade === "anual" ? "Anual" : "Mensal"} ·{" "}
               {formatarPreco(preco.valor_centavos, preco.periodicidade)}
+              {preco.limite_processos ? ` · até ${preco.limite_processos} processos/mês` : ""}
             </option>
           ))}
         </select>
@@ -48,8 +49,23 @@ export function SeloAssinatura({ assinatura }: { assinatura: Assinatura }) {
 }
 
 export function PlanoAssinatura({ assinatura }: { assinatura: Assinatura }): ReactNode {
-  if (assinatura.cortesia) return <span className="suave">Cortesia</span>;
-  return formatarPreco(assinatura.valor_centavos, assinatura.periodicidade);
+  const plano = assinatura.cortesia ? (
+    <span className="suave">Cortesia</span>
+  ) : (
+    formatarPreco(assinatura.valor_centavos, assinatura.periodicidade)
+  );
+  if (assinatura.limite_processos === null) return plano;
+  const usados = assinatura.usados_no_mes ?? 0;
+  const noLimite = usados >= assinatura.limite_processos;
+  return (
+    <>
+      {plano}
+      <div className={noLimite ? "erro-campo" : "suave"}>
+        {usados} de {assinatura.limite_processos} processos neste mês
+        {noLimite ? " (limite atingido: a busca volta no mês que vem)" : ""}
+      </div>
+    </>
+  );
 }
 
 export const ABERTAS = new Set(["pendente", "ativa", "atrasada"]);

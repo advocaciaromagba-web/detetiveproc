@@ -83,7 +83,7 @@ async def test_api_nao_enxerga_parametros_nem_credenciais(engine) -> None:
                 "WHERE grantee = 'monitor_api' AND table_name IN "
                 "('varredura', 'varredura_numero', 'usuario', 'sessao_usuario', 'chave_api', "
                 "'consulta_djen', 'cadastro', 'tentativa_publica', 'evento_pagamento', "
-                "'pagamento_aplicado')"
+                "'pagamento_aplicado', 'consulta_termo')"
             )
         )
         assert list(linhas) == []

@@ -24,7 +24,7 @@ class DadosAlerta:
     criterio: str
     score: int
     urgente: bool
-    motivo: str  # "Alvo: ACME" ou "Regra: Execuções em SP"
+    motivo: str  # "Alvo: ACME" ou "Termo: Execução Fiscal"
     polo_alvo: str | None = None
     classe: str | None = None
     assuntos: tuple[str, ...] = ()

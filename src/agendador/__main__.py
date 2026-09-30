@@ -15,6 +15,7 @@ from agendador.publicacoes import (
     montar_complemento,
     montar_despacho_whatsapp,
     montar_varredura_djen,
+    montar_varredura_termos,
 )
 from agendador.registro import registro_padrao
 from agendador.tarefas import Tarefas, montar_agendador, trava_instancia_unica
@@ -59,12 +60,16 @@ async def executar() -> None:
                 ),
                 analise_publicacoes=montar_analise(fabrica, settings),
                 complemento_datajud=montar_complemento(fabrica, datajud),
+                varredura_termos=montar_varredura_termos(fabrica, settings, datajud),
                 despacho_whatsapp=montar_despacho_whatsapp(fabrica, settings),
                 carencia_assinatura_dias=settings.assinatura_carencia_dias,
                 sincronizar_cobrancas=montar_cobrancas(fabrica, settings),
             )
             agendador = montar_agendador(
-                tarefas, settings.fuso_escritorio, djen_minutos=settings.djen_varredura_minutos
+                tarefas,
+                settings.fuso_escritorio,
+                djen_minutos=settings.djen_varredura_minutos,
+                termos_minutos=settings.termos_varredura_minutos,
             )
             agendador.start()
             logging.getLogger(__name__).info("agendador iniciado")

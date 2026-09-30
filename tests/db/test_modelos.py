@@ -47,6 +47,7 @@ TABELAS_ESPERADAS = {
     "tentativa_publica",
     "evento_pagamento",
     "pagamento_aplicado",
+    "consulta_termo",
 }
 POSTERIORES_A_0001 = {
     "varredura",
@@ -67,6 +68,7 @@ POSTERIORES_A_0001 = {
     "tentativa_publica",
     "evento_pagamento",
     "pagamento_aplicado",
+    "consulta_termo",
 }
 
 

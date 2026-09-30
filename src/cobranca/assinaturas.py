@@ -17,10 +17,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.modelos import Alvo, Assinatura, Preco, Regra
+from core.tempo import inicio_do_mes
+from db.modelos import Alvo, Assinatura, Ocorrencia, Preco, Regra
 
 Produto = Literal["nome", "termo"]
 Periodicidade = Literal["mensal", "anual"]
@@ -89,6 +90,15 @@ async def contratar(
     até ``ativar`` (pagamento confirmado ou liberação do operador)."""
     produto: Produto = "nome" if isinstance(item, Alvo) else "termo"
     valor = await preco_atual(sessao, produto, periodicidade)
+    limite = (
+        await sessao.scalar(
+            select(Preco.limite_processos).where(
+                Preco.produto == produto, Preco.periodicidade == periodicidade
+            )
+        )
+        if produto == "termo"
+        else None
+    )
     sessao.add(item)
     await sessao.flush()
     alvo_id = item.id if isinstance(item, Alvo) else None
@@ -103,6 +113,7 @@ async def contratar(
         regra_id=regra_id,
         periodicidade=periodicidade,
         valor_centavos=valor,
+        limite_processos=limite,
         status="pendente",
     )
     sessao.add(assinatura)
@@ -198,3 +209,39 @@ async def atualizar_situacoes(
             resultado.atrasadas += 1
     await sessao.flush()
     return resultado
+
+
+# --------------------------------------------------------------------------- limite dos termos
+
+
+async def uso_do_mes(sessao: AsyncSession, regra_ids: list[int], agora: datetime) -> dict[int, int]:
+    """Processos (ocorrências) que cada termo já trouxe no mês corrente (fuso do escritório)."""
+    if not regra_ids:
+        return {}
+    linhas = await sessao.execute(
+        select(Ocorrencia.regra_id, func.count())
+        .where(Ocorrencia.regra_id.in_(regra_ids), Ocorrencia.detectado_em >= inicio_do_mes(agora))
+        .group_by(Ocorrencia.regra_id)
+    )
+    return {int(regra_id): int(total) for regra_id, total in linhas if regra_id is not None}
+
+
+async def limites_dos_termos(sessao: AsyncSession, regra_ids: list[int]) -> dict[int, int]:
+    """Limite mensal da assinatura em vigor de cada termo (só os que têm limite)."""
+    if not regra_ids:
+        return {}
+    linhas = await sessao.execute(
+        select(Assinatura.regra_id, Assinatura.limite_processos).where(
+            Assinatura.regra_id.in_(regra_ids),
+            Assinatura.status.in_(("ativa", "atrasada")),
+            Assinatura.limite_processos.is_not(None),
+        )
+    )
+    return {int(r): int(lim) for r, lim in linhas if r is not None and lim is not None}
+
+
+async def termos_no_limite(sessao: AsyncSession, regra_ids: list[int], agora: datetime) -> set[int]:
+    """Termos que já atingiram o limite do mês: não trazem mais processos até o mês seguinte."""
+    limites = await limites_dos_termos(sessao, regra_ids)
+    usos = await uso_do_mes(sessao, list(limites), agora)
+    return {r for r, limite in limites.items() if usos.get(r, 0) >= limite}
