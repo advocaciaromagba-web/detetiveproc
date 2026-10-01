@@ -57,7 +57,7 @@ SMTP_PORTA=587
 SMTP_USUARIO=<usuário>
 SMTP_SENHA=<senha>
 SMTP_STARTTLS=true
-SMTP_REMETENTE=Detetiveproc <avisos@seudominio.com.br>
+SMTP_REMETENTE=DetetiveProc <avisos@seudominio.com.br>
 EMAIL_OPERACAO=<e-mail que recebe alertas de operação>
 LOG_FORMATO=json
 ```
