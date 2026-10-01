@@ -1,6 +1,6 @@
 """Intermediador de pagamento: Asaas (API v3).
 
-Cada assinatura do Detetiveproc vira uma assinatura no Asaas, com cobrança recorrente
+Cada assinatura do DetetiveProc vira uma assinatura no Asaas, com cobrança recorrente
 mensal ou anual; o cliente escolhe Pix, boleto ou cartão no link da cobrança
 (``billingType: UNDEFINED``). A confirmação chega pelo webhook (``cobranca.pagamentos``).
 
@@ -126,7 +126,7 @@ class AsaasAPI:
             "name": nome,
             "cpfCnpj": documento,
             "externalReference": referencia,
-            "notificationDisabled": True,  # os avisos de cobrança são do próprio Detetiveproc
+            "notificationDisabled": True,  # os avisos de cobrança são do próprio DetetiveProc
         }
         if email:
             corpo["email"] = email

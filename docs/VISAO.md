@@ -1,4 +1,4 @@
-# Visão e Roteiro — Detetiveproc
+# Visão e Roteiro — DetetiveProc
 
 > Documento de direção do produto. Define **o que** estamos construindo e **por quê**,
 > em linguagem de negócio, e o roteiro por etapas. Onde houver conflito de escopo com a
@@ -7,7 +7,7 @@
 
 ## 1. O que é
 
-O **Detetiveproc** é uma plataforma de **inteligência processual** vendida como serviço
+O **DetetiveProc** é uma plataforma de **inteligência processual** vendida como serviço
 (SaaS) para **qualquer pessoa, empresa ou escritório** — não só para a Advocacia Roma.
 Ela vigia continuamente as bases públicas oficiais e entrega dois produtos:
 

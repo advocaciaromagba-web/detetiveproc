@@ -1,4 +1,4 @@
-# Detetiveproc
+# DetetiveProc
 
 Detecta a distribuição de novos processos contra CPFs e CNPJs monitorados. A
 especificação completa está em [`docs/ESPECIFICACAO.md`](docs/ESPECIFICACAO.md) e
@@ -380,7 +380,7 @@ Campos possíveis: `classe`, `comarca`, `vara`, `data_distribuicao` (AAAA-MM-DD)
 
 **Métricas** — o agendador expõe `/metrics` na porta 9100, só na rede interna. O
 Prometheus (<http://127.0.0.1:9090>) coleta, e o Grafana (<http://127.0.0.1:3000>,
-usuário/senha do `.env`) abre direto no painel *Detetiveproc — saúde dos robôs*:
+usuário/senha do `.env`) abre direto no painel *DetetiveProc — saúde dos robôs*:
 consultas/min, latência p95, erros por exceção, processos novos/dia, alertas enviados,
 sentinelas, alarmes e tribunais bloqueados/pausados. Em servidor remoto, acesse por
 túnel SSH (`ssh -L 3000:127.0.0.1:3000 servidor`).

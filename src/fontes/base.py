@@ -21,7 +21,7 @@ from core.rate_limiter import TokenBucket
 
 logger = logging.getLogger(__name__)
 
-PRODUTO = "Detetiveproc"
+PRODUTO = "DetetiveProc"
 VERSAO = "0.1"
 
 

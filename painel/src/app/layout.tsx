@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import "@fontsource-variable/inter";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Detetiveproc",
-  description: "Processos novos em nome das empresas e pessoas monitoradas",
+  title: "DetetiveProc · Inteligência jurídica em tempo real",
+  description:
+    "Monitoramento inteligente de processos: processos recém-distribuídos em nome das " +
+    "empresas e pessoas monitoradas, e busca por assunto e tipo de ação.",
   robots: { index: false, follow: false },
 };
 

@@ -22,6 +22,8 @@ ENV NODE_ENV=production \
 RUN addgroup -S painel && adduser -S painel -G painel
 COPY --from=build --chown=painel:painel /app/.next/standalone ./
 COPY --from=build --chown=painel:painel /app/.next/static ./.next/static
+# Logos da marca (public/marca): o modo standalone não copia a pasta public sozinho.
+COPY --from=build --chown=painel:painel /app/public ./public
 USER painel
 EXPOSE 3100
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \

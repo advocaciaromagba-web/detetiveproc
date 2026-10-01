@@ -38,7 +38,7 @@ async def test_cria_cliente_e_assinatura() -> None:
         valor_centavos=4990,
         ciclo="MONTHLY",
         vencimento=date(2026, 9, 29),
-        descricao="Detetiveproc: monitoramento do nome ACME (plano mensal)",
+        descricao="DetetiveProc: monitoramento do nome ACME (plano mensal)",
         referencia="assinatura:7",
     )
     assert (cliente, assinatura) == ("cus_000001", "sub_000001")
@@ -60,7 +60,7 @@ async def test_cria_cliente_e_assinatura() -> None:
         "value": 49.9,
         "nextDueDate": "2026-09-29",
         "cycle": "MONTHLY",
-        "description": "Detetiveproc: monitoramento do nome ACME (plano mensal)",
+        "description": "DetetiveProc: monitoramento do nome ACME (plano mensal)",
         "externalReference": "assinatura:7",
     }
 

@@ -73,7 +73,7 @@ async def test_emite_cliente_assinatura_e_link_uma_vez(fabrica, dados: Dados) ->
     assert (sub["cliente"], sub["valor_centavos"], sub["ciclo"], sub["vencimento"]) == (
         "cus_1", 4990, "MONTHLY", AGORA.date(),
     )  # fmt: skip
-    assert sub["descricao"] == "Detetiveproc: monitoramento do nome ACME COMERCIO (plano mensal)"
+    assert sub["descricao"] == "DetetiveProc: monitoramento do nome ACME COMERCIO (plano mensal)"
     assinatura = await _assinatura(fabrica, i)
     assert (assinatura.gateway_id, assinatura.link_pagamento) == (
         "sub_1", "https://pagar.teste/sub_1",

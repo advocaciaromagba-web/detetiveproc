@@ -53,7 +53,7 @@ async def _descricao(s: AsyncSession, assinatura: Assinatura) -> str:
     else:
         regra = await s.get(Regra, assinatura.regra_id)
         item = f"monitoramento do termo {regra.nome if regra else ''}"
-    return f"Detetiveproc: {item.strip()} (plano {assinatura.periodicidade})"
+    return f"DetetiveProc: {item.strip()} (plano {assinatura.periodicidade})"
 
 
 async def _garantir_cliente(

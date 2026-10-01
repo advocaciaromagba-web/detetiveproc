@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Logo } from "@/componentes/Marca";
 import type { Eu } from "@/lib/tipos";
 
 import { sair } from "./acoes";
@@ -10,8 +11,8 @@ export function Topo({ eu }: { eu: Eu }) {
     <>
       <header className="topo">
         <nav aria-label="Principal">
-          <Link className="marca" href="/">
-            Detetiveproc
+          <Link className="marca" href="/" aria-label="DetetiveProc — início">
+            <Logo altura={34} />
           </Link>
           {eu.papel === "cliente" ? (
             <>

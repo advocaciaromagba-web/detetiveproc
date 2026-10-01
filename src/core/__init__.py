@@ -1,4 +1,4 @@
-"""Núcleo do Detetiveproc: DTOs, contrato, exceções, validadores e rate limiter."""
+"""Núcleo do DetetiveProc: DTOs, contrato, exceções, validadores e rate limiter."""
 
 from core.adaptador import AdaptadorTribunal
 from core.cnj import NumeroCNJ, NumeroCNJInvalido, calcular_dv, formatar_cnj, parse_cnj, validar_cnj
