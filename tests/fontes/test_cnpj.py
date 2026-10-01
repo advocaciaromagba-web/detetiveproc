@@ -32,7 +32,7 @@ async def test_le_razao_social_e_fantasia() -> None:
         "ACME COMERCIO LTDA", "ACME", "ATIVA",
     )  # fmt: skip
     assert str(pedidos[0].url) == f"https://api.teste/api/cnpj/v1/{CNPJ}"
-    assert pedidos[0].headers["User-Agent"].startswith("Detetiveproc/")
+    assert pedidos[0].headers["User-Agent"].startswith("DetetiveProc/")
 
 
 @pytest.mark.parametrize("status", [400, 404])

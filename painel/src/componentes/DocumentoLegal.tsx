@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 
 import { dataDaVersao } from "@/lib/legal";
 
+import { Logo } from "./Marca";
+
 /** Moldura das páginas públicas de termos de uso e política de privacidade. */
 export function DocumentoLegal({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
@@ -11,6 +13,9 @@ export function DocumentoLegal({ titulo, children }: { titulo: string; children:
         <Link href="/cadastro">← Criar conta</Link> · <Link href="/login">Entrar</Link>
       </p>
       <article className="cartao">
+        <div className="titulo-marca">
+          <Logo altura={44} />
+        </div>
         <h1>{titulo}</h1>
         <p className="suave">Versão de {dataDaVersao()}</p>
         {children}

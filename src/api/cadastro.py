@@ -150,33 +150,33 @@ async def limpar_tentativas(sessao: AsyncSession, agora: datetime) -> int:
 
 def _email_link(destino: str, nome: str, link: str, horas: int) -> Email:
     texto = (
-        f"Olá!\n\nRecebemos o cadastro de {nome} no Detetiveproc.\n"
+        f"Olá!\n\nRecebemos o cadastro de {nome} no DetetiveProc.\n"
         f"Para confirmar este e-mail e criar sua senha, acesse:\n\n{link}\n\n"
         f"O link vale por {horas} horas e pode ser usado uma única vez.\n"
         "Se não foi você, ignore esta mensagem.\n"
     )
     html = (
         f"<p>Olá!</p><p>Recebemos o cadastro de <strong>{escape(nome)}</strong> no "
-        "Detetiveproc.</p><p>Para confirmar este e-mail e criar sua senha:</p>"
+        "DetetiveProc.</p><p>Para confirmar este e-mail e criar sua senha:</p>"
         f'<p><a href="{escape(link)}">Confirmar cadastro</a></p>'
         f"<p>O link vale por {horas} horas e pode ser usado uma única vez. "
         "Se não foi você, ignore esta mensagem.</p>"
     )
-    return Email(destino, "Confirme seu cadastro no Detetiveproc", texto, html)
+    return Email(destino, "Confirme seu cadastro no DetetiveProc", texto, html)
 
 
 def _email_conta_existente(destino: str, login: str) -> Email:
     texto = (
-        "Olá!\n\nAlguém tentou criar uma conta no Detetiveproc com este e-mail, mas ele "
+        "Olá!\n\nAlguém tentou criar uma conta no DetetiveProc com este e-mail, mas ele "
         f"já tem cadastro. Para entrar, acesse:\n\n{login}\n\n"
         "Se não foi você, ignore esta mensagem.\n"
     )
     html = (
-        "<p>Olá!</p><p>Alguém tentou criar uma conta no Detetiveproc com este e-mail, mas "
+        "<p>Olá!</p><p>Alguém tentou criar uma conta no DetetiveProc com este e-mail, mas "
         f'ele já tem cadastro. <a href="{escape(login)}">Entrar</a>.</p>'
         "<p>Se não foi você, ignore esta mensagem.</p>"
     )
-    return Email(destino, "Você já tem conta no Detetiveproc", texto, html)
+    return Email(destino, "Você já tem conta no DetetiveProc", texto, html)
 
 
 # --------------------------------------------------------------------------- etapas

@@ -183,7 +183,7 @@ async def test_email_ja_cadastrado_tem_a_mesma_resposta(
     r = await cliente_http.post(URL, json={**PJ, "email": "ana@a.com"})  # usuário da fixture
     novo = await cliente_http.post(URL, json={**PJ, "email": "nova@acme.com"})
     assert (r.status_code, r.json()) == (novo.status_code, novo.json())
-    assert enviador.enviados[0].assunto == "Você já tem conta no Detetiveproc"
+    assert enviador.enviados[0].assunto == "Você já tem conta no DetetiveProc"
     assert "#" not in enviador.enviados[0].texto  # nenhum link de cadastro
     async with sessao_sistema(fabrica) as s:
         assert await s.scalar(select(func.count()).select_from(Cadastro)) == 1

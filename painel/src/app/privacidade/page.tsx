@@ -3,14 +3,14 @@ import Link from "next/link";
 import { DocumentoLegal } from "@/componentes/DocumentoLegal";
 import { FORNECEDOR } from "@/lib/legal";
 
-export const metadata = { title: "Política de privacidade · Detetiveproc" };
+export const metadata = { title: "Política de privacidade · DetetiveProc" };
 
 export default function Privacidade() {
   const f = FORNECEDOR;
   return (
     <DocumentoLegal titulo="Política de privacidade">
       <p>
-        Esta política explica como o <strong>Detetiveproc</strong> ({f.razaoSocial}, CNPJ{" "}
+        Esta política explica como o <strong>DetetiveProc</strong> ({f.razaoSocial}, CNPJ{" "}
         {f.cnpj}), na condição de controlador, trata dados pessoais, conforme a Lei Geral de
         Proteção de Dados (LGPD, Lei 13.709/2018). Complementa os{" "}
         <Link href="/termos">termos de uso</Link>.

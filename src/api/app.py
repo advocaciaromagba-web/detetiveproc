@@ -140,7 +140,7 @@ def criar_app(
             await engine.dispose()
 
     app = FastAPI(
-        title="Detetiveproc",
+        title="DetetiveProc",
         version="1.0.0",
         description="API de alvos, regras e ocorrências de distribuição processual.",
         lifespan=ciclo_de_vida,

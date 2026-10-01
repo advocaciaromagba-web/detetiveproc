@@ -4,7 +4,8 @@ import { COOKIE_SESSAO } from "./lib/sessao";
 
 /**
  * Exige sessão em tudo, menos no login, no cadastro, nos termos/privacidade, no webhook de pagamentos
- * (autenticado pelo token do Asaas na API) e nos estáticos. A regra é por exclusão de
+ * (autenticado pelo token do Asaas na API), nos estáticos e na marca (logos, ícones e a
+ * imagem de compartilhamento, que aparecem antes do login e em links enviados). A regra é por exclusão de
  * propósito: página nova nasce protegida. A validade do token é conferida pela API
  * em cada chamada (401 -> volta ao login).
  */
@@ -18,6 +19,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login|cadastro|termos|privacidade|api/pagamentos|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|cadastro|termos|privacidade|api/pagamentos|_next/static|_next/image|favicon.ico|marca/|icon\\.png|apple-icon\\.png|opengraph-image).*)",
   ],
 };

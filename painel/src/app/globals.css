@@ -1,40 +1,47 @@
 :root {
-  --fundo: #f6f7f9;
+  /* Identidade DetetiveProc: Azul Profundo #0B2D5B, Azul Tecnologia #0EA5E9,
+     Teal #14B8A6, Grafite #1F2937, Cinza Prata #94A3B8; tipografia Inter. */
+  --marca-azul: #0b2d5b;
+  --marca-tecnologia: #0ea5e9;
+  --marca-teal: #14b8a6;
+  --fundo: #f5f7fa;
   --superficie: #ffffff;
-  --texto: #1c2430;
-  --texto-suave: #5b6675;
-  --borda: #dde2e8;
-  --primaria: #1f4f8a;
+  --texto: #1f2937;
+  --texto-suave: #5b6778;
+  --borda: #dbe2ea;
+  --primaria: #0b2d5b;
   --primaria-texto: #ffffff;
+  --link: #0b5cad;
   --alta: #b42318;
   --alta-fundo: #fdecea;
   --media: #9a5b00;
   --media-fundo: #fff4e0;
   --baixa: #33658a;
   --baixa-fundo: #e8f1f8;
-  --ok: #1d7a46;
-  --ok-fundo: #e7f5ed;
+  --ok: #0f766e;
+  --ok-fundo: #e6f6f4;
   --raio: 8px;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fundo: #12161c;
-    --superficie: #1b2129;
-    --texto: #e6e9ee;
-    --texto-suave: #9aa5b3;
-    --borda: #2c3540;
-    --primaria: #6da3e0;
-    --primaria-texto: #0d1117;
+    --fundo: #0a1628;
+    --superficie: #10213a;
+    --texto: #e6ebf2;
+    --texto-suave: #94a3b8;
+    --borda: #1f3554;
+    --primaria: #0ea5e9;
+    --primaria-texto: #06121f;
+    --link: #38bdf8;
     --alta: #ff8a80;
     --alta-fundo: #3a1c1a;
     --media: #f3b34c;
     --media-fundo: #3a2c12;
     --baixa: #8cc0e8;
     --baixa-fundo: #16293a;
-    --ok: #6fd39a;
-    --ok-fundo: #15301f;
+    --ok: #5eead4;
+    --ok-fundo: #0f2e2c;
     color-scheme: dark;
   }
 }
@@ -45,10 +52,10 @@ body {
   margin: 0;
   background: var(--fundo);
   color: var(--texto);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.5 "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-a { color: var(--primaria); }
+a { color: var(--link); }
 
 .topo {
   display: flex;
@@ -60,7 +67,9 @@ a { color: var(--primaria); }
   border-bottom: 1px solid var(--borda);
 }
 .topo nav { display: flex; gap: 16px; align-items: center; }
-.marca { font-weight: 700; text-decoration: none; color: var(--texto); }
+.marca { display: inline-flex; align-items: center; text-decoration: none; }
+.logo img { display: block; height: auto; max-width: 100%; }
+.titulo-marca { display: flex; justify-content: center; margin: 0 0 16px; }
 
 main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
 

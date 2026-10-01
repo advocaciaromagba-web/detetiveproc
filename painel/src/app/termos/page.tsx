@@ -3,22 +3,22 @@ import Link from "next/link";
 import { DocumentoLegal } from "@/componentes/DocumentoLegal";
 import { FORNECEDOR } from "@/lib/legal";
 
-export const metadata = { title: "Termos de uso · Detetiveproc" };
+export const metadata = { title: "Termos de uso · DetetiveProc" };
 
 export default function Termos() {
   const f = FORNECEDOR;
   return (
     <DocumentoLegal titulo="Termos de uso">
       <p>
-        Estes termos regem o uso do <strong>Detetiveproc</strong>, serviço prestado por{" "}
-        {f.razaoSocial}, CNPJ {f.cnpj}, com sede em {f.endereco} (&quot;Detetiveproc&quot; ou
+        Estes termos regem o uso do <strong>DetetiveProc</strong>, serviço prestado por{" "}
+        {f.razaoSocial}, CNPJ {f.cnpj}, com sede em {f.endereco} (&quot;DetetiveProc&quot; ou
         &quot;nós&quot;). Ao criar uma conta, você (&quot;cliente&quot;) declara que leu e aceita
         estes termos e a <Link href="/privacidade">política de privacidade</Link>.
       </p>
 
       <h2>1. O que é o serviço</h2>
       <p>
-        O Detetiveproc consulta, de forma automatizada, fontes <strong>públicas e oficiais</strong>{" "}
+        O DetetiveProc consulta, de forma automatizada, fontes <strong>públicas e oficiais</strong>{" "}
         do Poder Judiciário — em especial o Diário de Justiça Eletrônico Nacional (DJEN) e a base
         DataJud, ambos do Conselho Nacional de Justiça — e apresenta ao cliente a lista de
         processos em que aparecem os nomes e os termos que ele contratou, com avisos por e-mail e
@@ -41,7 +41,7 @@ export default function Termos() {
           O serviço <strong>não substitui</strong> a intimação ou citação oficial, o acompanhamento
           processual pelo advogado nem a consulta aos autos, e não constitui assessoria ou
           consultoria jurídica. Prazos processuais correm conforme a lei, independentemente dos
-          avisos do Detetiveproc.
+          avisos do DetetiveProc.
         </li>
       </ul>
 
@@ -104,7 +104,7 @@ export default function Termos() {
       <h2>8. Lei e foro</h2>
       <p>
         Aplica-se a lei brasileira. Fica eleito o foro do domicílio do cliente consumidor; nos
-        demais casos, o foro da sede do Detetiveproc.
+        demais casos, o foro da sede do DetetiveProc.
       </p>
 
       <h2>Contato</h2>

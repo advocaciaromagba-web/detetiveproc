@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { Logo } from "@/componentes/Marca";
+
 import { FormLogin } from "./FormLogin";
 
 export default async function Login({
@@ -11,11 +13,13 @@ export default async function Login({
   return (
     <main className="login">
       <div className="cartao">
-        <h1>Detetiveproc</h1>
+        <h1 className="titulo-marca">
+          <Logo variante="vertical" altura={150} />
+        </h1>
         {expirada && <p className="aviso">Sua sessão expirou. Entre novamente.</p>}
         {encerrada && (
           <p className="sucesso" role="status">
-            Sua conta foi encerrada. Obrigado por ter usado o Detetiveproc.
+            Sua conta foi encerrada. Obrigado por ter usado o DetetiveProc.
           </p>
         )}
         <FormLogin />
