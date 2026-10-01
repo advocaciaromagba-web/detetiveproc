@@ -1,0 +1,9 @@
+# Railway: serviço "agendador" (varreduras, cobranças, avisos). Mesma imagem da API,
+# outro comando. Sem porta pública. Ver docs/RAILWAY.md.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m agendador"
+restartPolicyType = "ALWAYS"

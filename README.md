@@ -228,6 +228,9 @@ uv run python -m api.admin ativar-assinatura --id 7              # pagamento rec
 uv run python -m api.admin ativar-assinatura --id 8 --cortesia   # sem cobrança e sem vencimento
 ```
 
+**Publicar no Railway:** passo a passo em [docs/RAILWAY.md](docs/RAILWAY.md) (a
+configuração de cada serviço já está em `railway/`).
+
 **Ensaio da cobrança no sandbox do Asaas** (antes de ligar a chave de produção): cria um
 cliente de teste, emite a cobrança, simula o pagamento ("recebido em dinheiro"), aplica o
 aviso pelo mesmo caminho do webhook, confere a liberação do monitoramento e cancela.

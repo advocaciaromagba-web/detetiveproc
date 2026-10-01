@@ -1,0 +1,15 @@
+# Railway: serviço "api" (FastAPI). Sem domínio público: só o painel fala com ele,
+# pela rede privada do Railway. Ver docs/RAILWAY.md.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Comando do Dockerfile (uvicorn na porta 8000). Na aba Variables do serviço:
+# UVICORN_HOST=:: (a rede privada do Railway usa IPv6) e PORT=8000.
+# Migrações do banco antes de cada nova versão entrar no ar.
+preDeployCommand = ["alembic upgrade head"]
+healthcheckPath = "/healthz"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
