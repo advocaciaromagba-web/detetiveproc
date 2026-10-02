@@ -23,7 +23,7 @@ USER monitor
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Opções do uvicorn por variável (UVICORN_*): cada ambiente ajusta sem mudar o comando
-# (ex.: no Railway, UVICORN_HOST=:: para a rede privada em IPv6).
+# (ex.: UVICORN_PORT). No Railway o padrão 0.0.0.0 atende o healthcheck e a rede privada.
 ENV UVICORN_HOST=0.0.0.0 \
     UVICORN_PORT=8000 \
     UVICORN_FORWARDED_ALLOW_IPS=*
