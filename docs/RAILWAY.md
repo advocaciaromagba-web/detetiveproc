@@ -1,8 +1,10 @@
 # Publicar no Railway
 
-O repositório já traz a configuração de cada serviço (`railway/*.toml`). No Railway você
-cria o projeto, liga ao GitHub, aponta cada serviço para o seu arquivo e preenche as
-variáveis — as chaves (Asaas, e-mail, WhatsApp) entram só lá, nunca no código.
+No Railway você cria o projeto, liga os serviços ao GitHub, preenche as configurações de
+cada um e as variáveis. As chaves (Asaas, e-mail, WhatsApp) entram só lá, nunca no código.
+Os arquivos `railway/*.toml` guardam os valores de cada serviço como referência: o Railway
+não aceita mais apontar para eles ("Config as Code" foi descontinuado), então os mesmos
+valores são preenchidos em **Settings** (passo 2).
 
 ## O que vai rodar
 
@@ -10,29 +12,32 @@ variáveis — as chaves (Asaas, e-mail, WhatsApp) entram só lá, nunca no cód
 |---|---|---|---|
 | **Postgres** | banco do próprio Railway | não | dados |
 | **Redis** | Redis do próprio Railway | não | limite de consultas às fontes |
-| **api** | este repositório, `railway/api.toml` | **não** | API; roda as migrações do banco a cada versão |
-| **agendador** | este repositório, `railway/agendador.toml` | não | buscas no DJEN/DataJud, cobranças, avisos |
-| **painel** | este repositório, `railway/painel.toml` | **sim** (domínio) | telas do cliente e do operador; recebe o webhook do Asaas |
+| **bruto** | Bucket (S3) do próprio Railway | não | páginas brutas guardadas das buscas no DJEN/DataJud |
+| **api** | este repositório (valores em `railway/api.toml`) | **não** | API; roda as migrações do banco a cada versão |
+| **agendador** | este repositório (valores em `railway/agendador.toml`) | não | buscas no DJEN/DataJud, cobranças, avisos |
+| **painel** | este repositório (valores em `railway/painel.toml`) | **sim** (domínio) | telas do cliente e do operador; recebe o webhook do Asaas |
 
-Ficam de fora por enquanto: OpenSearch (não é usado pelo código), Prometheus/Grafana
-(monitoramento opcional) e o armazenamento S3 (só é usado na coleta direta nos sites dos
-tribunais, que não está ligada; o produto usa DJEN e DataJud).
+Ficam de fora por enquanto: OpenSearch (não é usado pelo código) e Prometheus/Grafana
+(monitoramento opcional). O S3 **é** necessário: o agendador não inicia sem ele, e cada
+página do DJEN/DataJud é guardada no bucket antes de ser lida.
 
 ## Passo a passo
 
-### 1. Projeto e banco
+### 1. Projeto, banco e bucket
 1. No Railway: **New Project → Deploy PostgreSQL**. Renomeie o serviço para `Postgres`.
 2. No mesmo projeto: **New → Database → Redis**. Renomeie para `Redis`.
+3. No mesmo projeto: **New → Bucket**, com o nome `bruto`. Os dados de acesso ficam em
+   **Bucket → Credentials** (usados no passo 3).
 
 ### 2. Os três serviços do repositório
-Para cada um: **New → GitHub Repo → advocaciaromagba-web/detetiveproc**, depois em
-**Settings** do serviço:
+Para cada um: **New → GitHub Repo → advocaciaromagba-web/detetiveproc** (branch `main`) e,
+em **Settings** do serviço, preencha:
 
-| Serviço (nome exato) | Settings → Source → Root Directory | Settings → Config-as-code → Railway Config File |
-|---|---|---|
-| `api` | (vazio) | `/railway/api.toml` |
-| `agendador` | (vazio) | `/railway/agendador.toml` |
-| `painel` | `/painel` | `/railway/painel.toml` |
+| Serviço (nome exato) | Root Directory | Dockerfile Path | Pre-deploy Command | Start Command | Healthcheck Path | Restart Policy |
+|---|---|---|---|---|---|---|
+| `api` | (vazio) | `Dockerfile` | `alembic upgrade head` | (vazio) | `/healthz` (timeout 120) | On Failure, 10 |
+| `agendador` | (vazio) | `Dockerfile` | (vazio) | `python -m agendador` | (vazio) | Always |
+| `painel` | `/painel` | `Dockerfile` | (vazio) | (vazio) | `/login` (timeout 120) | On Failure, 10 |
 
 Os nomes importam: as variáveis abaixo usam `${{api...}}`, `${{painel...}}` etc.
 
@@ -43,10 +48,7 @@ serviço com domínio. Não gere domínio para `api` nem `agendador`.
 Em **Project Settings → Shared Variables**, crie (use o **Raw Editor** e cole):
 
 ```
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-REDIS_URL=${{Redis.REDIS_URL}}
 HASH_DOCUMENTO_CHAVE=<gere: 64 caracteres aleatórios, ver abaixo>
-PAINEL_URL_PUBLICA=https://${{painel.RAILWAY_PUBLIC_DOMAIN}}
 CONFIAR_X_FORWARDED_FOR=true
 COLETOR_CONTATO=<e-mail técnico da empresa>
 ASAAS_URL=https://api-sandbox.asaas.com/v3
@@ -60,18 +62,32 @@ SMTP_STARTTLS=true
 SMTP_REMETENTE=DetetiveProc <avisos@seudominio.com.br>
 EMAIL_OPERACAO=<e-mail que recebe alertas de operação>
 LOG_FORMATO=json
+S3_ENDPOINT=<Endpoint do bucket, sem o https://>
+S3_ACCESS_KEY=<Access Key ID do bucket>
+S3_SECRET_KEY=<Secret Access Key do bucket>
+S3_BUCKET_BRUTO=<Bucket Name do bucket>
+S3_TLS=true
 ```
 
 Depois, em cada um dos serviços `api` e `agendador`: **Variables → Shared Variables →
-adicionar todas**. O `api` precisa também de duas variáveis só dele:
+adicionar todas**. As que apontam para outro serviço **não funcionam** como
+compartilhadas (chegam vazias); crie-as direto em **Variables** de `api` e de `agendador`:
+
+```
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+REDIS_URL=${{Redis.REDIS_URL}}
+PAINEL_URL_PUBLICA=https://${{painel.RAILWAY_PUBLIC_DOMAIN}}
+```
+
+O `api` precisa também de uma variável só dele:
 
 ```
 PORT=8000
-UVICORN_HOST=::
 ```
 
-(`PORT` é a porta da verificação de saúde; `UVICORN_HOST=::` faz a API atender pela
-rede privada do Railway, que usa IPv6.)
+(`PORT` é a porta da verificação de saúde. Não defina `UVICORN_HOST=::`: a API passa a
+atender só em IPv6 e a verificação de saúde falha. O padrão da imagem, `0.0.0.0`, atende
+a verificação e a rede privada.)
 
 - `DATABASE_URL`: o Railway entrega `postgresql://...`; o sistema troca sozinho para o
   driver assíncrono.
@@ -81,6 +97,9 @@ rede privada do Railway, que usa IPv6.)
   `https://api.asaas.com/v3` e a chave de produção.
 - WhatsApp (opcional, quando o modelo `novo_processo` estiver aprovado na Meta):
   `WHATSAPP_NUMERO_ID` e `WHATSAPP_TOKEN`.
+- Não crie variável vazia "para preencher depois": algumas contam como configuradas mesmo
+  vazias (ex.: com `WHATSAPP_NUMERO_ID` preenchido, `WHATSAPP_TOKEN=` liga o envio por
+  WhatsApp sem token). Crie só quando tiver o valor.
 
 ### 4. Variáveis do painel
 No serviço `painel` → **Variables**:

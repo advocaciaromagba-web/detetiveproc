@@ -6,7 +6,7 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 # Comando do Dockerfile (uvicorn na porta 8000). Na aba Variables do serviço:
-# UVICORN_HOST=:: (a rede privada do Railway usa IPv6) e PORT=8000.
+# PORT=8000 (porta do healthcheck). Não defina UVICORN_HOST=:: (o healthcheck falha).
 # Migrações do banco antes de cada nova versão entrar no ar.
 preDeployCommand = ["alembic upgrade head"]
 healthcheckPath = "/healthz"
