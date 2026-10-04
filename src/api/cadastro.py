@@ -56,6 +56,9 @@ class ConfigCadastro:
     max_por_email: int = 3
     max_cnpj_por_ip: int = 30  # consultas de CNPJ por hora
     max_codigos: int = 5  # códigos errados por cadastro a cada 15 min
+    # Tentativas de login por IP e por hora (certas ou erradas). Impede travar contas de
+    # terceiros sem limite (5 falhas bloqueiam a conta) e testar senhas em muitas contas.
+    max_login_por_ip: int = 10
 
 
 @dataclass(frozen=True)

@@ -27,7 +27,9 @@ PAPEL_SISTEMA = "monitor_sistema"
 
 
 def criar_engine(url: str, **opcoes: object) -> AsyncEngine:
-    return create_async_engine(url, pool_pre_ping=True, **opcoes)
+    # hide_parameters: os erros do SQLAlchemy citam os parâmetros da consulta (nomes de
+    # partes, texto de publicações); assim eles não chegam aos logs nem ao ultimo_erro.
+    return create_async_engine(url, pool_pre_ping=True, hide_parameters=True, **opcoes)
 
 
 def criar_fabrica(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

@@ -178,6 +178,25 @@ async def test_termo_contratado_nao_muda(fabrica, dados) -> None:  # type: ignor
         ({"tipo": "documento", "valor": "529.982.247-24", "finalidade": "finalidade"}, "CPF/CNPJ"),
         ({"tipo": "documento", "valor": "529.982.247-25"}, "finalidade"),
         ({"tipo": "nome", "valor": "...", "finalidade": "finalidade"}, "nome inválido"),
+        ({"tipo": "nome", "valor": "Silva", "finalidade": "finalidade"}, "nome completo"),
+        (
+            {
+                "tipo": "nome",
+                "valor": "José Silva",
+                "variacoes": ["Silva de"],
+                "finalidade": "x x x",
+            },
+            "nome completo",
+        ),
+        (
+            {
+                "tipo": "nome",
+                "valor": "José Silva",
+                "finalidade": "finalidade",
+                "variacoes": [f"José Silva {n}" for n in range(11)],
+            },
+            "variacoes",
+        ),
         ({"tipo": "oab", "valor": "sem uf", "finalidade": "finalidade"}, "OAB inválida"),
         ({"tipo": "email", "valor": "a@b.c", "finalidade": "finalidade"}, "tipo"),
     ],

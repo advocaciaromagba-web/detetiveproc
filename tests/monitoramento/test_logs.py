@@ -18,12 +18,15 @@ from monitoramento.logs import MASCARA, FormatoJson, FormatoTexto, configurar_lo
         "cnpj 11222333000181",
         "alfanumérico 12.ABC.345/01DE-35",
         "documento=52998224725;",
+        "GET https://brasilapi.com.br/api/cnpj/v1/12ABC34501DE35 200",
     ],
 )
 def test_mascara_documentos(texto: str) -> None:
     resultado = mascarar(texto)
     assert MASCARA in resultado
-    for trecho in ("52998224725", "529.982.247-25", "11222333000181", "11.222.333", "12.ABC"):
+    proibidos = ("52998224725", "529.982.247-25", "11222333000181", "11.222.333", "12.ABC",
+                 "12ABC34501DE35")  # fmt: skip
+    for trecho in proibidos:
         assert trecho not in resultado
 
 
@@ -86,3 +89,9 @@ def test_configurar_logs_um_handler_na_raiz(capsys: pytest.CaptureFixture[str]) 
         assert json.loads(saida)["mensagem"] == f"cpf {MASCARA}"
     finally:
         raiz.handlers[:] = anteriores
+
+
+def test_httpx_nao_registra_urls_em_info() -> None:
+    configurar_logs("json", "INFO")
+    assert not logging.getLogger("httpx").isEnabledFor(logging.INFO)
+    assert logging.getLogger("httpx").isEnabledFor(logging.WARNING)

@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from core.documentos import normalizar_documento, tipo_documento
 from core.legal import TERMOS_VERSAO
-from core.nomes import normalizar_nome
+from core.nomes import nome_especifico, normalizar_nome
 from core.oab import OABInvalida, normalizar_oab
 from entrega.whatsapp import normalizar_whatsapp
 from fontes.datajud import TRIBUNAIS_DATAJUD
@@ -57,6 +57,10 @@ class EuSaida(BaseModel):
 # --------------------------------------------------------------------------- alvos
 
 
+NOME_GENERICO = "use o nome completo (ao menos duas palavras, sem contar 'de', 'da', 'dos')"
+MAX_VARIACOES = 10  # cada variação vira uma busca a mais no DJEN
+
+
 def _nomes(valores: list[str]) -> list[str]:
     normalizados = (normalizar_nome(v) for v in valores)
     return list(dict.fromkeys(n for n in normalizados if n))
@@ -65,7 +69,7 @@ def _nomes(valores: list[str]) -> list[str]:
 class AlvoEntrada(BaseModel):
     tipo: Literal["documento", "nome", "oab"]
     valor: str = Field(min_length=1, max_length=200)
-    variacoes: list[str] = Field(default_factory=list, max_length=30)
+    variacoes: list[str] = Field(default_factory=list, max_length=MAX_VARIACOES)
     prioridade: Literal["critica", "padrao"] = "padrao"
     finalidade: str = Field(
         min_length=5, max_length=500, description="base legal/finalidade do monitoramento (LGPD)"
@@ -82,7 +86,10 @@ class AlvoEntrada(BaseModel):
     @field_validator("variacoes")
     @classmethod
     def _variacoes(cls, valores: list[str]) -> list[str]:
-        return _nomes(valores)
+        nomes = _nomes(valores)
+        if not all(nome_especifico(n) for n in nomes):
+            raise ValueError(f"variações: {NOME_GENERICO}")
+        return nomes
 
     @model_validator(mode="after")
     def _normalizar_valor(self) -> "AlvoEntrada":
@@ -100,6 +107,8 @@ class AlvoEntrada(BaseModel):
             nome = normalizar_nome(self.valor)
             if not nome:
                 raise ValueError("nome inválido")
+            if not nome_especifico(nome):
+                raise ValueError(NOME_GENERICO)
             self.valor = nome
         return self
 
@@ -348,7 +357,7 @@ class CadastroEntrada(BaseModel):
         if tipo_documento(documento) != esperado:
             raise ValueError("CNPJ inválido" if self.tipo_pessoa == "pj" else "CPF inválido")
         self.documento = documento
-        if self.tipo_pessoa == "pf" and not normalizar_nome(self.nome or ""):
+        if self.tipo_pessoa == "pf" and not nome_especifico(normalizar_nome(self.nome or "")):
             raise ValueError("informe o nome completo")
         if not self.aceite_termos:
             raise ValueError("é preciso aceitar os termos de uso")
