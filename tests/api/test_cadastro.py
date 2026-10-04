@@ -162,6 +162,7 @@ async def test_pessoa_fisica(cliente_http, dados, precos, enviador, fabrica) -> 
     [
         ({"documento": "11.222.333/0001-80"}, "CNPJ inválido"),
         ({"tipo_pessoa": "pf", "documento": CPF}, "nome completo"),
+        ({"tipo_pessoa": "pf", "documento": CPF, "nome": "Silva"}, "nome completo"),
         ({"documento": CPF}, "CNPJ inválido"),  # CPF no campo de empresa
         ({"email": "sem-arroba"}, "e-mail inválido"),
         ({"aceite_termos": False}, "termos"),

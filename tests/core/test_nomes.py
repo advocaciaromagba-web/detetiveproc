@@ -1,6 +1,6 @@
 import pytest
 
-from core.nomes import normalizar_nome, remover_acentos
+from core.nomes import nome_especifico, normalizar_nome, remover_acentos
 
 
 @pytest.mark.parametrize(
@@ -51,3 +51,20 @@ def test_idempotente() -> None:
 
 def test_remover_acentos() -> None:
     assert remover_acentos("ÁÉÍÓÚ àèìòù ãõ ç ü") == "AEIOU aeiou ao c u"
+
+
+@pytest.mark.parametrize(
+    ("nome", "esperado"),
+    [
+        ("JOAO DA SILVA", True),
+        ("J ELETRICISTA", True),
+        ("ANA LUZ", True),
+        ("ACME COMERCIO", True),
+        ("SILVA", False),
+        ("SILVA DE", False),
+        ("DOS SANTOS", False),
+        ("", False),
+    ],
+)
+def test_nome_especifico(nome: str, esperado: bool) -> None:
+    assert nome_especifico(nome) is esperado

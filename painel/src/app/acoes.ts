@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { apiPublica, mensagemDeErro } from "@/lib/api";
+import { apiPublica, ipDoVisitante, mensagemDeErro } from "@/lib/api";
 import { COOKIE_SESSAO, opcoesCookie } from "@/lib/sessao";
 
 export interface EstadoLogin {
@@ -20,6 +20,7 @@ export async function entrar(_anterior: EstadoLogin, dados: FormData): Promise<E
   const { status, corpo } = await apiPublica("/v1/auth/login", {
     method: "POST",
     body: { email, senha, codigo },
+    ip: await ipDoVisitante(),
   });
   if (status !== 200) return { erro: mensagemDeErro(corpo, status) };
   const { token, expira_em } = corpo as { token: string; expira_em: string };

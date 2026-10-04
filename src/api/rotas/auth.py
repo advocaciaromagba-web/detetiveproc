@@ -5,9 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from api.auth import CredenciaisInvalidas, entrar, sair
+from api.cadastro import ConfigCadastro, permitir
 from api.dependencias import Ctx, extrair_bearer, obter_agora, obter_fabrica
 from api.esquemas import EuSaida, LoginEntrada, LoginSaida
+from api.rotas.cadastro import MUITAS_TENTATIVAS, ip_do_visitante
 from db.modelos import Assinatura, Cliente
+from db.sessao import sessao_sistema
 
 rotas = APIRouter(prefix="/v1/auth", tags=["autenticação"])
 
@@ -19,10 +22,21 @@ async def login(
     fabrica: Annotated[async_sessionmaker[AsyncSession], Depends(obter_fabrica)],
 ) -> LoginSaida:
     """E-mail, senha e código TOTP. Qualquer recusa tem a mesma resposta."""
-    try:
-        sessao = await entrar(
-            fabrica, entrada.email, entrada.senha, entrada.codigo, obter_agora(request)
+    config: ConfigCadastro = request.app.state.config_cadastro
+    agora = obter_agora(request)
+    async with sessao_sistema(fabrica) as s:
+        dentro = await permitir(
+            s,
+            "login_ip",
+            ip_do_visitante(request, config),
+            agora,
+            config,
+            maximo=config.max_login_por_ip,
         )
+    if not dentro:
+        raise MUITAS_TENTATIVAS
+    try:
+        sessao = await entrar(fabrica, entrada.email, entrada.senha, entrada.codigo, agora)
     except CredenciaisInvalidas:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,

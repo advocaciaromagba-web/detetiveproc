@@ -50,6 +50,17 @@ def normalizar_nome(nome: str, *, remover_sufixos: bool = True) -> str:
     return " ".join(tokens)
 
 
+# Partículas que não contam como palavra do nome ("SILVA DE" é uma palavra só).
+_PARTICULAS = frozenset({"D", "DA", "DAS", "DE", "DI", "DO", "DOS", "DU", "E"})
+
+
+def nome_especifico(nome_normalizado: str) -> bool:
+    """Nome que serve de termo de busca no DJEN: ao menos duas palavras além das
+    partículas. Um sobrenome solto ("SILVA") traria milhares de publicações alheias e
+    ocuparia a varredura de todos os clientes. Ex.: "J ELETRICISTA" e "ANA LUZ" valem."""
+    return sum(1 for t in nome_normalizado.split() if t not in _PARTICULAS) >= 2
+
+
 def _remover_sufixos(tokens: list[str]) -> list[str]:
     removeu = True
     while removeu:

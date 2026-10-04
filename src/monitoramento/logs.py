@@ -14,13 +14,15 @@ from typing import Any, Literal
 
 Formato = Literal["json", "texto"]
 
-# CPF/CNPJ formatados (CNPJ também alfanumérico) e sequências cruas de 11 ou 14
-# dígitos isoladas. Um número CNJ (20 dígitos ou NNNNNNN-DD.AAAA.J.TR.OOOO) não casa.
+# CPF/CNPJ formatados (CNPJ também alfanumérico), sequências cruas de 11 ou 14 dígitos
+# e o CNPJ alfanumérico cru (12 letras/dígitos + 2 dígitos verificadores), isolados.
+# Um número CNJ (20 dígitos ou NNNNNNN-DD.AAAA.J.TR.OOOO) não casa.
 _DOCUMENTO = re.compile(
     r"(?<![0-9A-Za-z])(?:"
     r"\d{3}\.\d{3}\.\d{3}-\d{2}"
     r"|[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}/[0-9A-Z]{4}-\d{2}"
     r"|\d{14}"
+    r"|[0-9A-Z]{12}\d{2}"
     r"|\d{11}"
     r")(?![0-9A-Za-z])"
 )
@@ -68,3 +70,6 @@ def configurar_logs(formato: Formato = "json", nivel: str = "INFO") -> None:
         logger = logging.getLogger(nome)
         logger.handlers.clear()
         logger.propagate = True
+    # O httpx registra cada URL em INFO, e o CNPJ vai no CAMINHO de algumas consultas
+    # (BrasilAPI). As chamadas aos tribunais já são medidas pelo AdaptadorInstrumentado.
+    logging.getLogger("httpx").setLevel(logging.WARNING)

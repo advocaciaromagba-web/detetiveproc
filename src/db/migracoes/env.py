@@ -30,7 +30,7 @@ def _executar(conexao: Connection) -> None:
 
 
 async def _online() -> None:
-    engine = create_async_engine(_url())
+    engine = create_async_engine(_url(), hide_parameters=True)
     async with engine.connect() as conexao:
         await conexao.run_sync(_executar)
     await engine.dispose()

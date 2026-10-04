@@ -188,3 +188,17 @@ def test_passo_totp_tolera_um_passo(dados, relogio) -> None:
     muito_antigo = totp.at(relogio.agora.timestamp() - 120)
     if muito_antigo not in {totp.at(relogio.agora.timestamp() + d) for d in (-30, 0, 30)}:
         assert passo_totp(dados.usuario_a.segredo, muito_antigo, relogio.agora) is None
+
+
+async def test_login_limitado_por_ip(cliente_http, dados, relogio) -> None:
+    """Sem limite por IP, alguém poderia manter qualquer conta bloqueada para sempre."""
+    errado = {"email": "ninguem@x.com", "senha": "senha-errada-000", "codigo": "000000"}
+    for _ in range(10):
+        assert (await cliente_http.post("/v1/auth/login", json=errado)).status_code == 401
+    u = dados.usuario_a
+    certo = {"email": u.email, "senha": SENHA, "codigo": codigo(u, relogio)}
+    r = await cliente_http.post("/v1/auth/login", json=certo)
+    assert r.status_code == 429
+    relogio.avancar(hours=1, seconds=1)
+    certo["codigo"] = codigo(u, relogio)
+    assert (await cliente_http.post("/v1/auth/login", json=certo)).status_code == 200

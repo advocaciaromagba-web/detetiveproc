@@ -4,6 +4,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { ipDosCabecalhos } from "./ip";
 import { COOKIE_SESSAO } from "./sessao";
 import type { Eu } from "./tipos";
 
@@ -72,11 +73,9 @@ export async function api<T>(
   return corpo as T;
 }
 
-/** IP do visitante, como o proxy reverso/Next informou (para o limite de tentativas). */
+/** IP do visitante para o limite de tentativas (ver lib/ip.ts: o último do XFF). */
 export async function ipDoVisitante(): Promise<string | null> {
-  const h = await headers();
-  const encaminhado = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return encaminhado || h.get("x-real-ip") || null;
+  return ipDosCabecalhos(await headers());
 }
 
 /** Login, logout e cadastro não passam pelo token do cookie. */
