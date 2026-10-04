@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     s3_bucket_bruto: str = "bruto"
     s3_tls: bool = False  # True quando o armazenamento estiver fora da rede interna
     hash_documento_chave: SecretStr | None = None
+    # Cópia diária do banco (python -m db.backup), no mesmo bucket, com este prefixo.
+    backup_prefixo: str = "backup/postgres"
+    backup_retencao_dias: int = 30
 
     smtp_host: str = "localhost"
     smtp_porta: int = 587

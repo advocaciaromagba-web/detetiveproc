@@ -5,7 +5,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 # Serviço -> Root Directory configurado no Railway (docs/RAILWAY.md).
-RAIZES = {"api": RAIZ, "agendador": RAIZ, "painel": RAIZ / "painel"}
+RAIZES = {"api": RAIZ, "agendador": RAIZ, "backup": RAIZ, "painel": RAIZ / "painel"}
 
 
 def _config(servico: str) -> dict:  # type: ignore[type-arg]
@@ -31,3 +31,10 @@ def test_api_migra_antes_e_usa_o_comando_da_imagem() -> None:
 def test_agendador_e_painel() -> None:
     assert _config("agendador")["deploy"]["startCommand"] == "python -m agendador"
     assert _config("painel")["deploy"]["healthcheckPath"] == "/login"
+
+
+def test_backup_roda_pelo_cron_e_termina() -> None:
+    deploy = _config("backup")["deploy"]
+    assert deploy["startCommand"] == "python -m db.backup"
+    assert deploy["cronSchedule"] == "0 6 * * *"
+    assert deploy["restartPolicyType"] == "NEVER"  # cron: termina e espera o próximo
