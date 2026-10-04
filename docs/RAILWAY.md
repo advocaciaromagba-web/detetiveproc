@@ -16,6 +16,7 @@ valores são preenchidos em **Settings** (passo 2).
 | **api** | este repositório (valores em `railway/api.toml`) | **não** | API; roda as migrações do banco a cada versão |
 | **agendador** | este repositório (valores em `railway/agendador.toml`) | não | buscas no DJEN/DataJud, cobranças, avisos |
 | **painel** | este repositório (valores em `railway/painel.toml`) | **sim** (domínio) | telas do cliente e do operador; recebe o webhook do Asaas |
+| **backup** | este repositório (valores em `railway/backup.toml`) | não | cópia diária do banco para o bucket (cron) |
 
 Ficam de fora por enquanto: OpenSearch (não é usado pelo código) e Prometheus/Grafana
 (monitoramento opcional). O S3 **é** necessário: o agendador não inicia sem ele, e cada
@@ -109,12 +110,47 @@ MONITOR_API_URL=http://${{api.RAILWAY_PRIVATE_DOMAIN}}:8000
 PORT=3100
 ```
 
-### 5. Primeira publicação
+### 5. Cópias de segurança do banco (serviço `backup`)
+No plano Hobby o Railway não faz backup do Postgres; este serviço faz. **New → GitHub Repo
+→ advocaciaromagba-web/detetiveproc** (branch `main`), nome `backup`, e em **Settings**:
+
+| Campo | Valor |
+|---|---|
+| Dockerfile Path | `Dockerfile` |
+| Start Command | `python -m db.backup` |
+| Cron Schedule | `0 6 * * *` (todo dia às 03:00 de Brasília) |
+| Restart Policy | Never |
+
+Sem domínio. Em **Variables**: adicione as compartilhadas `S3_*` e `LOG_FORMATO`, e crie
+`DATABASE_URL=${{Postgres.DATABASE_URL}}`. Opcional: `BACKUP_RETENCAO_DIAS` (padrão 30)
+e `BACKUP_PREFIXO` (padrão `backup/postgres`).
+
+A cada execução: `pg_dump` (formato custom), conferência com `pg_restore --list`, envio
+ao bucket em `backup/postgres/AAAA/MM/DD/detetiveproc-<data e hora UTC>.dump` e, só
+depois do envio, remoção das cópias mais antigas que a retenção. Se algo falhar, a
+execução termina com erro e aparece como falha em **Deployments → Cron Runs**. A
+imagem traz o cliente do PostgreSQL 18; se o banco do Railway mudar de versão maior,
+ajuste `PG_CLIENTE` no `Dockerfile`.
+
+**Restaurar** (num banco novo, nunca por cima do que está em uso sem antes copiá-lo):
+1. Baixe o arquivo `.dump` do bucket (**Bucket → Files**, ou qualquer cliente S3 com as
+   credenciais do bucket).
+2. Num Postgres vazio, crie os papéis usados pelo RLS (num banco que já passou pelas
+   migrações eles já existem):
+   ```sql
+   CREATE ROLE monitor_api NOLOGIN NOBYPASSRLS;
+   CREATE ROLE monitor_sistema NOLOGIN BYPASSRLS;
+   ```
+3. `pg_restore --no-owner --exit-on-error -d "postgresql://USUARIO:SENHA@HOST:PORTA/BANCO" arquivo.dump`
+4. Aponte o `DATABASE_URL` de `api`, `agendador` e `backup` para o banco restaurado e
+   publique de novo.
+
+### 6. Primeira publicação
 Faça o deploy de `api` primeiro (ele cria as tabelas), depois `agendador` e `painel`.
 A cada nova versão no GitHub, o Railway publica sozinho; as migrações rodam antes da
 API nova entrar no ar.
 
-### 6. Primeiro usuário operador
+### 7. Primeiro usuário operador
 Com a [CLI do Railway](https://docs.railway.com/guides/cli) (`railway link` no projeto):
 
 ```bash
@@ -125,13 +161,13 @@ railway ssh --service api -- python -m api.admin criar-usuario \
 O comando pede a senha e mostra o `totp_uri`: cadastre-o no aplicativo autenticador.
 Depois entre em `https://<domínio do painel>/login` e defina os preços na tela **Preços**.
 
-### 7. Webhook do Asaas
+### 8. Webhook do Asaas
 No Asaas (sandbox primeiro): **Integrações → Webhooks → novo**:
 - URL: `https://<domínio do painel>/api/pagamentos/asaas`
 - Token de autenticação: o mesmo valor de `ASAAS_WEBHOOK_TOKEN`
 - Eventos: cobranças (criada, atualizada, vencida, confirmada, recebida, estornada).
 
-### 8. Ensaio da cobrança (sandbox)
+### 9. Ensaio da cobrança (sandbox)
 Com `ASAAS_URL` do sandbox e a chave configurada:
 
 ```bash
@@ -146,3 +182,5 @@ webhook de verdade chegando.
 - `painel`: a página `/login` abre pelo domínio.
 - `api`: em **Deployments**, a verificação `/healthz` passou.
 - `agendador`: os logs mostram os ciclos (DJEN, termos, cobranças) rodando.
+- `backup`: em **Cron Runs**, a última execução terminou sem erro e o arquivo do dia
+  está no bucket em `backup/postgres/`.

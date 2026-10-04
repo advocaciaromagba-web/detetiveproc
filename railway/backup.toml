@@ -1,0 +1,11 @@
+# Railway: serviço "backup" (cópia diária do banco para o bucket). Mesma imagem da API,
+# outro comando; roda pelo cron e termina. Sem porta pública. Ver docs/RAILWAY.md.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m db.backup"
+# Todo dia às 06:00 UTC (03:00 em Brasília).
+cronSchedule = "0 6 * * *"
+restartPolicyType = "NEVER"
