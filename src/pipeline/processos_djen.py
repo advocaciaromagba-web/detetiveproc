@@ -76,7 +76,7 @@ def _partes(publicacao: PublicacaoDTO) -> list[ParteNormalizada]:
 async def tribunal_djen(sessao: AsyncSession, sigla: str) -> int:
     """Linha de referência (sigla, "djen", 1º grau), criada inativa se ainda não existir."""
     sigla = sigla.strip().upper()
-    novo = await sessao.scalar(
+    novo: int | None = await sessao.scalar(
         insert(Tribunal)
         .values(sigla=sigla, sistema=SISTEMA_DJEN, grau=1, ativo=False)
         .on_conflict_do_nothing(constraint="uq_tribunal_sigla_sistema_grau")

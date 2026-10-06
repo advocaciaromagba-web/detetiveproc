@@ -20,7 +20,7 @@ dependencies = [
     "redis>=5.0,<9",
     "segno>=1.6.6",
     "selectolax>=0.3.21",
-    "sqlalchemy[asyncio]>=2.0,<2.1",
+    "sqlalchemy[asyncio]>=2.1,<2.2",
     "uvicorn[standard]>=0.30",
 ]
 

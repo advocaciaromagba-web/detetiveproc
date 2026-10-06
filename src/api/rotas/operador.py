@@ -106,9 +106,7 @@ async def _resumos(
                 )
                 .group_by(Assinatura.cliente_id)
             )
-        )
-        .tuples()
-        .all()
+        ).all()
     )
     por_cliente: dict[int, Counter[str]] = {i: Counter() for i in ids}
     for cliente_id, situacao, n in contagem:

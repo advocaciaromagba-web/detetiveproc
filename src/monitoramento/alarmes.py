@@ -269,9 +269,7 @@ async def _atualizar_abertos(s: AsyncSession) -> None:
                 .where(Alarme.resolvido_em.is_(None))
                 .group_by(Alarme.tipo)
             )
-        )
-        .tuples()
-        .all()
+        ).all()
     )
     for tipo in TIPOS_ALARME:
         ALARMES_ABERTOS.labels(tipo).set(abertos.get(tipo, 0))

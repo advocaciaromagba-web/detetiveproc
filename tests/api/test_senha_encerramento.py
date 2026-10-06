@@ -161,9 +161,7 @@ async def test_encerrar_conta(
                 await s.execute(
                     select(Ocorrencia.cliente_id, func.count()).group_by(Ocorrencia.cliente_id)
                 )
-            )
-            .tuples()
-            .all()
+            ).all()
         )
         assert ocorrencias == {dados.cliente_b: 1}
         alvos = (await s.scalars(select(Alvo).where(Alvo.cliente_id == cliente.id))).all()
