@@ -27,7 +27,7 @@ async def saude(ctx: Ctx) -> list[TribunalSaude]:
             .group_by(Varredura.tribunal_id)
         )
         # Não usar dict(resultado): o Result tem .keys() e o dict o trata como mapeamento.
-        falhas: dict[int, int] = {tid: total for tid, total in linhas_falha.tuples()}  # noqa: C416
+        falhas: dict[int, int] = {tid: total for tid, total in linhas_falha}  # noqa: C416
         saida = []
         for t in tribunais:
             execucao = await s.scalar(

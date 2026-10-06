@@ -19,7 +19,7 @@ from db.modelos import Advogado, Alvo, Ocorrencia, Parte, Pessoa, Processo, Regr
 from regras.alertas import rotulo_alvo
 
 
-def consulta_ocorrencias() -> Select[tuple[Ocorrencia, Processo, str, Alvo, str]]:
+def consulta_ocorrencias() -> Select[Ocorrencia, Processo, str, Alvo, str]:
     """Alvo e nome da regra vêm de outer join: um dos dois é sempre None."""
     return (
         select(Ocorrencia, Processo, Tribunal.sigla, Alvo, Regra.nome)
