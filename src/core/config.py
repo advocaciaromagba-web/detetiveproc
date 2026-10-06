@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     djen_req_min: float = 20.0  # limite de requisições por minuto à API do DJEN
     djen_varredura_minutos: int = 60  # intervalo da varredura nacional
     djen_historico_dias: int = 365  # carga inicial ao cadastrar um nome/OAB
+    djen_cargas_por_cliente: int = 3  # cargas iniciais por cliente em cada ciclo
     djen_janela_dias: int = 30  # período máximo por consulta (buscas longas são fatiadas)
 
     # Análise das publicações por IA (Claude). Extrai tipo do ato, prazo e audiência.

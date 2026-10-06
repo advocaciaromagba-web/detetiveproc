@@ -99,7 +99,9 @@ def montar_varredura_djen(
         chave_hash=chave_hash,
     )
     config = ConfigVarreduraDJEN(
-        historico_dias=settings.djen_historico_dias, janela_dias=settings.djen_janela_dias
+        historico_dias=settings.djen_historico_dias,
+        janela_dias=settings.djen_janela_dias,
+        cargas_por_cliente=settings.djen_cargas_por_cliente,
     )
 
     async def completar(sessao: AsyncSession, processo_id: int) -> None:

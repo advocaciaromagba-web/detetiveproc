@@ -1,25 +1,28 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { PlanoAssinatura, SeloAssinatura } from "@/componentes/Assinatura";
 import { formatarDataHora, linkSeguro } from "@/lib/formatos";
-import { ACOES, acoesPossiveis, descreverItem } from "@/lib/operador";
+import { ACOES, COOKIE_AVISO, acoesPossiveis, descreverItem, textoMensagem } from "@/lib/operador";
 import type { AssinaturaOperador } from "@/lib/tipos";
 
 import { acaoAssinatura } from "@/app/acoesOperador";
 
-/** Resultado da última ação (vem no endereço depois do redirecionamento). */
-export function Mensagem({ ok, erro }: { ok?: string; erro?: string }) {
-  if (erro) {
+/** Resultado da última ação: o código vem no endereço; o detalhe do erro, no cookie. */
+export async function Mensagem({ ok, erro }: { ok?: string; erro?: string }) {
+  const detalhe = erro ? ((await cookies()).get(COOKIE_AVISO)?.value ?? null) : null;
+  const mensagem = textoMensagem(ok, erro, detalhe);
+  if (mensagem?.tipo === "erro") {
     return (
       <p className="erro" role="alert">
-        {erro}
+        {mensagem.texto}
       </p>
     );
   }
-  if (ok) {
+  if (mensagem) {
     return (
       <p className="sucesso" role="status">
-        {ok}
+        {mensagem.texto}
       </p>
     );
   }

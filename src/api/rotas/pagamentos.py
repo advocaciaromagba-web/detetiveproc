@@ -27,6 +27,9 @@ async def webhook_asaas(
     esperado: str | None = request.app.state.asaas_webhook_token
     if not esperado:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "webhook desligado")
-    if not asaas_access_token or not hmac.compare_digest(asaas_access_token, esperado):
+    # Compara bytes: com str, um token com caractere não ASCII faria o compare_digest
+    # levantar erro (500) em vez de recusar.
+    recebido = (asaas_access_token or "").encode()
+    if not recebido or not hmac.compare_digest(recebido, esperado.encode()):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "token inválido")
     return {"resultado": await processar_evento(fabrica, evento, agora)}

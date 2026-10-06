@@ -45,6 +45,8 @@ async def test_webhook_exige_o_token(cliente_http, dados) -> None:
     assert (await cliente_http.post(WEBHOOK, json=evento)).status_code == 401
     errado = {"asaas-access-token": "outro"}
     assert (await cliente_http.post(WEBHOOK, json=evento, headers=errado)).status_code == 401
+    estranho = {"asaas-access-token": "tökên-çom-acento".encode()}  # bytes fora do ASCII
+    assert (await cliente_http.post(WEBHOOK, json=evento, headers=estranho)).status_code == 401
     certo = {"asaas-access-token": TOKEN_WEBHOOK}
     r = await cliente_http.post(WEBHOOK, json=evento, headers=certo)
     assert (r.status_code, r.json()) == (200, {"resultado": "sem_assinatura"})

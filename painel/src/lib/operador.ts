@@ -57,14 +57,35 @@ export function voltarSeguro(caminho: string): string {
   return /^\/(clientes|assinaturas)(\/\d+)?(\?[^#]*)?$/.test(caminho) ? caminho : "/assinaturas";
 }
 
-/** Acrescenta a mensagem do resultado ao endereço, trocando a anterior. */
-export function comMensagem(caminho: string, chave: "ok" | "erro", texto: string): string {
+/** Cookie com o detalhe do último erro de ação (o endereço leva só o código). */
+export const COOKIE_AVISO = "mp_aviso_operador";
+
+/**
+ * Acrescenta o resultado ao endereço, trocando o anterior. Vai só o CÓDIGO da ação:
+ * texto livre no endereço deixaria um link forjado exibir qualquer mensagem na tela
+ * do operador como se fosse do sistema.
+ */
+export function comMensagem(caminho: string, chave: "ok" | "erro", acao: AcaoOperador): string {
   const [base, query = ""] = caminho.split("?", 2);
   const params = new URLSearchParams(query);
   params.delete("ok");
   params.delete("erro");
-  params.set(chave, texto.slice(0, 200));
+  params.set(chave, acao);
   return `${base}?${params}`;
+}
+
+/** Texto da mensagem a partir dos códigos do endereço; código desconhecido não aparece. */
+export function textoMensagem(
+  ok: string | undefined,
+  erro: string | undefined,
+  detalhe: string | null,
+): { tipo: "ok" | "erro"; texto: string } | null {
+  if (erro !== undefined && ehAcao(erro)) {
+    const base = `Não foi possível: ${ACOES[erro].rotulo.toLowerCase()}.`;
+    return { tipo: "erro", texto: detalhe ? `${base} ${detalhe}` : base };
+  }
+  if (ok !== undefined && ehAcao(ok)) return { tipo: "ok", texto: ACOES[ok].feito };
+  return null;
 }
 
 const ROTULO_TIPO_TERMO: Record<string, string> = {

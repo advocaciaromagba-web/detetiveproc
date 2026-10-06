@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import date
 from html import escape
+from urllib.parse import urlsplit
 
 from entrega.email import Email
 
@@ -83,13 +84,26 @@ def assunto_alerta(dados: DadosAlerta) -> str:
     return f"{prefixo}{verificar}Novo processo: {dados.classe or 'processo'} ({dados.motivo})"
 
 
+def url_publica(url: str | None) -> str | None:
+    """Link de consulta só se for https de um site da Justiça (*.jus.br). A URL vem de
+    dado externo (tribunal, DJEN): sem a conferência, um ``javascript:`` ou um domínio
+    qualquer iria parar no e-mail do cliente como "Abrir consulta pública"."""
+    if not url:
+        return None
+    partes = urlsplit(url.strip())
+    host = (partes.hostname or "").lower()
+    if partes.scheme != "https" or not (host == "jus.br" or host.endswith(".jus.br")):
+        return None
+    return url.strip()
+
+
 def _texto(dados: DadosAlerta) -> str:
     linhas = [f"{rotulo}: {valor}" for rotulo, valor in _campos(dados)]
     linhas.append("Partes:")
     for polo, nomes in _partes_por_polo(dados):
         linhas.append(f"  {polo}: {', '.join(nomes)}")
-    if dados.url:
-        linhas.append(f"Consulta pública: {dados.url}")
+    if url := url_publica(dados.url):
+        linhas.append(f"Consulta pública: {url}")
     return "\n".join(linhas)
 
 
@@ -101,11 +115,8 @@ def _html(dados: DadosAlerta) -> str:
         f"<tr><th align='left'>{escape(polo)}</th><td>{escape(', '.join(nomes))}</td></tr>"
         for polo, nomes in _partes_por_polo(dados)
     )
-    link = (
-        f"<p><a href='{escape(dados.url, quote=True)}'>Abrir consulta pública</a></p>"
-        if dados.url
-        else ""
-    )
+    url = url_publica(dados.url)
+    link = f"<p><a href='{escape(url, quote=True)}'>Abrir consulta pública</a></p>" if url else ""
     return f"<table>{linhas}{partes}</table>{link}"
 
 
