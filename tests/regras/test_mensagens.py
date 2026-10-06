@@ -10,6 +10,7 @@ from regras.mensagens import (
     formatar_reais,
     montar_email_alerta,
     montar_email_resumo,
+    url_publica,
 )
 
 
@@ -118,3 +119,33 @@ def test_destinos_email() -> None:
     ]
     assert destinos_email({}) == []
     assert destinos_email(None) == []
+
+
+@pytest.mark.parametrize(
+    ("url", "esperado"),
+    [
+        (
+            "https://esaj.tjsp.jus.br/cpopg/show.do?x=1",
+            "https://esaj.tjsp.jus.br/cpopg/show.do?x=1",
+        ),
+        (
+            "https://comunicaapi.pje.jus.br/api/v1/comunicacao/1",
+            "https://comunicaapi.pje.jus.br/api/v1/comunicacao/1",
+        ),
+        ("javascript:alert(1)", None),
+        ("http://esaj.tjsp.jus.br/", None),  # sem TLS
+        ("https://golpe.example/jus.br", None),
+        ("https://esaj.tjsp.jus.br.golpe.example/", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_url_publica_so_https_da_justica(url: str | None, esperado: str | None) -> None:
+    assert url_publica(url) == esperado
+
+
+def test_link_estranho_nao_vai_para_o_email() -> None:
+    email = montar_email_alerta(dados(url="javascript:alert(1)"), "a@x.com")
+    assert "javascript" not in email.html
+    assert "javascript" not in email.texto
+    assert "Abrir consulta pública" not in email.html

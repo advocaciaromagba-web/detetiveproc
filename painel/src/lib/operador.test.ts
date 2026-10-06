@@ -8,6 +8,7 @@ import {
   queryOperador,
   requisicaoAcao,
   resumoContagem,
+  textoMensagem,
   voltarSeguro,
 } from "./operador";
 import type { AssinaturaOperador } from "./tipos";
@@ -97,12 +98,28 @@ describe("voltarSeguro e comMensagem", () => {
     expect(voltarSeguro(entrada)).toBe(esperado);
   });
   it("troca a mensagem anterior e mantém os filtros", () => {
-    expect(comMensagem("/assinaturas?status=ativa&erro=x", "ok", "Feito.")).toBe(
-      "/assinaturas?status=ativa&ok=Feito.",
+    expect(comMensagem("/assinaturas?status=ativa&erro=x", "ok", "cobrar")).toBe(
+      "/assinaturas?status=ativa&ok=cobrar",
     );
-    expect(comMensagem("/clientes/3", "erro", "a".repeat(300))).toBe(
-      `/clientes/3?erro=${"a".repeat(200)}`,
-    );
+    expect(comMensagem("/clientes/3", "erro", "cancelar")).toBe("/clientes/3?erro=cancelar");
+  });
+});
+
+describe("textoMensagem", () => {
+  it("texto fixo a partir do código da ação", () => {
+    expect(textoMensagem("cobrar", undefined, null)).toEqual({
+      tipo: "ok",
+      texto: "Cobrança enviada ao Asaas.",
+    });
+    expect(textoMensagem(undefined, "cancelar", "assinatura já cancelada")).toEqual({
+      tipo: "erro",
+      texto: "Não foi possível: cancelar. assinatura já cancelada",
+    });
+  });
+
+  it("texto livre num link forjado não aparece na tela", () => {
+    expect(textoMensagem("Ligue para 0800 ...", undefined, null)).toBeNull();
+    expect(textoMensagem(undefined, "Sessão comprometida, ligue já", null)).toBeNull();
   });
 });
 

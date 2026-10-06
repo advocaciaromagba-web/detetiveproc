@@ -202,3 +202,8 @@ async def test_login_limitado_por_ip(cliente_http, dados, relogio) -> None:
     relogio.avancar(hours=1, seconds=1)
     certo["codigo"] = codigo(u, relogio)
     assert (await cliente_http.post("/v1/auth/login", json=certo)).status_code == 200
+
+
+def test_codigo_com_digitos_de_outro_alfabeto_e_recusado(dados, relogio) -> None:
+    # "١٢٣٤٥٦" passa em str.isdigit(); antes derrubava o compare_digest (erro 500).
+    assert passo_totp(dados.usuario_a.segredo, "١٢٣٤٥٦", relogio.agora) is None

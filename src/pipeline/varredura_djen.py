@@ -9,6 +9,10 @@ A cada ciclo, para cada termo ativo (nome, suas variações, ou OAB) de qualquer
   dia de sobreposição, porque a disponibilização do dia pode sair em lotes);
 - períodos longos são fatiados em janelas de ``janela_dias`` para não estourar a
   paginação da API;
+- o monitoramento (só o período novo, poucas consultas) roda ANTES das cargas
+  iniciais, e cada cliente tem no máximo ``cargas_por_cliente`` cargas por ciclo: um
+  cliente novo com muitos nomes não atrasa a varredura dos outros (o resto da carga
+  fica para os ciclos seguintes);
 - toda publicação é gravada e vinculada ao alvo. Vínculos da carga inicial ficam com
   ``origem="carga_inicial"`` (não geram aviso imediato); os demais, ``"monitoramento"``.
 
@@ -65,9 +69,12 @@ class ConfigVarreduraDJEN:
     # Só publicação disponibilizada nos últimos N dias gera aviso de processo novo; o
     # histórico mais antigo entra na lista do cliente sem disparar e-mail/WhatsApp.
     alerta_dias: int = 3
+    # Cargas iniciais (histórico inteiro, a parte cara) por cliente em cada ciclo.
+    cargas_por_cliente: int = 3
 
     def __post_init__(self) -> None:
         invalida = self.historico_dias < 0 or self.janela_dias < 1
+        invalida = invalida or self.cargas_por_cliente < 1
         if invalida or self.sobreposicao_dias < 0 or self.alerta_dias < 0:
             raise ValueError("configuração de varredura do DJEN inválida")
 
@@ -163,6 +170,32 @@ def confianca(termo: Termo, publicacao: PublicacaoDTO) -> str:
     return "a_verificar"
 
 
+def _em_carga(termo: Termo) -> bool:
+    return any(d.varrido_ate is None for d in termo.destinos)
+
+
+def ordenar_e_limitar(termos: list[Termo], cargas_por_cliente: int) -> list[Termo]:
+    """Monitoramento primeiro; depois as cargas iniciais, no máximo ``cargas_por_cliente``
+    por cliente neste ciclo. Um termo também usado por alvos já em dia segue para eles,
+    sem os destinos cuja carga ficou para o próximo ciclo."""
+    usadas: dict[int, int] = {}
+    saida: list[Termo] = []
+    for termo in sorted(termos, key=_em_carga):  # estável: False (em dia) antes
+        destinos: list[Destino] = []
+        carga_neste: set[int] = set()
+        for d in termo.destinos:
+            if d.varrido_ate is not None:
+                destinos.append(d)
+            elif d.cliente_id in carga_neste or usadas.get(d.cliente_id, 0) < cargas_por_cliente:
+                destinos.append(d)
+                carga_neste.add(d.cliente_id)
+        for cliente_id in carga_neste:
+            usadas[cliente_id] = usadas.get(cliente_id, 0) + 1
+        if destinos:
+            saida.append(Termo(termo.tipo, termo.valor, termo.parametro_hash, destinos))
+    return saida
+
+
 def _inicio(destino: Destino, hoje: date, config: ConfigVarreduraDJEN) -> date:
     if destino.varrido_ate is None:
         return hoje - timedelta(days=config.historico_dias)
@@ -255,6 +288,7 @@ async def varrer_djen(
     async with sessao_sistema(fabrica) as s:
         termos = await termos_ativos(s, chave_hash)
     resultado.termos = len(termos)
+    termos = ordenar_e_limitar(termos, config.cargas_por_cliente)
 
     for termo in termos:
         inicios = {d.alvo_id: _inicio(d, hoje, config) for d in termo.destinos}

@@ -102,7 +102,9 @@ def passo_totp(segredo: str, codigo: str, agora: datetime) -> int | None:
     """Passo de tempo (janela de 30 s) em que o código é válido, com tolerância de ±1
     passo para relógio adiantado/atrasado. None se o código não confere."""
     codigo = codigo.strip()
-    if len(codigo) != 6 or not codigo.isdigit():
+    # isascii: str.isdigit() aceita dígitos de outros alfabetos ("١٢٣٤٥٦"), que fariam o
+    # compare_digest levantar erro (500) só quando a senha está certa.
+    if len(codigo) != 6 or not (codigo.isascii() and codigo.isdigit()):
         return None
     totp = pyotp.TOTP(segredo)
     for desvio in (0, -1, 1):
